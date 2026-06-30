@@ -1,0 +1,44 @@
+# ── Reference copy (read-only inheritance reference — NOT part of the repo) ──
+hamakpetza-audit-copy/
+
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# ── Env / secrets ───────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── Database / local storage ────────────────────────────────────────────────
+data/
+*.db
+*.db-wal
+*.db-shm
+_local_storage/
+backend/uploads/
+
+# ── Node / Next.js ──────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+next-env.d.ts
+
+# ── OS / editor ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
