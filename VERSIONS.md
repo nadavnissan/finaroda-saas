@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.4.2 | 2026-07-01 | CHORE — Next.js 15.5.4→15.5.19 (CVE-2025-66478 fix) + eslint-config-next, to unblock Railway staging. Dep bump only. | <hash> |
 | v0.4.1 | 2026-07-01 | P2 scorer wired — real scoreDirection (momentum profile) live, 85/82 PASS/WATCH gate on, pullback/continuation logged; score_log.profile (mig 021) | <hash> |
 | v0.4.0 | 2026-07-01 | P2 — scan core: client-side Bybit fetch + Trading Blueprint (levels engine imported), Analysis Lens, Risk Style, persistence; score marked pending (pass 2) | <hash> |
 | v0.3.1 | 2026-07-01 | DOCS — regulatory reframing (calculator terminology, formula transparency, Analysis Lens, Risk Style, RED LINE). PRD v2.1 · UX v1.2 · LEGAL v2. Engine unchanged. | <hash> |

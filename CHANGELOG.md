@@ -4,6 +4,18 @@
 
 ---
 
+## [CHORE / Next.js security bump for Railway staging] — 2026-07-01
+- GOAL: Unblock the Railway staging build, which rejected next@15.5.4 (CVE-2025-66478, CRITICAL).
+- SOLUTION: Dependency bump only — no app logic, engine, or scorer changes.
+- FILES MODIFIED: frontend/package.json, frontend/pnpm-lock.yaml.
+- DEPS: next 15.5.4 → 15.5.19 (^15.5.9, includes the CVE fix); eslint-config-next 15.5.4 → 15.5.19 (kept in lockstep with next). Stayed within 15.5.x — non-breaking, no React/Next major bump.
+- AUDIT: `pnpm audit --audit-level high` → 0 high/critical after the bump. 1 remaining **moderate** (transitive `postcss <8.5.10` via next) — not critical/high, does not block Railway; left as-is per the critical/high-only scope.
+- VALIDATION: tsc clean ✅ | eslint clean ✅ | next build 16 routes ✅ | pytest 25/25 ✅ (backend unaffected) | shared node 12/12 (unchanged).
+- VERSION: v0.4.2
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Railway frontend build no longer blocked by the critical Next.js advisory. No functional change.
+
 ## [P2 / Scorer wired — real 85/82 gate live] — 2026-07-01
 - GOAL: Wire the real scorer (`shared/scorer.js`, verbatim v25.80) into the scan core: momentum profile displayed, real 85 PASS / 82-84 WATCH gate on, pullback/continuation profiles logged (measure-first), score pending removed. Engine files not modified.
 - SOLUTION: Import `scoreDirection` + `MOMENTUM_CAL` + `DEFAULT_CALIBRATION` + `DEFAULT_RISK` from `@finaroda/scoring-engine/scorer.js`. Score both directions per coin with the momentum profile; also score pullback/continuation for logging. Levels still via `computeSlTp` with Risk Style (RED LINE).
