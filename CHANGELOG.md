@@ -4,6 +4,31 @@
 
 ---
 
+## [P2 / Scan core — client-side fetch + Trading Blueprint] — 2026-07-01
+- GOAL: Build the full scan flow and Trading Blueprint on the LEVELS engine (imported from `shared/scoring-engine.js`), to the binding reframing in PRD §3.5. The numeric SCORE is not available (scoreDirection throws, pass 2) — surfaced as pending, never invented.
+- SOLUTION: Client-side Bybit fetch (user IP, no shared cache) → shared levels engine → results (ring/list) → Trading Blueprint. Persistence to scan_events/score_log/decision_snapshots. Backend adds scan endpoints + a thin CORS-fallback proxy.
+- FILES CREATED:
+  - Backend: backend/api/{scan.py, market_proxy.py}, backend/models/scan.py, backend/migrations/020_score_log_nullable.py, backend/tests/test_p2_scan.py.
+  - Frontend: src/lib/scan/{types,bybit,engine,lens,store,persist}.ts, src/components/scan/{Controls,ScanningLog,Results,TradingBlueprint}.tsx, src/types/scoring-engine.d.ts. Rewrote src/app/(scan)/scan/page.tsx.
+- FILES MODIFIED: backend/main.py (scan + market routers), frontend/package.json (link `@finaroda/scoring-engine`), frontend/next.config.ts (transpilePackages).
+- DB CHANGES: migration 020 — `score_log.score` made NULLABLE (score pending until pass 2). No other schema change.
+- CONFIG ADDED: none new (BYBIT_PUBLIC_BASE_URL already existed).
+- ENGINE: **imported, never reimplemented.** Linked `shared/` as `@finaroda/scoring-engine` (workspace symlink) + ambient d.ts. Used calcEMA/RSI/ATR/ADX, ema7Slope, closedCandles, computeSlTp, computeReversalAnchor. **scoreDirection is never called.**
+- VALIDATION: pytest 22/22 ✅ | tsc clean ✅ | eslint clean ✅ | next build 16 routes (/scan 5.89 kB, engine bundled) ✅ | shared node --test 8/8 ✅ | boot smoke (health 200, scan/events 401, proxy whitelist 400) ✅
+- ATP: TC-B-001..006 (scan persistence, auth, snapshot ownership, proxy whitelist, score_log nullable) + TC-C-001..003 (Blueprint terminology / formula notes / score-pending — validated by build+tsc).
+- VERSION: v0.4.0
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: A working scan core: press → streaming log → passers as circles → Trading Blueprint with real calculated levels, formula-transparency notes, Analysis Lens (display), Risk Style (geometry). Score cleanly marked pending; real 85/82 gate wired behind `SCORE_GATE_ENABLED` (off).
+- DECISIONS (non-trivial):
+  1. **Score-pending handling:** every scanned coin is recorded with `score=NULL`; the card shows "Score pending — engine pass 2 (levels below are real)". scoreDirection is never invoked. The real 85 PASS / 82 WATCH gate is wired but behind `SCORE_GATE_ENABLED=false` (engine.ts) — flip it on when pass 2 lands.
+  2. **Interim visibility rule (documented):** while the score is pending, a coin is shown if its LEVELS are valid (ema7Slope non-null, ATR>0, ≥30 closed candles) AND the Analysis Lens condition holds (lens.ts). This is display-gating, not a score.
+  3. **Interim direction rule:** direction derived from the sign of the VERIFIED EMA7 slope (long if >0, short if <0) purely to orient level geometry — not a recommendation, not a score.
+  4. **Risk Style → `computeSlTp` opt only** (Conservative 1.0/1.0/2.0 · Balanced=defaults · Aggressive 2.0/2.0/4.0). Levels move; score untouched (RED LINE).
+  5. **Engine link:** used `link:../shared` + `transpilePackages` + a frontend ambient d.ts (types only) rather than touching `shared/` — engine files untouched.
+  6. **Persistence is best-effort:** scan endpoints require auth; a signed-out scan still works (persistence silently no-ops on 401).
+- RED LINE: honored — client Lens changes display only; Risk Style changes geometry only; score/weights/edge/threshold are never client-touchable.
+
 ## [DOCS / Regulatory reframing — calculator framing] — 2026-07-01
 - GOAL: Reframe the FRONT-END as a utility calculator (not advice) for regulatory protection. **The calculation engine, the verified EMA7-slope edge, filter weights, and the 85/82 threshold DO NOT change** — only terminology, what is displayed, and client-selected risk geometry.
 - SOLUTION: Docs-only update to PRD/UX/LEGAL. Added an authoritative reframing section (PRD §3.5) that governs all surfaces, plus targeted term updates and a RED LINE.

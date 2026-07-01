@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@finaroda/scoring-engine':
+        specifier: link:../shared
+        version: link:../shared
       next:
         specifier: 15.5.4
         version: 15.5.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)

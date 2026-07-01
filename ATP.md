@@ -104,6 +104,27 @@
   throws (pass-2 extraction pending golden vectors).
 - Status: ✅ pass (node --test 8/8)
 
+## TC — P2 (scan core)
+
+### TC-B — Scan flow & persistence (automated: backend/tests/test_p2_scan.py)
+| TC | Description | Expected | Status |
+|----|-------------|----------|--------|
+| TC-B-001 | Scan records events + score_log | scan_event + one score_log per coin, score NULL | ✅ |
+| TC-B-002 | Scan events require auth | 401 without cookie | ✅ |
+| TC-B-003 | Blueprint snapshot persisted | decision_snapshot created for owner | ✅ |
+| TC-B-004 | Snapshot ownership | can't snapshot another user's score_log → 404 | ✅ |
+| TC-B-005 | CORS proxy whitelist | disallowed endpoint → 400 | ✅ |
+| TC-B-006 | score_log.score nullable (migration 020) | PRAGMA notnull=0 | ✅ |
+
+### TC-C — Trading Blueprint (validated by build + tsc; UI)
+| TC | Description | Expected | Status |
+|----|-------------|----------|--------|
+| TC-C-001 | Terminology (PRD §3.5.1) | Mathematical Trigger Point / Calculated Risk Level / Calculated Target Level / Dynamic Risk Level / "Trading Blueprint" | ✅ (build) |
+| TC-C-002 | Formula-transparency note per level (§3.5.2) | each level shows "Calculated via …" | ✅ (build) |
+| TC-C-003 | Score pending, real levels; Lens display-only; Risk Style geometry-only | "Score pending — engine pass 2"; scoreDirection never called; RED LINE honored | ✅ (build) |
+
+> Interim rules documented in code: `engine.ts` (SCORE_GATE_ENABLED=false, interim direction from EMA7 slope sign) and `lens.ts` (interim visibility = levels valid + lens condition). Real 85/82 gate wired behind the flag for pass 2.
+
 ---
 
 ## ATR (Acceptance Test Reports)
