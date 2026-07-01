@@ -1,0 +1,26 @@
+# Frontend (Next.js) — Node-ONLY build for Railway.
+#
+# This service's Root Directory MUST be "frontend" so Railway reads THIS config
+# instead of the repo-root nixpacks.toml (which builds the Python backend and was
+# causing the `get-pip.py` / externally-managed-environment failure).
+#
+# `providers = ['node']` pins the build to the Node provider only — Railway will NOT
+# detect or install Python for this service.
+#
+# The shared engine (frontend depends on it via `link:../shared`) resolves because
+# Railway includes the entire repository in the build even when a Root Directory is
+# set — so `../shared` is present on disk during `pnpm install`.
+
+providers = ['node']
+
+[phases.setup]
+nixPkgs = ['nodejs_22']
+
+[phases.install]
+cmds = ['corepack enable', 'pnpm install --no-frozen-lockfile']
+
+[phases.build]
+cmds = ['pnpm run build']
+
+[start]
+cmd = 'pnpm exec next start -p $PORT'

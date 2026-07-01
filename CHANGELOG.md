@@ -4,6 +4,18 @@
 
 ---
 
+## [CHORE / Frontend Railway build — force Node-only] — 2026-07-01
+- GOAL: Fix the Railway frontend build failing with `externally-managed-environment` / `get-pip.py` — nixpacks was building the monorepo's Python backend for the Next.js frontend service.
+- ROOT CAUSE: With the frontend service Root Directory at repo root, Railway read the repo-root `nixpacks.toml` (Python provider) and tried to `pip install` for a Node app.
+- SOLUTION (config only): Added `frontend/nixpacks.toml` with `providers = ['node']` (Node-only, pins nodejs_22, pnpm via corepack, `pnpm install`+`pnpm build`, start `next start -p $PORT`), and a `packageManager: pnpm@10.33.1` field in `frontend/package.json` so nixpacks uses pnpm not npm. The frontend service must set **Root Directory = `frontend`** so Railway reads THIS config, not the root Python one. `link:../shared` still resolves (Railway includes the whole repo in the build).
+- FILES MODIFIED: frontend/nixpacks.toml (new), frontend/package.json (packageManager field).
+- APP/ENGINE/SCORER: unchanged.
+- VALIDATION: tsc clean ✅ | eslint clean ✅ | next build 16 routes ✅.
+- VERSION: v0.4.3
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Frontend Railway service builds as a pure Node/Next app; no Python provider triggered. Backend service (Root Directory `/`) still uses the root nixpacks.toml unchanged.
+
 ## [CHORE / Next.js security bump for Railway staging] — 2026-07-01
 - GOAL: Unblock the Railway staging build, which rejected next@15.5.4 (CVE-2025-66478, CRITICAL).
 - SOLUTION: Dependency bump only — no app logic, engine, or scorer changes.
