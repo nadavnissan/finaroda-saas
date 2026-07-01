@@ -149,7 +149,11 @@ async def health_check():
     }
 
 
-# ── Routers (P0: Cardcom placeholder only) ────────────────────────────────────
+# ── Routers ───────────────────────────────────────────────────────────────────
+from backend.api.auth import router as auth_router
 from backend.api.cardcom import router as cardcom_router
+from backend.api.waitlist import router as waitlist_router
 
+app.include_router(auth_router)
+app.include_router(waitlist_router)
 app.include_router(cardcom_router, prefix="/api")

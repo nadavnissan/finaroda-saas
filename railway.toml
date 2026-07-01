@@ -1,0 +1,33 @@
+# railway.toml — Railway deploy config for the FINARODA backend.
+# PREPARED, NOT DEPLOYED. Nadav triggers the actual deploy manually.
+# Setup: connect the GitHub repo in Railway, mount a volume at /app/data for SQLite,
+# set env vars from backend/.env.example (names only there — real values in dashboard).
+
+[build]
+builder = "nixpacks"
+nixpacksConfigPath = "nixpacks.toml"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Cron: expire trials — daily 01:00 UTC (~03:00 IST).
+[[crons]]
+name = "expire-trials"
+schedule = "0 1 * * *"
+command = "python -m backend.scripts.run_expire_trials"
+
+# Cron: day-13 trial reminder — daily 07:00 UTC (~09:00 IST).
+[[crons]]
+name = "trial-ending-soon"
+schedule = "0 7 * * *"
+command = "python -m backend.scripts.run_trial_ending_soon"
+
+# Cron: subscription renewal — daily 05:00 UTC. Charges cards due for billing.
+# Dry-run until FEATURE_CARDCOM_LIVE=true (set manually by Nadav).
+[[crons]]
+name = "subscription-renewal"
+schedule = "0 5 * * *"
+command = "python -m backend.scripts.run_subscription_renewal"

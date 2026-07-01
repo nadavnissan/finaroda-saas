@@ -94,9 +94,8 @@ def test_health_endpoint():
     assert body["version"] == "0.2.0"
 
 
-def test_cardcom_placeholder_is_wired():
-    """Cardcom router is mounted; P0 placeholder returns 501 (wiring lands in P1)."""
+def test_cardcom_initiate_requires_auth():
+    """Cardcom initiate is auth-protected (P1): no cookie → 401."""
     with TestClient(app) as client:
-        resp = client.post("/api/cardcom/initiate")
-    assert resp.status_code == 501
-    assert resp.json()["error"]["code"] == "NOT_IMPLEMENTED"
+        resp = client.post("/api/cardcom/initiate", json={"plan": "basic"})
+    assert resp.status_code == 401

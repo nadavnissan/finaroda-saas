@@ -69,6 +69,29 @@
 - Expected: TODO sentinel קפוא; ema7Slope/scoreDirection/computeReversalAnchor/computeSL/computeTP קיימות; כל אחת מחזירה TODO (בלי מימוש/חיבור Bybit)
 - Status: ✅ pass (node --test 3/3)
 
+## TC — P1 (תשתית חיה) — אוטומטי (backend/tests/test_p1_auth_billing.py)
+
+### TC-A — Auth
+| TC | תיאור | Expected | Status |
+|----|-------|----------|--------|
+| TC-A-001 | magic-link signup+login+/me | user נוצר, cookie נקבע, /me מחזיר email | ✅ |
+| TC-A-002 | /me בלי cookie | 401 | ✅ |
+| TC-A-003 | magic-link token נשמר כ-hash | stored == sha256(raw), != raw (SPEC §4) | ✅ |
+| TC-A-004 | bootstrap admin (founder) | is_admin=true בהרשמה (DB role) | ✅ |
+| TC-A-005 | Apple stub | 501 | ✅ |
+| TC-A-006 | beta gate סגור | allowlisted עובר, אחר נחסם | ✅ |
+| TC-A-007 | waitlist join | 200 + email | ✅ |
+
+### TC-F — Billing / Cardcom (TEST mode)
+| TC | תיאור | Expected | Status |
+|----|-------|----------|--------|
+| TC-F-001 | initiate בלי auth | 401 | ✅ |
+| TC-F-002 | initiate ב-test mode (authed) | 503 (אין חיוב אמיתי) | ✅ |
+| TC-F-003 | status אחרי login | subscription_status=none, tier=free | ✅ |
+| TC-F-004 | webhook עם חתימה שגויה | 200 received, בלי שינוי state | ✅ |
+| TC-F-005 | start_trial | trial 14 יום, tier מעודכן, next_billing נקבע | ✅ |
+| TC-F-006 | expire_trials | trial שפג → expired/free; מחירי פלאנים seeded | ✅ |
+
 ---
 
 ## ATR (Acceptance Test Reports)

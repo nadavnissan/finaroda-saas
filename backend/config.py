@@ -49,9 +49,12 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 APPLE_CLIENT_ID = os.getenv("APPLE_CLIENT_ID", "")
 APPLE_TEAM_ID = os.getenv("APPLE_TEAM_ID", "")
 
-# Admin allowlist (P0: env list. SPEC §4 hardening → move to DB role `users.is_admin`).
-ADMIN_USER_IDS: list[int] = [
-    int(x) for x in os.getenv("ADMIN_USER_IDS", "").split(",") if x.strip()
+# Admin is a DB role (`users.is_admin`), per SPEC §4 — NOT an env id list.
+# These emails are auto-granted is_admin=1 on signup, to bootstrap the first admin.
+ADMIN_BOOTSTRAP_EMAILS: list[str] = [
+    e.strip().lower()
+    for e in os.getenv("ADMIN_BOOTSTRAP_EMAILS", "rodanis@gmail.com").split(",")
+    if e.strip()
 ]
 
 # Beta gate (closed beta until public launch).

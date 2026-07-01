@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.3.0 | 2026-07-01 | P1 — תשתית חיה: auth מוקשח (magic-link+Google+beta gate), Cardcom v11 (TEST mode), deploy config, frontend מחובר | <hash> |
 | v0.2.1 | 2026-07-01 | P1.5 — placeholder ל-scoring-engine המשותף (shared/), ממתין לחילוץ מהכלי האישי | <hash> |
 | v0.2.0 | 2026-06-30 | P0 — שלד נקי: backend+frontend, 18 migrations מודרניות, Cardcom יחיד, validation ירוק | <hash> |
 | v0.1.0 | YYYY-MM-DD | Init — scaffolding + מסמכי מקור-אמת ובקרה | <hash> |

@@ -4,6 +4,43 @@
 
 ---
 
+## [P1 / תשתית חיה — auth + Cardcom + deploy] — 2026-07-01
+- GOAL: לחווט את שכבת התשתית החיה על גבי השלד הנקי — auth מלא ומוקשח, Cardcom v11 ב-TEST mode, קונפיג deploy ל-Railway, וחיבור frontend בסיסי. בלי פיצ'רים, בלי חיוב אמיתי, בלי פריסה חיה. (SPEC §3.1, §4, §9, §11)
+- SOLUTION: פורט דפוסי התשתית מ-hamakpetza (רפרנס read-only) והותאמו לסכמה הנקייה + הקשחות SPEC §4. שכבת קריירה לא נגעה.
+- FILES CREATED:
+  - Auth: backend/core/{auth.py, database.py, google_oauth.py, apple_oauth.py, email.py}, backend/api/{auth.py, waitlist.py}, backend/models/{auth.py, cardcom.py}.
+  - Cardcom: backend/core/cardcom_service.py (חווט מלא: initiate/webhook/ChargeToken/trial/renewal/expire), backend/api/cardcom.py (initiate/webhook/status/cancel — הוסר 501).
+  - Crons: backend/app/tasks/billing_tasks.py + backend/scripts/run_{expire_trials,subscription_renewal,trial_ending_soon}.py.
+  - Deploy: railway.toml, nixpacks.toml, litestream.yml, Dockerfile.
+  - Frontend: src/lib/api.ts + דפי login/verify/coming-soon/paywall/checkout(success,cancelled) מחוברים ל-endpoints; frontend/.env.example.
+  - Tests: backend/tests/test_p1_auth_billing.py (12 מקרים).
+- FILES MODIFIED: backend/{config.py, main.py, .env.example, api/cardcom.py, core/cardcom_service.py}, backend/tests/{conftest.py, test_smoke.py}, frontend placeholders → wired.
+- DB CHANGES: migration 019 — users.billing_failure_count + seed מחירי 3 פלאנים ב-system_settings (basic 5000 / advanced 10000 / pro 15000 agorot) + trial_days.
+- CONFIG ADDED (שמות בלבד): ADMIN_BOOTSTRAP_EMAILS (החליף ADMIN_USER_IDS). Cardcom/Google/Resend/R2 כבר קיימים כ-placeholders. **FEATURE_CARDCOM_LIVE=false נשאר — TEST mode.**
+- VALIDATION: pytest 16/16 ✅ | tsc clean ✅ | eslint clean ✅ | next build 16 routes ✅ | uvicorn boot (health 200, auth/me 401, cardcom 401, waitlist 200) ✅ | shared node --test 8/8 ✅
+- ATP: נוספו TC-A-001..007 (auth) + TC-F-001..006 (billing/Cardcom test-mode).
+- VERSION: v0.3.0
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: auth חי (magic-link+Google+beta gate+waitlist), Cardcom מחווט מלא ומוכן להפעלה (dry-run עד credentials+FEATURE_CARDCOM_LIVE), deploy config מוכן. אין חיוב אמיתי, אין פריסה.
+- DECISIONS:
+  1. **Cardcom נשאר TEST mode לחלוטין:** כל קריאת רשת חסומה מאחורי FEATURE_CARDCOM_LIVE=false → initiate מחזיר 503, renewal/charge מחזירים dry-run. אפס סיכוי לחיוב אמיתי. credentials = placeholders ב-.env.example בלבד.
+  2. **הקשחות SPEC §4:** magic-link token נשמר כ-SHA-256 hash (לא plaintext); admin כ-role ב-DB (users.is_admin) עם bootstrap לפי ADMIN_BOOTSTRAP_EMAILS (לא רשימת env ids); Google — אכיפת iss תמיד + aud כשיש CLIENT_ID, ובפרודקשן CLIENT_ID ריק = שגיאה (לא דילוג שקט); dev-secret fallback כבר נחסם בפרודקשן ב-config (P0).
+  3. **אוצר מילים פלאנים = basic/advanced/pro** (מיפוי plan==tier), מחירים מ-system_settings (admin בלי קוד).
+  4. **trial עם כרטיס:** start_trial קובע trial 14 יום + next_billing; tokenization דרך זרימת ה-checkout; חיוב יום 15 = cron renewal (dry-run עד live).
+  5. **suspension על 3 כשלונות** נכתב כ-subscription_status='past_due' + suspended_at (מכבד את ה-CHECK constraint; אין ערך 'suspended').
+  6. **לא נגעתי ב-scoring-engine** — נשאר לפי הנחיה. (חילוץ ה-levels ע"י נדב תועד בנפרד למטה.)
+
+## [ENGINE / חילוץ levels engine מהכלי האישי — pass 1] — 2026-07-01
+- GOAL: לחלץ את מנוע ה-levels המאומת מהכלי האישי (finaroda-offline.html v25.80) ל-scoring-engine.js המשותף.
+- SOLUTION: **סופק ע"י נדב** (לא Claude) במקביל ל-P1. חולצו byte-faithful: calcEMA/calcRSI/calcATR/calcADX/closedCandles/ema7Slope/computeSlTp/computeReversalAnchor. scoreDirection נשאר stub שזורק (pass 2 — דורש golden vectors).
+- FILES MODIFIED: shared/scoring-engine.js, shared/scoring-engine.test.js, shared/scoring-engine.api.md.
+- VALIDATION: node --test 8/8 ✅.
+- VERSION: (חלק מ-shared, לא bump ל-repo).
+- BRANCH: dev
+- IMPACT: כרטיס ההחלטה יוכל להציג levels אמיתיים (Entry/SL/TP/Trailing/R:R/EMA7 slope/reversal anchor) ב-P2. הציון (PASS≥85/WATCH) עדיין חסום עד pass 2.
+- NOTE: Claude לא כתב/שינה קוד זה; נדחף כ-commit נפרד לשקיפות.
+
 ## [P1.5 / חילוץ תשתית מנוע הסריקה — placeholder] — 2026-07-01
 - GOAL: להכין את תשתית המנוע המשותף (`scoring-engine.js`) לפני P2, בלי מימוש. המנוע האמיתי עדיין שזור בכלי האישי (React מקומפל) ויסופק ע"י נדב. (SPEC §6.1, §12 החלטה 7)
 - SOLUTION: נוצרה תיקיית `shared/` עם placeholder בלבד — חתימות פונקציות שמחזירות sentinel `TODO`, קובץ הגדרת API, ו-node:test שמאמת חתימות+התנהגות. **לא הומצא מנוע, לא נעשה חיבור ל-Bybit.** `shared/package.json` (`type:module`) מאפשר ל-`.js` לשמש כ-ESM גם בדפדפן (כלי אישי) וגם ב-Next (SaaS), ומכין את נתיב ה-npm package המשותף.
