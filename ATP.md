@@ -92,6 +92,18 @@
 | TC-F-005 | start_trial | trial 14 יום, tier מעודכן, next_billing נקבע | ✅ |
 | TC-F-006 | expire_trials | trial שפג → expired/free; מחירי פלאנים seeded | ✅ |
 
+## TC — ENGINE (shared scoring-engine) — automated (shared/scoring-engine.test.js)
+
+### TC-ENGINE-001 — levels engine extracted, byte-faithful, scorer still a stub
+- Feature: F-scan (SPEC §6.1)
+- Precondition: —
+- Steps: 1) `cd shared && node --test`
+- Expected: 8/8 pass. calcEMA/RSI/ATR/ADX, closedCandles, ema7Slope (signed),
+  computeSlTp (SL on correct side), computeReversalAnchor (floor/fires) verified against
+  golden vectors from the personal tool v25.80. `scoreDirection` is a guarded stub that
+  throws (pass-2 extraction pending golden vectors).
+- Status: ✅ pass (node --test 8/8)
+
 ---
 
 ## ATR (Acceptance Test Reports)
