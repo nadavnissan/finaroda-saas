@@ -67,3 +67,52 @@ declare module "@finaroda/scoring-engine" {
   export const TODO: { __todo: true; message: string };
   export function scoreDirection(...args: unknown[]): never;
 }
+
+// The real scorer (verbatim v25.80). Subpath import — types only, no logic.
+declare module "@finaroda/scoring-engine/scorer.js" {
+  interface OHLCVLike {
+    o: number[];
+    h: number[];
+    l: number[];
+    c: number[];
+    v: number[];
+  }
+  export interface ScorerMarketData {
+    daily: OHLCVLike;
+    hourly: OHLCVLike;
+    weekly: OHLCVLike;
+    price: number;
+    funding: number;
+    oi?: number | null;
+    oiChangePct?: number | null;
+  }
+  export interface MarketContext {
+    coinChanges: Record<string, number>;
+    meanChange: number;
+    stdChange: number;
+  }
+  export type Calibration = { entryMode: string; [k: string]: unknown };
+  export interface ScoreResult {
+    score: number;
+    signal: "EXECUTE" | "WAIT" | "NO TRADE";
+    blocked: boolean;
+    price: number;
+    sl: number;
+    tp1: number;
+    tp2: number;
+    scoreComponents: unknown[];
+    [k: string]: unknown;
+  }
+  export function scoreDirection(
+    raw: ScorerMarketData,
+    dir: "long" | "short",
+    riskParams: unknown,
+    cal: Calibration,
+    marketContext: MarketContext,
+    coin: string,
+  ): ScoreResult;
+  export const MOMENTUM_CAL: Calibration;
+  export const DEFAULT_CALIBRATION: Calibration;
+  export const DEFAULT_RISK: Record<string, unknown>;
+  export const TREND_MGMT_RISK: Record<string, unknown>;
+}

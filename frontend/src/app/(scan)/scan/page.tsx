@@ -2,18 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import type { MarketContext } from "@finaroda/scoring-engine/scorer.js";
+
 import { LensToggle, RiskStyleToggle } from "@/components/scan/Controls";
 import { Results, EmptyState } from "@/components/scan/Results";
 import { SCAN_STEPS, ScanningLog } from "@/components/scan/ScanningLog";
 import { TradingBlueprint } from "@/components/scan/TradingBlueprint";
-import { fetchMarketData, SCAN_UNIVERSE } from "@/lib/scan/bybit";
-import {
-  buildBlueprint,
-  PASS_THRESHOLD,
-  SCORE_GATE_ENABLED,
-} from "@/lib/scan/engine";
-import { lensCondition } from "@/lib/scan/lens";
-import { recordScan, recordSnapshot, toScoreLogItem } from "@/lib/scan/persist";
+import { buildMarketContext, fetchMarketData, SCAN_UNIVERSE } from "@/lib/scan/bybit";
+import { buildBlueprint, PASS_THRESHOLD } from "@/lib/scan/engine";
+import { recordScan, recordSnapshot, toScoreLogItems } from "@/lib/scan/persist";
 import {
   getLens,
   getRiskStyle,
@@ -36,6 +33,7 @@ export default function ScanPage() {
   const [disciplined, setDisciplined] = useState(0);
 
   const mdRef = useRef<Map<string, MarketData>>(new Map());
+  const ctxRef = useRef<MarketContext>({ coinChanges: {}, meanChange: 0, stdChange: 0 });
   const idRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -65,28 +63,32 @@ export default function ScanPage() {
     clearInterval(timer);
     setStep(SCAN_STEPS.length - 1);
 
+    // Collect market data, then build cross-coin context (isolation-Z input).
     mdRef.current.clear();
-    const blueprints: Blueprint[] = [];
     SCAN_UNIVERSE.forEach((coin, i) => {
       const r = settled[i];
-      if (r.status !== "fulfilled") return;
-      mdRef.current.set(coin, r.value);
-      const bp = buildBlueprint(coin, r.value, riskStyle);
-      if (!bp) return;
-      bp.interimPassed = lensCondition(lens, bp);
-      blueprints.push(bp);
+      if (r.status === "fulfilled") mdRef.current.set(coin, r.value);
+    });
+    const ctx = buildMarketContext(mdRef.current);
+    ctxRef.current = ctx;
+
+    const blueprints: Blueprint[] = [];
+    mdRef.current.forEach((md, coin) => {
+      const bp = buildBlueprint(coin, md, riskStyle, ctx);
+      if (bp) blueprints.push(bp);
     });
 
-    const pass = blueprints.filter((b) => b.interimPassed);
+    // Real gate (SCORE_GATE_ENABLED): PASS ≥85 / WATCH 82–84 shown; HIDE not shown.
+    const pass = blueprints.filter((b) => b.passLabel !== "HIDE");
     setScanned(SCAN_UNIVERSE.length);
     setPassers(pass);
 
-    // Best-effort persistence (SPEC §5). Silent no-op if signed out.
+    // Persistence (SPEC §5): 3 profile rows per coin. Best-effort (401 = silent no-op).
     const rec = await recordScan(
       SCAN_UNIVERSE.length,
       pass.length,
-      SCORE_GATE_ENABLED ? PASS_THRESHOLD : null,
-      blueprints.map(toScoreLogItem),
+      PASS_THRESHOLD,
+      blueprints.flatMap(toScoreLogItems),
     );
     idRef.current.clear();
     rec?.score_logs.forEach((sl) => idRef.current.set(sl.coin, sl.id));
@@ -98,18 +100,17 @@ export default function ScanPage() {
   function openBlueprint(bp: Blueprint) {
     setSelected(bp);
     const id = idRef.current.get(bp.coin);
-    if (id) void recordSnapshot(id, JSON.stringify(bp)); // best-effort, evidentiary
+    if (id) void recordSnapshot(id, JSON.stringify(bp)); // evidentiary, best-effort
   }
 
-  // Risk Style change on the card → rebuild that coin's levels (NOT the score).
+  // Risk Style change on the card → rebuild LEVELS only (score is unchanged — RED LINE).
   function rebuildRiskStyle(style: RiskStyle) {
     chooseRiskStyle(style);
     if (!selected) return;
     const md = mdRef.current.get(selected.coin);
     if (!md) return;
-    const bp = buildBlueprint(selected.coin, md, style);
+    const bp = buildBlueprint(selected.coin, md, style, ctxRef.current);
     if (!bp) return;
-    bp.interimPassed = lensCondition(lens, bp);
     setSelected(bp);
     setPassers((prev) => prev.map((p) => (p.coin === bp.coin ? bp : p)));
   }

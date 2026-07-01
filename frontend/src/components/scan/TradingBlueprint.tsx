@@ -68,9 +68,22 @@ export function TradingBlueprint({
       </div>
       <div style={{ color: "#8593A2", fontFamily: "monospace", fontSize: 13 }}>Trading Blueprint</div>
 
-      {/* Score — pending engine pass 2. NEVER invented. */}
-      <div style={{ margin: "10px 0", padding: "8px 10px", background: "#0b0d12", borderRadius: 8 }}>
-        <small style={{ color: "#E0913F" }}>Score pending — engine pass 2 (levels below are real)</small>
+      {/* Real momentum-profile score + SaaS 85/82 gate. */}
+      <div
+        style={{
+          margin: "10px 0",
+          padding: "8px 10px",
+          background: "#0b0d12",
+          borderRadius: 8,
+          display: "flex",
+          justifyContent: "space-between",
+          fontFamily: "monospace",
+        }}
+      >
+        <span>Score {bp.score}/100</span>
+        <span style={{ color: bp.passLabel === "PASS" ? "#1FB286" : "#E0913F" }}>
+          {bp.passLabel === "PASS" ? "PASS ≥85" : "WATCH 82–84"}
+        </span>
       </div>
 
       {/* Verified / collected indicators */}

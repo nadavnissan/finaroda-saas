@@ -7,8 +7,9 @@ from pydantic import BaseModel
 class ScoreLogItem(BaseModel):
     coin: str
     direction: Literal["long", "short"]
-    score: Optional[float] = None      # NULL until scoreDirection pass 2
-    passed_threshold: int              # 0/1 (interim rule until score exists)
+    profile: str = "momentum"          # momentum (displayed) | pullback | continuation
+    score: Optional[float] = None      # real scorer score; may be null if scoring failed
+    passed_threshold: int              # 0/1 (real 85/82 gate on the momentum profile)
     ema7_slope_pct: Optional[float] = None
     volume_ratio: Optional[float] = None
     price: Optional[float] = None

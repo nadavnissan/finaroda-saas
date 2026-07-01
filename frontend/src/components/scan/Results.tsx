@@ -3,7 +3,9 @@
 import type { Blueprint } from "@/lib/scan/types";
 
 function coinDot(bp: Blueprint, onClick: () => void) {
-  const color = bp.direction === "long" ? "#1FB286" : "#E0913F";
+  // Border reflects the SaaS gate (PASS green / WATCH amber); arrow shows direction.
+  const gate = bp.passLabel === "PASS" ? "#1FB286" : "#E0913F";
+  const dirColor = bp.direction === "long" ? "#1FB286" : "#E0913F";
   const symbol = bp.coin.replace("USDT", "");
   return (
     <button
@@ -14,7 +16,7 @@ function coinDot(bp: Blueprint, onClick: () => void) {
         width: 64,
         height: 64,
         borderRadius: "50%",
-        border: `2px solid ${color}`,
+        border: `2px solid ${gate}`,
         background: "#0b0d12",
         color: "#E9EEF3",
         fontFamily: "monospace",
@@ -23,7 +25,9 @@ function coinDot(bp: Blueprint, onClick: () => void) {
       }}
     >
       {symbol}
-      <div style={{ color, fontSize: 11 }}>{bp.direction === "long" ? "↑" : "↓"}</div>
+      <div style={{ color: dirColor, fontSize: 11 }}>
+        {bp.direction === "long" ? "↑" : "↓"} {bp.score}
+      </div>
     </button>
   );
 }

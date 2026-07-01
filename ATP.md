@@ -123,7 +123,16 @@
 | TC-C-002 | Formula-transparency note per level (§3.5.2) | each level shows "Calculated via …" | ✅ (build) |
 | TC-C-003 | Score pending, real levels; Lens display-only; Risk Style geometry-only | "Score pending — engine pass 2"; scoreDirection never called; RED LINE honored | ✅ (build) |
 
-> Interim rules documented in code: `engine.ts` (SCORE_GATE_ENABLED=false, interim direction from EMA7 slope sign) and `lens.ts` (interim visibility = levels valid + lens condition). Real 85/82 gate wired behind the flag for pass 2.
+> Since the scorer landed (v0.4.1), `SCORE_GATE_ENABLED=true`: visibility is the real
+> 85/82 gate on the numeric score; the interim rule is retired. The lens is now display-only.
+
+### TC-SCORER — real score wired (shared/scorer.test.js + backend/tests/test_p2_scorer.py)
+| TC | Description | Expected | Status |
+|----|-------------|----------|--------|
+| TC-SCORER-001 | Scorer runs end-to-end (JS) | node --test 12/12 (8 engine + 4 scorer); score 0–110, valid signal, 11 components | ✅ |
+| TC-SCORER-002 | 3 profiles logged, momentum only returned | momentum+pullback+continuation rows; only momentum linked for snapshot | ✅ |
+| TC-SCORER-003 | Real score persisted + profile column | score non-null on momentum; score_log.profile present (mig 021) | ✅ |
+| TC-SCORER-004 | 85/82 gate + RED LINE (build/tsc) | PASS ≥85 / WATCH 82-84 / blocked hidden; Risk Style changes levels not score | ✅ (build) |
 
 ---
 

@@ -4,6 +4,27 @@
 
 ---
 
+## [P2 / Scorer wired — real 85/82 gate live] — 2026-07-01
+- GOAL: Wire the real scorer (`shared/scorer.js`, verbatim v25.80) into the scan core: momentum profile displayed, real 85 PASS / 82-84 WATCH gate on, pullback/continuation profiles logged (measure-first), score pending removed. Engine files not modified.
+- SOLUTION: Import `scoreDirection` + `MOMENTUM_CAL` + `DEFAULT_CALIBRATION` + `DEFAULT_RISK` from `@finaroda/scoring-engine/scorer.js`. Score both directions per coin with the momentum profile; also score pullback/continuation for logging. Levels still via `computeSlTp` with Risk Style (RED LINE).
+- FILES CREATED: backend/migrations/021_score_log_profile.py, backend/tests/test_p2_scorer.py.
+- FILES MODIFIED: frontend/src/lib/scan/{engine,bybit,persist,lens,types}.ts, frontend/src/app/(scan)/scan/page.tsx, frontend/src/components/scan/{TradingBlueprint,Results}.tsx, frontend/src/types/scoring-engine.d.ts, backend/models/scan.py, backend/api/scan.py.
+- DB CHANGES: migration 021 — `score_log.profile` column (momentum/pullback/continuation) + index. score is now populated (real), no longer null.
+- ENGINE: **imported, not modified.** `shared/scorer.js` + `shared/scoring-engine.js` untouched (verified: no diff). scoreDirection is now CALLED with the momentum default profile.
+- VALIDATION: node --test 12/12 (8 engine + 4 scorer) ✅ | pytest 25/25 ✅ | tsc clean ✅ | eslint clean ✅ | next build 16 routes (/scan 12.3 kB, scorer bundled) ✅ | boot smoke (health 200, scan/events 401, migrations 020+021 apply) ✅
+- ATP: TC-SCORER-001..004 added.
+- VERSION: v0.4.1
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: The scan now shows a REAL score with the live 85/82 PASS/WATCH gate. Three profiles are recorded per coin for base-rate research; only momentum is displayed. "Score pending" placeholder removed.
+- DECISIONS (non-trivial):
+  1. **`SCORE_GATE_ENABLED=true`.** Visibility gate is now the numeric score: PASS ≥85, WATCH 82-84, else hidden; a `blocked` (macro hard-gate) result is always hidden. The Analysis Lens no longer gates visibility (it's now purely a display panel — strengthens the RED LINE).
+  2. **Direction selection:** score both long+short with the momentum profile; prefer the non-blocked result, then the higher score. That decides the displayed direction (replaces the interim EMA7-sign rule).
+  3. **Profiles via the tool's own `entryMode` switch (no invented numbers):** momentum = `MOMENTUM_CAL`; pullback = `DEFAULT_CALIBRATION` (entryMode 'pullback'); continuation = `{...DEFAULT_CALIBRATION, entryMode:'continuation'}`. There are no separate PULLBACK/CONTINUATION exports in scorer.js — these are the documented calibration variants.
+  4. **RED LINE kept:** the score uses FIXED inputs (`DEFAULT_RISK` + `MOMENTUM_CAL`); Risk Style feeds ONLY `computeSlTp` opt (displayed levels). Changing Risk Style on the card recomputes levels, never the score.
+  5. **marketData extended (client-side):** added `weekly` (derived from daily every 7th candle, matching the scorer's test), open interest + `oiChangePct` (best-effort from Bybit open-interest; neutral default), and `change24h`; `marketContext` (coinChanges/mean/std) built once per scan from all coins' 24h change.
+  6. **Persistence:** 3 rows per coin (profiles); only the momentum row is returned for snapshot linking; momentum row carries the displayed levels, the other two log score only.
+
 ## [P2 / Scan core — client-side fetch + Trading Blueprint] — 2026-07-01
 - GOAL: Build the full scan flow and Trading Blueprint on the LEVELS engine (imported from `shared/scoring-engine.js`), to the binding reframing in PRD §3.5. The numeric SCORE is not available (scoreDirection throws, pass 2) — surfaced as pending, never invented.
 - SOLUTION: Client-side Bybit fetch (user IP, no shared cache) → shared levels engine → results (ring/list) → Trading Blueprint. Persistence to scan_events/score_log/decision_snapshots. Backend adds scan endpoints + a thin CORS-fallback proxy.

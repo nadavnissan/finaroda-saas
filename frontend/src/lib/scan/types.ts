@@ -12,13 +12,21 @@ export interface OHLCV {
   v: number[];
 }
 
-// The marketData contract from shared/scoring-engine.api.md.
+// The marketData contract (shared/scoring-engine.api.md) + scorer inputs
+// (weekly, oi, oiChangePct) and the coin's 24h change (for marketContext).
 export interface MarketData {
   daily: OHLCV;
   hourly: OHLCV;
+  weekly: OHLCV;
   price: number;
   funding: number;
+  oi: number | null;
+  oiChangePct: number | null;
+  change24h: number; // percent
 }
+
+export type Profile = "momentum" | "pullback" | "continuation";
+export type PassLabel = "PASS" | "WATCH" | "HIDE";
 
 // One calculated level on the Trading Blueprint, with its transparency note.
 export interface Level {
@@ -27,13 +35,16 @@ export interface Level {
   note: string; // formula-transparency note (PRD §3.5.2)
 }
 
-// The Trading Blueprint (PRD §3.5.1). NOTE: `score` is intentionally null — the
-// numeric score is blocked until engine pass 2. It is NEVER invented here.
+// The Trading Blueprint (PRD §3.5.1). `score` is the REAL momentum-profile score
+// from scoreDirection. Pullback/continuation scores are logged, not displayed.
 export interface Blueprint {
   coin: string;
   direction: Direction;
-  score: null; // pending engine pass 2 — see scorePending
-  scorePending: true;
+  score: number; // real momentum-profile score (0–110)
+  signal: "EXECUTE" | "WAIT" | "NO TRADE";
+  passLabel: PassLabel; // SaaS 85/82 gate (RED LINE: never client-touchable)
+  // Other-profile scores — LOGGED for measure-first, NOT displayed:
+  profileScores: Record<Profile, number | null>;
   // Calculated levels (calculator terminology — PRD §3.5.1):
   mathematicalTriggerPoint: Level; // was Entry
   calculatedRiskLevel: Level; // was Stop Loss
@@ -47,7 +58,6 @@ export interface Blueprint {
   adx: { adx: number; plusDI: number; minusDI: number } | null;
   price: number;
   riskStyle: RiskStyle;
-  interimPassed: boolean; // interim visibility gate (levels valid + lens condition)
 }
 
 export interface CoinScanResult {

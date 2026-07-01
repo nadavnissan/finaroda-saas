@@ -1,14 +1,20 @@
 // Best-effort scan persistence (SPEC §5). If the user isn't signed in, these no-op
 // silently (401) — the scan UX still works; it just isn't logged.
+//
+// Every scanned coin logs THREE rows (momentum/pullback/continuation) for
+// measure-first base-rate research. Only momentum is displayed. Levels are logged on
+// the momentum row (the displayed geometry); the other profiles log score only.
 
 import { apiFetch } from "@/lib/api";
 
-import type { Blueprint } from "./types";
+import { WATCH_THRESHOLD } from "./engine";
+import type { Blueprint, Profile } from "./types";
 
 export interface ScoreLogItemPayload {
   coin: string;
   direction: "long" | "short";
-  score: null;
+  profile: Profile;
+  score: number | null;
   passed_threshold: number;
   ema7_slope_pct: number | null;
   volume_ratio: number | null;
@@ -19,20 +25,27 @@ export interface ScoreLogItemPayload {
   trailing_pct: number | null;
 }
 
-export function toScoreLogItem(bp: Blueprint): ScoreLogItemPayload {
-  return {
+// One coin → three profile rows (momentum displayed; pullback/continuation logged only).
+export function toScoreLogItems(bp: Blueprint): ScoreLogItemPayload[] {
+  const base = (profile: Profile, score: number | null, withLevels: boolean): ScoreLogItemPayload => ({
     coin: bp.coin,
     direction: bp.direction,
-    score: null,
-    passed_threshold: bp.interimPassed ? 1 : 0,
+    profile,
+    score,
+    passed_threshold: score != null && score >= WATCH_THRESHOLD ? 1 : 0,
     ema7_slope_pct: bp.ema7SlopePct,
     volume_ratio: bp.volumeRatio,
     price: bp.price,
-    entry: bp.mathematicalTriggerPoint.value,
-    sl: bp.calculatedRiskLevel.value,
-    tp: bp.calculatedTargetLevel.value,
-    trailing_pct: bp.dynamicRiskLevel.pct ?? null,
-  };
+    entry: withLevels ? bp.mathematicalTriggerPoint.value : null,
+    sl: withLevels ? bp.calculatedRiskLevel.value : null,
+    tp: withLevels ? bp.calculatedTargetLevel.value : null,
+    trailing_pct: withLevels ? bp.dynamicRiskLevel.pct ?? null : null,
+  });
+  return [
+    base("momentum", bp.profileScores.momentum, true),
+    base("pullback", bp.profileScores.pullback, false),
+    base("continuation", bp.profileScores.continuation, false),
+  ];
 }
 
 export async function recordScan(

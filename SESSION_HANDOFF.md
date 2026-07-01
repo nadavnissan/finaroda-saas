@@ -9,9 +9,9 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit:** P2 — scan core (client-side fetch + Trading Blueprint) on top of reframing / P1 / engine / P1.5 / P0
-- **Validation:** ✅ all green — pytest 22/22, shared node --test 8/8, tsc clean, eslint clean, next build (16 routes; /scan bundles the engine), boot smoke (health 200, scan/events 401, market proxy whitelist 400).
-- **Production (main):** NOT updated since P0+P1.5 (= b011b83). Everything after (engine, P1, reframing, P2) is on **dev only** — Nadav merges to main manually.
+- **Last commit:** P2 scorer wired — real 85/82 gate live (on top of P2 scan core / reframing / P1 / engine / P1.5 / P0)
+- **Validation:** ✅ all green — pytest 25/25, shared node --test 12/12 (8 engine + 4 scorer), tsc clean, eslint clean, next build (16 routes; /scan 12.3 kB bundles the scorer), boot smoke (health 200, scan/events 401, migrations 020+021 apply).
+- **Production (main):** NOT updated since P0+P1.5 (= b011b83). Everything after (engine, P1, reframing, P2, scorer) is on **dev only** — Nadav merges to main manually.
 
 ## מה נעשה בסשן האחרון (P1 — תשתית חיה)
 - **Auth (מוקשח, SPEC §4):** magic-link (Resend, console fallback בdev) + Google OAuth (iss תמיד, aud כשיש CLIENT_ID) + Apple stub(501). JWT ב-httpOnly cookie + get_current_user. magic-link token נשמר כ-**SHA-256 hash**. admin כ-role ב-DB (users.is_admin) עם bootstrap לפי ADMIN_BOOTSTRAP_EMAILS. beta gate + allowlist + waitlist. endpoints: /api/auth/{magic-link,verify,google,apple,logout,me} + /api/waitlist.
@@ -30,7 +30,14 @@
 - **One product-scope change:** the per-user "personal threshold" was removed (violated the RED LINE). `users.default_threshold` stays for admin-only per-user overrides.
 - Docs: PRD v2.1, UX v1.2, LEGAL v2.
 
-## Latest — P2 scan core (done, dev only)
+## Latest — P2 scorer wired (real score live, dev only)
+- **Real scorer wired:** `scoreDirection` (momentum profile = `MOMENTUM_CAL`) imported from `@finaroda/scoring-engine/scorer.js` (verbatim v25.80, untouched). `SCORE_GATE_ENABLED=true` — the live **85 PASS / 82-84 WATCH** gate on the numeric score; a `blocked` macro-gate result is hidden.
+- **Direction:** score both long+short (momentum); prefer non-blocked, then higher score.
+- **3 profiles logged (measure-first):** momentum (displayed) + pullback (`DEFAULT_CALIBRATION`) + continuation (`{...DEFAULT_CALIBRATION, entryMode:'continuation'}`) → `score_log` (migration 021 added `profile`). Only momentum is displayed.
+- **RED LINE kept:** score uses fixed inputs (`DEFAULT_RISK`+`MOMENTUM_CAL`); Risk Style feeds only `computeSlTp` opt (levels). Analysis Lens is now display-only (no longer gates).
+- **marketData extended client-side:** weekly (derived), open interest + oiChangePct (best-effort), change24h; marketContext (coinChanges/mean/std) built per scan.
+
+## P2 scan core (base, done, dev only)
 - **Scan flow:** central SCAN button + Lens/Risk-Style toggles → streaming log (4 steps) → client-side Bybit fetch (user IP, no shared cache; thin `/api/market/proxy` CORS fallback) → passers as circles (ring ≤5 / list >5) → **Trading Blueprint** → empty state (F1b).
 - **Engine imported** as `@finaroda/scoring-engine` (symlink to `shared/`, `transpilePackages`, ambient d.ts). Levels only: computeSlTp / computeReversalAnchor / ema7Slope / indicators. **scoreDirection never called.**
 - **Score-pending:** every coin recorded with `score=NULL` (migration 020); card shows "Score pending — engine pass 2 (levels are real)". Real 85/82 gate wired behind `SCORE_GATE_ENABLED=false` in `engine.ts`.
@@ -38,9 +45,10 @@
 - **Persistence (SPEC §5):** `POST /api/scan/events` (scan_events + score_log) and `POST /api/scan/snapshot` (decision_snapshots), auth-required, best-effort from the client.
 - **RED LINE honored:** Lens = display only; Risk Style = `computeSlTp` opt only; score/weights/edge/threshold never client-touchable.
 
-## Next step — P3 (learning loop) or scoreDirection pass 2
-- **Blocked on score:** flip `SCORE_GATE_ENABLED` on once `scoreDirection` is extracted (pass 2, needs golden vectors from the personal tool). Until then the interim visibility rule stands.
-- **P3 (SPEC §11):** backtest cron over `score_log` (outcome NULL) → "what would have happened" dashboard (F3). Per-plan coin limit (2/5/10 from system_settings) still to be wired into the scan universe (currently a fixed 10-coin default).
+## Next step — P3 (learning loop)
+- **Score is live** — no longer blocked (scorer extracted + wired).
+- **P3 (SPEC §11):** backtest cron over `score_log` (outcome NULL) → "what would have happened" dashboard (F3). The 3 profiles now in `score_log` enable base-rate per profile.
+- **Still open:** per-plan coin limit (2/5/10 from system_settings) not yet wired into the scan universe (currently a fixed 10-coin default). Open-interest/marketContext are best-effort — revisit accuracy in P3.
 
 ## מוכן לפריסה (ממתין להפעלה ידנית של נדב)
 - **Cardcom live:** להזין credentials אמיתיים (sandbox→prod) + FEATURE_CARDCOM_LIVE=true. עד אז אין חיוב.

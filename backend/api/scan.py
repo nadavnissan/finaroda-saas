@@ -41,13 +41,16 @@ async def record_scan(
     for c in body.coins:
         cur = await db.execute(
             """INSERT INTO score_log
-               (scan_event_id, user_id, coin, direction, score, passed_threshold,
+               (scan_event_id, user_id, coin, direction, profile, score, passed_threshold,
                 ema7_slope_pct, volume_ratio, price, entry, sl, tp, trailing_pct)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (scan_event_id, user.internal_id, c.coin, c.direction, c.score, c.passed_threshold,
-             c.ema7_slope_pct, c.volume_ratio, c.price, c.entry, c.sl, c.tp, c.trailing_pct),
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (scan_event_id, user.internal_id, c.coin, c.direction, c.profile, c.score,
+             c.passed_threshold, c.ema7_slope_pct, c.volume_ratio, c.price, c.entry, c.sl, c.tp,
+             c.trailing_pct),
         )
-        score_logs.append({"coin": c.coin, "id": cur.lastrowid})
+        # Return only the DISPLAYED (momentum) rows for snapshot linking.
+        if c.profile == "momentum":
+            score_logs.append({"coin": c.coin, "id": cur.lastrowid})
     await db.commit()
     return ScanEventResponse(scan_event_id=scan_event_id, score_logs=score_logs)
 
