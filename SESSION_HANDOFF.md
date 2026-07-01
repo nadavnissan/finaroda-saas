@@ -6,9 +6,10 @@
 
 ## איפה אנחנו עכשיו
 - **Branch פעיל:** dev
-- **Commit אחרון:** <hash> — P1.5 scoring-engine placeholder (על גבי P0)
+- **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅ (dev + main נדחפו)
+- **Commit אחרון:** b011b83 — P1.5 scoring-engine placeholder (על גבי P0 e58a83d)
 - **מצב validation:** ✅ ירוק מלא — pytest 3/3, node --test (shared) 3/3, tsc clean, eslint clean, uvicorn boot (health 200), next build (13 routes)
-- **Production (main):** ריק / לא נפרס עדיין. **לא מוזג ל-main — נדב ממזג ידנית.**
+- **Production (main):** `origin/main` = b011b83 — **זהה ל-dev** (השלד הנקי P0+P1.5). ה-hamakpetza הישן שהיה ב-main הוחלף (בר-שחזור מ-69269c5).
 
 ## מה נעשה בסשן האחרון (P0 — ניקוי והקמת שלד נקי)
 - הוקם שלד FINARODA נקי **מאפס** (השורש היה ריק מקוד — ראו "החלטות" למטה).
@@ -30,12 +31,12 @@
 - deploy Railway + nixpacks + Litestream + CI (pytest+tsc) — לא נכלל ב-P0.
 
 ## פתוחים / חוסמים
-- **🔴 חוסם push:** אין remote (`origin`) מוגדר. ה-commit מקומי על dev בלבד. נדב צריך ליצור repo finaroda-saas ב-GitHub ולהגדיר remote לפני push (CLAUDE.md §2.8).
-- **⚠️ git של הבית:** קיים repo מושרש בטעות ב-C:\Users\rodan (branch master, ללא commits). לא נגעתי בו. כדאי שנדב יבדוק/ינקה אותו בנפרד.
+- **✅ נפתר — remote:** `origin` מחובר; dev + main נדחפו ל-GitHub.
+- **✅ נפתר — סיכון אבטחה:** מעקב הגיט שהיה מושרש בטעות ב-`C:\Users\rodan` (כלל .ssh/סודות/NTUSER.DAT) נמחק — `C:\Users\rodan\.git` הוסר; הבית כבר אינו git repo; קבצי הבית שלמים; repo של finaroda-saas לא נגע.
 - אישור PRD מנדב; אישור עו"ד ל-LEGAL; אימות מחירים מול רו"ח; פלט Claude Design ל-UX.
 
 ## מוכן ל-production מחכה לאישור
-- **P0 הושלם על dev.** ממתין לאישור נדב למיזוג ל-main + הגדרת remote + התחלת P1.
+- **P0 + P1.5 על main** (נדב אישר את המיזוג ידנית — בוצע כ-force-push של dev→main לפי אישורו). P1 עדיין לא התחיל — ממתין להנחיה נפרדת.
 
 ---
 
