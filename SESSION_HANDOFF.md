@@ -6,9 +6,9 @@
 
 ## איפה אנחנו עכשיו
 - **Branch פעיל:** dev
-- **Commit אחרון:** <hash> — P0 clean skeleton
-- **מצב validation:** ✅ ירוק מלא — pytest 3/3, tsc clean, eslint clean, uvicorn boot (health 200), next build (13 routes)
-- **Production (main):** ריק / לא נפרס עדיין. **P0 לא מוזג ל-main — ממתין לאישור נדב.**
+- **Commit אחרון:** <hash> — P1.5 scoring-engine placeholder (על גבי P0)
+- **מצב validation:** ✅ ירוק מלא — pytest 3/3, node --test (shared) 3/3, tsc clean, eslint clean, uvicorn boot (health 200), next build (13 routes)
+- **Production (main):** ריק / לא נפרס עדיין. **לא מוזג ל-main — נדב ממזג ידנית.**
 
 ## מה נעשה בסשן האחרון (P0 — ניקוי והקמת שלד נקי)
 - הוקם שלד FINARODA נקי **מאפס** (השורש היה ריק מקוד — ראו "החלטות" למטה).
@@ -17,6 +17,10 @@
 - תשלום יחיד: Cardcom placeholder (api/cardcom.py + core/cardcom_service.py). אין Morning/Stripe/legacy/Telegram.
 - Frontend (Next.js 15): route groups (scan)/(dashboard)/(admin)/(academy)/(auth) + checkout/paywall/legal/coming-soon — placeholders בלבד.
 - אותחל git repo ייעודי בתוך finaroda-saas על dev (ראו החלטה #1).
+
+## מה נעשה אחרי P0 (P1.5 — תשתית מנוע הסריקה)
+- נוצרה `shared/` עם **placeholder בלבד** ל-`scoring-engine.js` (חתימות: ema7Slope, scoreDirection, computeReversalAnchor, computeSL, computeTP — כולן מחזירות sentinel `TODO`) + `scoring-engine.api.md` (חוזה) + `scoring-engine.test.js` (node:test) + `package.json` (type:module).
+- **🟡 ממתין לחילוץ:** המימוש האמיתי של `scoring-engine` עדיין שזור בכלי האישי (React מקומפל). **נדב יספק אותו.** אין להמציא מנוע ואין להתחבר ל-Bybit עד אז. צ'ק-ליסט חילוץ ב-`shared/scoring-engine.api.md`.
 
 ## הצעד הבא — P1 (תשתית חיה)
 לפי SPEC §11:

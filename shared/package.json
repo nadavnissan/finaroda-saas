@@ -1,0 +1,11 @@
+{
+  "name": "@finaroda/scoring-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "scoring-engine.js",
+  "description": "Shared deterministic scoring engine — PLACEHOLDER. Real implementation is extracted from the personal tool (SPEC §6.1). Imported by both the personal tool and the SaaS scan core.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

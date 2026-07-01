@@ -60,6 +60,15 @@
 - Expected: 501, code=NOT_IMPLEMENTED (חיווט מלא ב-P1)
 - Status: ✅ pass
 
+## TC — P1.5 (מנוע סריקה — placeholder) — אוטומטי (shared/scoring-engine.test.js)
+
+### TC-P1.5-001 — placeholder של scoring-engine חשוף ומחזיר TODO
+- Feature: F-סריקה (SPEC §6.1)
+- Precondition: —
+- Steps: 1) ייבוא shared/scoring-engine.js 2) בדיקת חתימות 3) הפעלת כל stub
+- Expected: TODO sentinel קפוא; ema7Slope/scoreDirection/computeReversalAnchor/computeSL/computeTP קיימות; כל אחת מחזירה TODO (בלי מימוש/חיבור Bybit)
+- Status: ✅ pass (node --test 3/3)
+
 ---
 
 ## ATR (Acceptance Test Reports)

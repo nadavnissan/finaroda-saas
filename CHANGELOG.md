@@ -4,6 +4,23 @@
 
 ---
 
+## [P1.5 / חילוץ תשתית מנוע הסריקה — placeholder] — 2026-07-01
+- GOAL: להכין את תשתית המנוע המשותף (`scoring-engine.js`) לפני P2, בלי מימוש. המנוע האמיתי עדיין שזור בכלי האישי (React מקומפל) ויסופק ע"י נדב. (SPEC §6.1, §12 החלטה 7)
+- SOLUTION: נוצרה תיקיית `shared/` עם placeholder בלבד — חתימות פונקציות שמחזירות sentinel `TODO`, קובץ הגדרת API, ו-node:test שמאמת חתימות+התנהגות. **לא הומצא מנוע, לא נעשה חיבור ל-Bybit.** `shared/package.json` (`type:module`) מאפשר ל-`.js` לשמש כ-ESM גם בדפדפן (כלי אישי) וגם ב-Next (SaaS), ומכין את נתיב ה-npm package המשותף.
+- FILES CREATED: shared/scoring-engine.js (stubs: ema7Slope, scoreDirection, computeReversalAnchor, computeSL, computeTP + TODO sentinel), shared/scoring-engine.api.md (חוזה API), shared/scoring-engine.test.js (node:test), shared/package.json.
+- DB CHANGES: אין
+- CONFIG ADDED: אין
+- VALIDATION: node --test 3/3 ✅ | node --check parse ✅ | pytest 3/3 ✅ | tsc clean ✅ | eslint clean ✅
+- ATP: נוסף TC-P1.5-001 (placeholder חשוף, חתימות קיימות, כל stub מחזיר TODO).
+- VERSION: v0.2.1
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: תשתית המנוע המשותף מוכנה כשלד. P2 (ליבת סריקה) יוכל לייבא את הקובץ ברגע שהמימוש האמיתי יחולץ מהכלי האישי.
+- DECISIONS:
+  1. **stubs מחזירים sentinel `TODO`** (אובייקט קפוא, truthy ולא-מספר) במקום לזרוק — כדי שכל שימוש מוקדם ייחשף מייד ולא יזרים ערך שגוי לסריקה.
+  2. **`shared/package.json` עם `type:module`** — כדי ש-`.js` (כפי שנדב ביקש, לא `.mjs`) יעבוד כ-ESM בשני הצרכנים. גם מניח את הבסיס ל-npm package משותף (SPEC §6.1).
+  3. **`computeSL/TP` פוצל ל-`computeSL` + `computeTP`** נפרדים; ייתכן שיתאחדו כשהמימוש האמיתי יגיע (מתועד בחוזה כ"provisional").
+
 ## [P0 / ניקוי והקמת שלד נקי] — 2026-06-30
 - GOAL: לרשת מ-hamakpetza את שכבת התשתית בלבד ולהקים שלד FINARODA נקי — בלי שכבת קריירה/Agent, סכמה אחת מודרנית, תשלום אחד (Cardcom), אפליקציה עולה נקייה. (SPEC §3, §4, §5, §11)
 - SOLUTION: השורש היה ריק מקוד (רק מסמכים + עותק רפרנס read-only). לכן P0 בוצע כ**בנייה נקייה מאפס** ולא כ"העתק-ואז-מחק": נכתבה תשתית חדשה שלא כוללת מלכתחילה את שכבת הקריירה. נבנה backend (FastAPI) + frontend (Next.js 15 route groups, placeholders) + 18 migrations נקיות על internal_id + Cardcom placeholder יחיד.
