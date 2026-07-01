@@ -4,6 +4,18 @@
 
 ---
 
+## [CHORE / Frontend → Vercel (monorepo shared package)] — 2026-07-01
+- GOAL: Fix `Module not found: @finaroda/scoring-engine` in the Railway frontend build. Root cause: Railway with Root Directory=`frontend` does NOT include the sibling `../shared` on disk, so the `link:../shared` symlink dangles and webpack can't resolve the engine. The only Railway root-context option (Docker, Root=`/`) inherits the backend's `/api/health` healthcheck + Python crons from the root railway.toml.
+- DECISION: **Move the frontend to Vercel** (backend stays on Railway). Vercel clones the whole repo and has a documented "Include files outside the root directory" toggle for monorepos, so `link:../shared` resolves cleanly — no healthcheck/cron landmine. (Nadav already runs hamakpetza-frontend on Vercel.)
+- SOLUTION (config only): Added `frontend/vercel.json` pinning `installCommand: pnpm install --no-frozen-lockfile` + `buildCommand: pnpm build`. No change to how the frontend imports the engine (kept `link:../shared` + transpilePackages). Railway frontend configs (nixpacks.toml, frontend.Dockerfile) retained but unused.
+- FILES MODIFIED: frontend/vercel.json (new).
+- APP/ENGINE/SCORER/BACKEND: unchanged.
+- VALIDATION: verified the `@finaroda/scoring-engine` symlink resolves + clean `next build` (16 routes) locally — this mirrors Vercel with files-outside-root included. tsc/eslint clean.
+- VERSION: v0.4.6
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Frontend deploys on Vercel with the shared engine resolving; backend remains on Railway. Cross-URL/CORS finalized once the Vercel URL exists.
+
 ## [CHORE / Frontend Railway build — nix-provided pnpm] — 2026-07-01
 - GOAL: Fix `pnpm: command not found` (exit 127) — `npm i -g pnpm` in one nixpacks phase didn't leave pnpm on PATH for the next phase (nix Node's global-npm bin isn't on PATH).
 - SOLUTION (config only): Provide pnpm via **nix** — `nixPkgs = ['nodejs_22', 'pnpm']` in `frontend/nixpacks.toml`. A nix package is on PATH for install, build, AND runtime, so it fixes the PATH error, needs no corepack (no keyid error), and no npm-global hack. Removed the `npm install -g pnpm` step. Kept Root Directory=`frontend` (Node-only; avoids the root railway.toml healthcheck/crons).

@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.4.6 | 2026-07-01 | CHORE — frontend → Vercel (vercel.json); resolves the link:../shared monorepo engine that Railway root=frontend couldn't. Backend stays on Railway. | <hash> |
 | v0.4.5 | 2026-07-01 | CHORE — frontend build: nix-provided pnpm (nixPkgs) to fix `pnpm: command not found` PATH error. Config only. | <hash> |
 | v0.4.4 | 2026-07-01 | CHORE — frontend build: pnpm via npm (not corepack) to fix keyid error; +frontend.Dockerfile fallback. Config only. | <hash> |
 | v0.4.3 | 2026-07-01 | CHORE — frontend/nixpacks.toml (Node-only) + packageManager, so Railway frontend builds as Node not Python. Config only. | <hash> |
