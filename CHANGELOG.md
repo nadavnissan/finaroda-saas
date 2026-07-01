@@ -4,6 +4,18 @@
 
 ---
 
+## [CHORE / Frontend Railway build — fix corepack keyid] — 2026-07-01
+- GOAL: Fix the frontend Railway build failing at `corepack enable` with "Cannot find matching keyid" (corepack signature verification, Node 22).
+- SOLUTION (config only): Install pnpm **directly via npm** (`npm install -g pnpm@10.33.1`) instead of `corepack enable`, in `frontend/nixpacks.toml`; removed the `packageManager` field from `frontend/package.json` so nixpacks doesn't auto-invoke corepack. Kept the Node-only nixpacks path with **Root Directory = `frontend`** — which also avoids the repo-root railway.toml's `/api/health` healthcheck and Python crons (a landmine a root-context Docker build would hit).
+- Also added `frontend.Dockerfile` (repo-root context; pnpm via npm; COPY shared/+frontend/) as a documented **fallback** if a Docker build is preferred (requires Root Directory `/` + `RAILWAY_DOCKERFILE_PATH` + clearing the inherited healthcheck).
+- FILES MODIFIED: frontend/nixpacks.toml (corepack→npm), frontend/package.json (removed packageManager), frontend.Dockerfile (new fallback).
+- APP/ENGINE/SCORER/BACKEND: unchanged.
+- VALIDATION: tsc clean ✅ | eslint clean ✅ | next build 16 routes ✅.
+- VERSION: v0.4.4
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Frontend nixpacks build no longer calls corepack, so the keyid error is gone. Recommended path stays Root Directory `frontend` (Node-only, no root config inherited).
+
 ## [CHORE / Frontend Railway build — force Node-only] — 2026-07-01
 - GOAL: Fix the Railway frontend build failing with `externally-managed-environment` / `get-pip.py` — nixpacks was building the monorepo's Python backend for the Next.js frontend service.
 - ROOT CAUSE: With the frontend service Root Directory at repo root, Railway read the repo-root `nixpacks.toml` (Python provider) and tried to `pip install` for a Node app.
