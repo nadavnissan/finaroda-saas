@@ -1,0 +1,6 @@
+# pnpm workspace — makes @finaroda/scoring-engine (shared/) resolve as a workspace
+# package for the frontend, so Vercel (and any tool) links it without a "files outside
+# root" toggle. The backend is Python-only (no package.json) and is not a member.
+packages:
+  - frontend
+  - shared

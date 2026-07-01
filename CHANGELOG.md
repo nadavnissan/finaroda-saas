@@ -4,6 +4,22 @@
 
 ---
 
+## [CHORE / pnpm workspace — resolve shared engine without a toggle] — 2026-07-01
+- GOAL: Vercel's "Include files outside the root directory" toggle is gone from the current UI, so `link:../shared` still couldn't resolve. Convert to a proper **pnpm workspace** so Vercel (and any tool) resolves `@finaroda/scoring-engine` → `shared/` natively.
+- SOLUTION (config + package.json metadata only):
+  - `pnpm-workspace.yaml` (new, repo root): packages `frontend`, `shared`. (Backend is Python-only, no manifest — not a member.)
+  - `frontend/package.json`: dependency `@finaroda/scoring-engine` changed `link:../shared` → `workspace:*`.
+  - `shared/package.json`: added an `exports` map (`.` → scoring-engine.js, `./scorer.js`, `./scoring-engine.js`, `./package.json`) so both the root import and the subpath resolve explicitly; kept `main`, `name`, `type: module`.
+  - Lockfile regenerated as a **workspace** lockfile at the repo root (`pnpm-lock.yaml`); removed `frontend/pnpm-lock.yaml`.
+  - No root `package.json` needed (pnpm 10 handled it) → the backend's Railway Python/nixpacks build sees no Node manifest and is unaffected.
+- FILES: pnpm-workspace.yaml (new), pnpm-lock.yaml (new at root), frontend/pnpm-lock.yaml (removed), frontend/package.json (workspace:*), shared/package.json (exports). transpilePackages in next.config kept.
+- APP/ENGINE/SCORER/BACKEND LOGIC: unchanged (only package.json metadata + workspace config).
+- VALIDATION: node --test 12/12 ✅ | tsc clean ✅ | eslint clean ✅ | `cd frontend && pnpm build` 16 routes, both `@finaroda/scoring-engine` AND `.../scorer.js` resolve ✅ | pytest 25/25 (backend unaffected) ✅.
+- VERSION: v0.4.7
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: The shared engine resolves as a workspace package — Vercel deploys the frontend with Root Directory `frontend` and no toggle needed.
+
 ## [CHORE / Frontend → Vercel (monorepo shared package)] — 2026-07-01
 - GOAL: Fix `Module not found: @finaroda/scoring-engine` in the Railway frontend build. Root cause: Railway with Root Directory=`frontend` does NOT include the sibling `../shared` on disk, so the `link:../shared` symlink dangles and webpack can't resolve the engine. The only Railway root-context option (Docker, Root=`/`) inherits the backend's `/api/health` healthcheck + Python crons from the root railway.toml.
 - DECISION: **Move the frontend to Vercel** (backend stays on Railway). Vercel clones the whole repo and has a documented "Include files outside the root directory" toggle for monorepos, so `link:../shared` resolves cleanly — no healthcheck/cron landmine. (Nadav already runs hamakpetza-frontend on Vercel.)

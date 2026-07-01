@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.4.7 | 2026-07-01 | CHORE — pnpm workspace (workspace:* + exports + root lockfile) so @finaroda/scoring-engine resolves natively on Vercel (no toggle). Metadata/config only. | <hash> |
 | v0.4.6 | 2026-07-01 | CHORE — frontend → Vercel (vercel.json); resolves the link:../shared monorepo engine that Railway root=frontend couldn't. Backend stays on Railway. | <hash> |
 | v0.4.5 | 2026-07-01 | CHORE — frontend build: nix-provided pnpm (nixPkgs) to fix `pnpm: command not found` PATH error. Config only. | <hash> |
 | v0.4.4 | 2026-07-01 | CHORE — frontend build: pnpm via npm (not corepack) to fix keyid error; +frontend.Dockerfile fallback. Config only. | <hash> |
