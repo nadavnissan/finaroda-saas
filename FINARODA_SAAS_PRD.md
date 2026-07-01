@@ -1,8 +1,9 @@
-# FINARODA SaaS — Product Requirements Document (PRD v2.0)
+# FINARODA SaaS — Product Requirements Document (PRD v2.1)
 
 > מסמך מוצר מפורט, מעוגן בעיצוב המאושר (Claude Design) ובמסמכי המקור (SPEC/UX/LEGAL). לאישור נדב.
 > כל פיצ'ר כולל: תיאור · user flow · acceptance criteria · מצבי קצה. מסמך שמפתח (או Claude Code) בונה ממנו ישירות.
 > **קהל יעד: כל מי שרוצה לייצר הון** (לא קהילת המקפצה). גלובלי, נייד-first, UI אנגלית.
+> **v2.1 — Regulatory reframing (front-end only; the calculation engine is unchanged).** New calculator terminology, formula transparency, an Analysis Lens (display-only), and a Risk Style client choice (affects output geometry, never the score). See §3.5 and the RED LINE. Written in English (see §3.5).
 
 ---
 
@@ -38,6 +39,87 @@
 
 ---
 
+## 3.5 Regulatory Reframing — Calculator Framing, Terminology & Client Choices (v2.1)
+
+> **This is a FRONT-END reframing. The calculation engine (`scoring-engine.js`), the
+> verified EMA7-slope edge, the filter weights, and the 85/82 score threshold DO NOT
+> CHANGE.** Only terminology, what is displayed, and the risk geometry the client
+> requests change. Purpose: present FINARODA unambiguously as a **utility calculator**
+> the user operates on their own inputs — not an advisory service.
+
+### 3.5.1 Terminology (calculator, not advice) — canonical mapping
+This mapping governs ALL product surfaces (UI, PRD, UX, LEGAL). Where an older term
+still appears elsewhere in this doc, it is read through this table.
+
+| Advice-flavored term (old) | Calculator term (new, canonical) |
+|---|---|
+| Entry | **Mathematical Trigger Point** |
+| Stop Loss / SL | **Calculated Risk Level** |
+| Take Profit / TP | **Calculated Target Level** |
+| Trailing | **Dynamic Risk Level** |
+| Decision Card (the whole card) | **Trading Blueprint** |
+
+The **"Analysis, not financial advice."** label is retained on every surface.
+
+### 3.5.2 Formula transparency (new)
+Every calculated level shows a short, plain-language "how it was computed" note beside
+it — reinforcing the utility-tool framing. Proposed copy (final wording pending lawyer):
+
+| Level | Transparency note |
+|---|---|
+| Mathematical Trigger Point | "Calculated from live price relative to EMA structure." |
+| Calculated Risk Level | "Calculated via ATR14 on your selected chart." |
+| Calculated Target Level | "Calculated as an R-multiple of the risk distance." |
+| Dynamic Risk Level | "Calculated from ATR-based trailing geometry." |
+
+### 3.5.3 Analysis Lens — client choice, DISPLAY ONLY
+Before scanning, the user picks a lens: **EMA200 / RSI / Volume / Full**. The **engine
+and the score are identical regardless of lens** — the lens only changes WHAT IS
+DISPLAYED on the Trading Blueprint (e.g. pick RSI → see the RSI reading alongside the
+calculated risk levels and the Blueprint). Minimal: a light toggle, remembered per
+user, applied on the next single scan press. User-initiated — no proactive "enter now"
+push (trust-not-engagement, §3.3).
+
+**AC:** (a) lens changes displayed panels only, never `score`/PASS-WATCH selection;
+(b) same coins pass the threshold under any lens; (c) remembered across sessions;
+(d) one scan press honors the current lens.
+
+### 3.5.4 Risk Style — client choice, affects OUTPUT (not the score)
+The user picks **Conservative / Balanced / Aggressive**. This changes ONLY the risk
+geometry passed to `computeSlTp`'s `opt` (`slAtrMult` / `tp1Mult` / `tp2Mult`) — so the
+calculated levels move, but the **score, filter, edge and threshold are untouched**.
+This gives genuine "the system executed the configuration I chose" standing (LEGAL)
+while the verified edge and the shared base-rate stay intact.
+
+Proposed defaults (admin-tunable; **Balanced == the engine's built-in defaults**):
+
+| Style | slAtrMult | tp1Mult | tp2Mult | Effect |
+|---|---|---|---|---|
+| Conservative | 1.0 | 1.0 | 2.0 | Tighter Calculated Risk Level, nearer Target |
+| Balanced (default) | 1.5 | 1.5 | 3.0 | Engine defaults |
+| Aggressive | 2.0 | 2.0 | 4.0 | Wider Risk Level, further Target |
+
+**AC:** (a) style changes only `computeSlTp` `opt`; (b) `score` and PASS/WATCH are
+byte-identical across styles; (c) the chosen style is logged into
+`decision_snapshots.card_json` for the "system executed my choice" record;
+(d) engine code is NOT modified — only the `opt` argument.
+
+### 3.5.5 🔴 RED LINE (non-negotiable; also in LEGAL §6)
+The client **NEVER** modifies: the **score**, the **filter weights**, the **EMA7-slope
+edge**, or the **85 PASS / 82 WATCH threshold**. Client choices live ONLY in **(a) what
+is displayed** (Analysis Lens) and **(b) risk geometry** (Risk Style via `computeSlTp`
+`opt`) — never in **what counts as an opportunity**. This protects measure-first and the
+shared base-rate: every user, whatever their lens/style, sees the same coins pass the
+same verified threshold, so the base-rate stays clean and comparable.
+
+> Consequence: the previously-proposed **per-user score threshold** (old F5 "personal
+> threshold") is **removed** — it would let the client change what counts as an
+> opportunity, violating the RED LINE. The global threshold stays admin-controlled only.
+> (`users.default_threshold` remains in the schema but is reserved for admin per-user
+> overrides, never client-editable.)
+
+---
+
 # חלק ב' — תכונות מפורטות (Features)
 
 > כל פיצ'ר: תיאור · flow · acceptance criteria (AC) · מצבי קצה.
@@ -47,7 +129,7 @@
 **תיאור.** כפתור עגול מרכזי. לחיצה → משיכה client-side טרייה מ-Bybit → אנימציית log → תוצאות (עוברי-סף בלבד).
 
 **Flow:**
-1. idle: כפתור "SCAN · N MARKETS" (N לפי פלאן) + pulse.
+1. idle: כפתור "SCAN · N MARKETS" (N לפי פלאן) + pulse. Pre-scan, the user's **Analysis Lens** and **Risk Style** (§3.5.3–3.5.4) are shown as light, remembered toggles — neither changes the score or which coins pass (RED LINE §3.5.5).
 2. לחיצה → scanning: log זורם — Downloading tickers → Analyzing candles → Computing volume → Scoring setups (checkmark לכל שלב).
 3. משיכה client-side מ-`api.bybit.com/v5/market/*` (IP של הלקוח, אין קאש משותף). חישוב דרך `scoring-engine.js`.
 4. results: "X PASS · N SCANNED" + עיגולי מטבעות שעברו (ring עד 5, list מעבר).
@@ -69,17 +151,24 @@
 **תוכן:** ✓ ירוק · "No setups pass right now" · "Most days are skip days, and the skip is the edge." · באדג' "Skipped X of last Y days · Disciplined" · "The market moves — re-check when it does. Precision, not habit."
 **AC:** AC1: מופיע ב-0 עוברי-סף. AC2: אין CTA שמעודד סריקה כפייתית. AC3: הבאדג' מבוסס `scan_events` אמיתי.
 
-## F2 — כרטיס החלטה
+## F2 — Trading Blueprint (formerly "decision card")
 
-**תיאור.** bottom-sheet בלחיצה על מטבע.
-**תוכן (לפי העיצוב):** כותרת pair + badge כיוון + "Timing verified · score X/100" · שורת EMA7 SLOPE (signed) + POSITION · גריד ENTRY/STOP-LOSS(+%)/TRAILING/TAKE-PROFIT(+%) · RISK:REWARD "1:X.X" · Volume "collected" (intel ▾) · "Analysis, not financial advice."
+**תיאור.** bottom-sheet בלחיצה על מטבע. The card as a whole is the **Trading Blueprint** (§3.5.1).
+**תוכן (לפי העיצוב):** pair title + direction badge + "Timing verified · score X/100" · EMA7 SLOPE (signed) + POSITION row · grid of the four calculated levels, each with a formula-transparency note (§3.5.2):
+- **Mathematical Trigger Point** (was Entry) — "Calculated from live price relative to EMA structure."
+- **Calculated Risk Level** (was Stop Loss, +%) — "Calculated via ATR14 on your selected chart."
+- **Dynamic Risk Level** (was Trailing) — "Calculated from ATR-based trailing geometry."
+- **Calculated Target Level** (was Take Profit, +%) — "Calculated as an R-multiple of the risk distance."
+
+· RISK:REWARD "1:X.X" · Volume "collected" (intel ▾) · the panels shown reflect the active **Analysis Lens** (§3.5.3) · levels reflect the active **Risk Style** (§3.5.4) · "Analysis, not financial advice."
 **AC:**
-- AC1: כל הרמות מ-`scoring-engine.js`.
-- AC2: SL תמיד בצד הנכון (גאומטריית floor המתוקנת, כלי אישי v25.80).
-- AC3: EMA7 slope עם סימן. volume = "collected" (לא verified).
-- AC4: תיוג נוכח. אין "recommendation/buy/enter".
-- AC5: פתיחה → `decision_snapshots` (card_json).
-**מצב קצה:** WATCH → כרטיס מתויג "WATCH — below entry threshold, monitor only", לא נכנס ל"מה היה קורה".
+- AC1: all levels come from `scoring-engine.js` (`computeSlTp` / `computeReversalAnchor`).
+- AC2: Calculated Risk Level is always on the correct side (corrected floor geometry, personal tool v25.80).
+- AC3: EMA7 slope is signed. volume = "collected" (not verified).
+- AC4: labels present. No "recommendation/buy/enter".
+- AC5: open → `decision_snapshots` (card_json, incl. the active lens + risk style — §3.5.4 AC-c).
+- AC6: switching Analysis Lens or Risk Style never changes `score`/PASS-WATCH (RED LINE §3.5.5).
+**מצב קצה:** WATCH → Blueprint tagged "WATCH — below the calculated threshold, monitor only", not counted in "what would have happened".
 
 ## F3 — דאשבורד "What Would Have Happened"
 
@@ -91,12 +180,12 @@
 ## F4 — ייצוא תוצאות (בלי חשיפת המערכת)
 
 **תיאור.** ייצוא דאטה, לא לוגיקה.
-**כן:** סמל/כיוון/ציון/Entry/SL/TP/timestamp → CSV/PNG. **לא:** משקלים/נוסחאות/סף/לוגיקה.
+**כן:** symbol/direction/score/Mathematical Trigger Point/Calculated Risk Level/Calculated Target Level/timestamp → CSV/PNG. **לא:** weights/formulas/threshold/logic.
 **AC:** AC1: זמין מפלאן Advanced+. AC2: אפס פרמטר פנימי בקובץ. AC3: PNG בפלטת terminal.
 
 ## F5 — פרופיל ושלבי יוקרה
 
-**הגדרות:** סף אישי (בגבולות אדמין), מטבעות מועדפים (בגבולות פלאן), פלטה.
+**הגדרות:** **Analysis Lens** (EMA200/RSI/Volume/Full — display only, §3.5.3), **Risk Style** (Conservative/Balanced/Aggressive — output geometry only, §3.5.4), מטבעות מועדפים (בגבולות פלאן), פלטה. **אין** סף-ציון אישי — הלקוח לא משנה מה נחשב הזדמנות (RED LINE §3.5.5).
 **שלבי יוקרה (משמעת, לא תדירות):** Newcomer (הרשמה) → Disciplined (X ימי דבקות כולל דילוגים) → Precise (היסטוריית "מה היה קורה" חיובית) → Veteran (ותק+התמדה).
 **AC:** AC1: מעמד ממדדי משמעת, **לא** ממספר סריקות/כניסות. AC2: עליית שלב = נוטיפיקציה חיובית (לא פוש לסחור).
 **אסור (חוסם קוד-רוויו):** מעמד שמתגמל תדירות.
@@ -174,7 +263,7 @@ Stripe גלובלי · "Copy to LLM" · PWA push · daylight light-mode · סב�
 | WATCH מזהם base-rate | WATCH לא נספר כפוזיציה מאושרת |
 
 ## 17. החלטות נעולות
-3 פלאנים 50/100/150 · מטבעות 2/5/10 נשלט-אדמין · trial עם כרטיס · referral 50%/3-חודשים+אישור · UI אנגלית · Cardcom V1/Stripe V2 · YouTube וידאו · מנוע JS משותף · פלטה terminal · פריסה ring/list · אנימציה log · **סף 85 PASS / 82-84 WATCH** · קהל בוני-הון.
+3 פלאנים 50/100/150 · מטבעות 2/5/10 נשלט-אדמין · trial עם כרטיס · referral 50%/3-חודשים+אישור · UI אנגלית · Cardcom V1/Stripe V2 · YouTube וידאו · מנוע JS משותף · פלטה terminal · פריסה ring/list · אנימציה log · **סף 85 PASS / 82-84 WATCH** · קהל בוני-הון · **(v2.1) calculator terminology (§3.5.1) · formula transparency (§3.5.2) · Analysis Lens display-only (§3.5.3) · Risk Style output-only via `computeSlTp` opt (§3.5.4) · RED LINE: client never touches score/weights/edge/threshold (§3.5.5) · per-user score threshold removed**.
 
 ## 18. סדר בנייה (פאזות)
 P0 ניקוי → P1 תשתית (Cardcom/auth/deploy) → P2 ליבה (F1/F1b/F2) → P3 למידה (F3/F5) → P4 מסחרי (F7/F8/F4) → P5 מנהל+קהילה (F9/F10/F11/F12/F6) → V2.

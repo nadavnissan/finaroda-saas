@@ -1,8 +1,9 @@
-# FINARODA SaaS — UX / חוויית משתמש (v1.1)
+# FINARODA SaaS — UX / חוויית משתמש (v1.2)
 
 > מסמך אפיון חוויה, מלווה ל-`FINARODA_SAAS_SPEC.md`. מיועד לכניסה ל-**Claude Design** לאישור מסע לקוח, עיצוב וכפתורים.
 > עיקרון-על: **trust-not-engagement** — מתגמלים דיוק ודילוג, לא תדירות. כל מסך מתויג "ניתוח, לא ייעוץ".
 > שפה: **אנגלית מלאה** (קהל V1 ישראלי, אבל UI אנגלי לקראת התרחבות גלובלית).
+> **v1.2 — Regulatory reframing (front-end only; engine unchanged).** Calculator terminology, the **Trading Blueprint** (was decision card), an **Analysis Lens** (display-only) and a **Risk Style** choice. Canonical terminology + RED LINE live in PRD §3.5.
 
 ---
 
@@ -25,7 +26,7 @@
 | 3. שאלון onboarding | survey (עריך) | היכרות + התאמה ראשונית |
 | 4. trial | 14 יום עם כרטיס | התנסות מלאה |
 | 5. סריקה ראשונה | מסך הסריקה | רגע ה-"אהה" — הכפתור והעיגולים |
-| 6. כרטיס החלטה | decision card | הערך המרכזי — דיוק תזמון |
+| 6. Trading Blueprint | trading blueprint (was decision card) | הערך המרכזי — דיוק תזמון |
 | 7. דאשבורד | "מה היה קורה" | הוכחת ערך מצטברת |
 | 8. שדרוג | paywall | המרה לתשלום |
 | 9. נאמנות | profile + שלבי יוקרה | שייכות ומעמד |
@@ -35,7 +36,7 @@
 ## 3. מסך הסריקה — הלב
 
 ### זרימה
-כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **כרטיס החלטה**.
+Pre-scan the user sets a light, remembered **Analysis Lens** (EMA200/RSI/Volume/Full — display only) and **Risk Style** (Conservative/Balanced/Aggressive — output geometry only). Neither changes the score or which coins pass (RED LINE, PRD §3.5.5). Then: כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **Trading Blueprint**.
 
 ### כללי עיצוב
 - **פריסה (נעול):** ring עד 5 מטבעות, list מעבר ל-5.
@@ -45,10 +46,16 @@
 - **דיוק תזמון ללא הגבלה:** אפשר ללחוץ שוב לבדוק שוב (השוק זז). זה לא "tap כפייתי" — זה דיוק תזמון על הזדמנות שכבר עברה סף. הציון/הסף שומר על המחסור.
 - **אנימציה מספקת אך לא ממכרת** — מסמנת שעבודה אמיתית קרתה (משיכה client-side אמיתית מ-Bybit), בלי מכאניקת מזל.
 
-### כרטיס החלטה
+### Trading Blueprint (was "decision card")
 - **רובד עליון (החלטה):** כיוון + ציון + ירוק/כתום/אדום.
-- **תזמון מאומת:** שיפוע EMA7, מרחק SL.
-- **רמות:** Entry / SL / Trailing / TP + R:R.
+- **תזמון מאומת:** שיפוע EMA7, מרחק Calculated Risk Level.
+- **Calculated levels (each with a "how computed" note — PRD §3.5.2):**
+  - **Mathematical Trigger Point** (was Entry)
+  - **Calculated Risk Level** (was SL)
+  - **Dynamic Risk Level** (was Trailing)
+  - **Calculated Target Level** (was TP)  + R:R.
+- **Analysis Lens** decides which extra panel is shown (e.g. RSI reading) — display only; the levels/score are identical across lenses.
+- **Risk Style** shifts the calculated levels via `computeSlTp` `opt` — the score is unchanged.
 - **מודיעין מתקפל:** volume (נאסף).
 - **תיוג קבוע:** "Analysis, not financial advice."
 - **(V2)** כפתור "Copy to LLM" — בלוק טקסט מובנה לחיזוק שיקול דעת חיצוני.
@@ -67,7 +74,7 @@
 ## 5. פרופיל ושלבי יוקרה
 
 ### פרופיל
-שם, תוכנית, ותק במערכת, הגדרות (סף אישי, מטבעות מועדפים בגבולות הפלאן), היסטוריית סריקות, מדדי משמעת.
+שם, תוכנית, ותק במערכת, הגדרות (**Analysis Lens** display-only, **Risk Style** output-only, מטבעות מועדפים בגבולות הפלאן — **אין סף-ציון אישי**, RED LINE PRD §3.5.5), היסטוריית סריקות, מדדי משמעת. Lens + Risk Style are remembered per user.
 
 ### שלבי יוקרה (Status Tiers) — מבוססי משמעת
 מעמד שמעניק שייכות, **מתוגמל על התנהגות נכונה ולא על תדירות**:
@@ -88,7 +95,7 @@
 | | בסיס 50₪ | מתקדם 100₪ | פרו 150₪ |
 |---|---|---|---|
 | מטבעות בסריקה | 2 | 5 | 10 |
-| כרטיס החלטה מלא | ✓ | ✓ | ✓ |
+| Trading Blueprint מלא | ✓ | ✓ | ✓ |
 | דאשבורד "מה היה קורה" | ✓ | ✓ | ✓ |
 | ייצוא תוצאות | — | ✓ | ✓ |
 | Academy (וידאו) | בסיסי | מלא | מלא |
@@ -114,7 +121,8 @@
 ## 8. כפתורים ואינטראקציה (להחלטה ב-Claude Design)
 
 - **כפתור הסריקה (נעול):** עגול 158px, מרכזי, gradient כהה, pulse ב-idle. מצבים: idle / scanning (log) / results.
-- **עיגולי מטבע:** קטנים, מסביב לכפתור, צבע לפי כיוון/ציון. לחיצה → כרטיס.
+- **Analysis Lens / Risk Style toggles:** light, minimal segmented controls near the scan button (pre-scan). Remembered per user; applied on the next single scan press. Lens = display only; Risk Style = output geometry only. Neither touches the score (RED LINE).
+- **עיגולי מטבע:** קטנים, מסביב לכפתור, צבע לפי כיוון/ציון. לחיצה → Trading Blueprint.
 - **כפתורי כרטיס:** משניים, נקיים. (V2: "Copy to LLM".)
 - **CTA שדרוג:** נוכח אך לא אגרסיבי (trust-not-engagement).
 - מצבי ריק: "No setups pass right now" מעוצב כהישג, לא כשגיאה.

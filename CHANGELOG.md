@@ -4,6 +4,28 @@
 
 ---
 
+## [DOCS / Regulatory reframing — calculator framing] — 2026-07-01
+- GOAL: Reframe the FRONT-END as a utility calculator (not advice) for regulatory protection. **The calculation engine, the verified EMA7-slope edge, filter weights, and the 85/82 threshold DO NOT change** — only terminology, what is displayed, and client-selected risk geometry.
+- SOLUTION: Docs-only update to PRD/UX/LEGAL. Added an authoritative reframing section (PRD §3.5) that governs all surfaces, plus targeted term updates and a RED LINE.
+- FILES MODIFIED: FINARODA_SAAS_PRD.md (v2.0→v2.1), FINARODA_SAAS_UX.md (v1.1→v1.2), FINARODA_SAAS_LEGAL_DRAFT.md (v2 reframing), CHANGELOG/VERSIONS/SESSION_HANDOFF.
+- CODE CHANGES: NONE. scoring-engine.js and all scorer logic untouched (verified: no shared/ or backend/ diff).
+- WHAT CHANGED (front-end only):
+  1. **Terminology (calculator, not advice):** Entry → Mathematical Trigger Point · Stop Loss → Calculated Risk Level · Take Profit → Calculated Target Level · Trailing → Dynamic Risk Level · decision card → Trading Blueprint. "Analysis, not financial advice" labels kept.
+  2. **Formula transparency:** each level shows a "how it was computed" note (e.g. "Calculated via ATR14 on your selected chart").
+  3. **Analysis Lens (client choice — display only):** EMA200 / RSI / Volume / Full, chosen pre-scan, remembered, one scan press. Engine + score unchanged; lens only changes what is displayed.
+  4. **Risk Style (client choice — output not score):** Conservative / Balanced / Aggressive → changes ONLY `computeSlTp` `opt` (slAtrMult / tp1Mult / tp2Mult). Levels move; score does NOT. Balanced == engine defaults.
+  5. **RED LINE (PRD §3.5.5 + LEGAL §6):** client NEVER modifies score / filter weights / EMA7 edge / 85-82 threshold. Client choices live only in (a) what is displayed and (b) risk geometry — never in what counts as an opportunity. Protects measure-first + shared base-rate.
+- VALIDATION: docs-only (no code) — pytest/tsc/eslint/node unaffected; last green state stands (P1: pytest 16/16, node 8/8, tsc/eslint clean).
+- ATP: no new automated TC (docs). Reframing acceptance criteria captured in PRD §3.5 (AC per feature).
+- VERSION: v0.3.1 (docs) · PRD v2.1 · UX v1.2 · LEGAL v2 reframing
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Stronger "utility calculator, not adviser" posture with real client-executed configuration, while the verified edge and base-rate stay intact.
+- DECISIONS:
+  1. **Per-user score threshold REMOVED** (old F5 "personal threshold" + UX §5): it would let the client change what counts as an opportunity → violates the RED LINE. `users.default_threshold` stays in the schema but is reserved for admin per-user overrides, never client-editable. (Flagged as the one real product-scope change forced by the RED LINE.)
+  2. **Risk Style defaults** proposed (Conservative 1.0/1.0/2.0 · Balanced 1.5/1.5/3.0 = engine defaults · Aggressive 2.0/2.0/4.0) — admin-tunable, passed only as `computeSlTp` `opt`; engine code untouched.
+  3. New reframing content written in **English** (per the permanent English-only directive + it is the canonical UI/terminology language). Existing Hebrew prose left as historical.
+
 ## [P1 / תשתית חיה — auth + Cardcom + deploy] — 2026-07-01
 - GOAL: לחווט את שכבת התשתית החיה על גבי השלד הנקי — auth מלא ומוקשח, Cardcom v11 ב-TEST mode, קונפיג deploy ל-Railway, וחיבור frontend בסיסי. בלי פיצ'רים, בלי חיוב אמיתי, בלי פריסה חיה. (SPEC §3.1, §4, §9, §11)
 - SOLUTION: פורט דפוסי התשתית מ-hamakpetza (רפרנס read-only) והותאמו לסכמה הנקייה + הקשחות SPEC §4. שכבת קריירה לא נגעה.
