@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.4.5 | 2026-07-01 | CHORE — frontend build: nix-provided pnpm (nixPkgs) to fix `pnpm: command not found` PATH error. Config only. | <hash> |
 | v0.4.4 | 2026-07-01 | CHORE — frontend build: pnpm via npm (not corepack) to fix keyid error; +frontend.Dockerfile fallback. Config only. | <hash> |
 | v0.4.3 | 2026-07-01 | CHORE — frontend/nixpacks.toml (Node-only) + packageManager, so Railway frontend builds as Node not Python. Config only. | <hash> |
 | v0.4.2 | 2026-07-01 | CHORE — Next.js 15.5.4→15.5.19 (CVE-2025-66478 fix) + eslint-config-next, to unblock Railway staging. Dep bump only. | <hash> |

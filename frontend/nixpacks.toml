@@ -1,14 +1,16 @@
 # Frontend (Next.js) — Node-ONLY build for Railway.
 #
 # This service's Root Directory MUST be "frontend" so Railway reads THIS config and
-# NOT the repo-root config: that avoids (a) the Python provider, (b) the backend's
-# `/api/health` healthcheck, and (c) the backend's Python cron jobs — all of which
-# live in the repo-root railway.toml / nixpacks.toml and would break a frontend deploy.
+# NOT the repo-root config — that avoids (a) the Python provider, (b) the backend's
+# `/api/health` healthcheck, and (c) the backend's Python cron jobs (all in the
+# repo-root railway.toml / nixpacks.toml), any of which would break a frontend deploy.
 #
 # `providers = ['node']` pins the build to Node only.
 #
-# pnpm is installed DIRECTLY via npm (NOT corepack) to avoid the corepack keyid
-# signature-verification error ("Cannot find matching keyid") seen on Node 22.
+# pnpm is provided by **nix** (in nixPkgs below), NOT corepack and NOT `npm i -g`.
+# Why: a nix package is on $PATH for every phase (install / build) AND at runtime, so
+# it fixes both the earlier corepack keyid error and the "pnpm: command not found"
+# PATH error (npm's global bin was not on PATH between phases).
 #
 # The shared engine (`link:../shared`) resolves because Railway includes the entire
 # repository in the build even when a Root Directory is set — `../shared` is on disk.
@@ -16,13 +18,10 @@
 providers = ['node']
 
 [phases.setup]
-nixPkgs = ['nodejs_22']
+nixPkgs = ['nodejs_22', 'pnpm']
 
 [phases.install]
-cmds = [
-  'npm install -g pnpm@10.33.1',
-  'pnpm install --no-frozen-lockfile',
-]
+cmds = ['pnpm install --no-frozen-lockfile']
 
 [phases.build]
 cmds = ['pnpm run build']

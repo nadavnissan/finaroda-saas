@@ -4,6 +4,18 @@
 
 ---
 
+## [CHORE / Frontend Railway build — nix-provided pnpm] — 2026-07-01
+- GOAL: Fix `pnpm: command not found` (exit 127) — `npm i -g pnpm` in one nixpacks phase didn't leave pnpm on PATH for the next phase (nix Node's global-npm bin isn't on PATH).
+- SOLUTION (config only): Provide pnpm via **nix** — `nixPkgs = ['nodejs_22', 'pnpm']` in `frontend/nixpacks.toml`. A nix package is on PATH for install, build, AND runtime, so it fixes the PATH error, needs no corepack (no keyid error), and no npm-global hack. Removed the `npm install -g pnpm` step. Kept Root Directory=`frontend` (Node-only; avoids the root railway.toml healthcheck/crons).
+- The `$NIXPACKS_PATH` undefined-var line is a benign nixpacks Docker-lint warning, not the failure cause; no action needed.
+- FILES MODIFIED: frontend/nixpacks.toml. (frontend.Dockerfile fallback from v0.4.4 retained.)
+- APP/ENGINE/SCORER/BACKEND: unchanged.
+- VALIDATION: tsc clean ✅ | eslint clean ✅ | next build 16 routes ✅. (nixpacks build itself is Railway-only — can't run nixpacks/Docker here.)
+- VERSION: v0.4.5
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: pnpm is on PATH across all build phases + runtime via nix; the command-not-found error is resolved without corepack or PATH hacks.
+
 ## [CHORE / Frontend Railway build — fix corepack keyid] — 2026-07-01
 - GOAL: Fix the frontend Railway build failing at `corepack enable` with "Cannot find matching keyid" (corepack signature verification, Node 22).
 - SOLUTION (config only): Install pnpm **directly via npm** (`npm install -g pnpm@10.33.1`) instead of `corepack enable`, in `frontend/nixpacks.toml`; removed the `packageManager` field from `frontend/package.json` so nixpacks doesn't auto-invoke corepack. Kept the Node-only nixpacks path with **Root Directory = `frontend`** — which also avoids the repo-root railway.toml's `/api/health` healthcheck and Python crons (a landmine a root-context Docker build would hit).
