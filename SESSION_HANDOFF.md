@@ -9,9 +9,17 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit:** P2 scorer wired — real 85/82 gate live (on top of P2 scan core / reframing / P1 / engine / P1.5 / P0)
-- **Validation:** ✅ all green — pytest 25/25, shared node --test 12/12 (8 engine + 4 scorer), tsc clean, eslint clean, next build (16 routes; /scan 12.3 kB bundles the scorer), boot smoke (health 200, scan/events 401, migrations 020+021 apply).
-- **Production (main):** NOT updated since P0+P1.5 (= b011b83). Everything after (engine, P1, reframing, P2, scorer) is on **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** deploy/build chore commits (v0.4.2–v0.4.7) + Vercel trigger — on top of P2 scorer.
+- **Validation:** ✅ all green — pytest 25/25, shared node --test 12/12, tsc clean, eslint clean, next build 16 routes.
+- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). The staging deploy/build chores (v0.4.2–v0.4.7) are **dev only** — Nadav merges to main manually.
+
+## 🟢 STAGING — LIVE (deployed from `dev`)
+- **Frontend (Vercel):** https://finaroda-saas.vercel.app  — Root Directory `frontend`, pnpm workspace, Production Branch = `dev`.
+- **Backend (Railway):** https://finaroda-saas-production.up.railway.app  — nixpacks Python, volume `/app/data`, plain uvicorn (no Litestream). `ENVIRONMENT=staging`.
+- **Cardcom:** TEST mode (`FEATURE_CARDCOM_LIVE=false`) — no real charges.
+- **Login on staging (no email):** `DEV_RETURN_MAGIC_LINK=true` + `FEATURE_PUBLIC_SIGNUPS_OPEN=true`. To log in: `POST {backend}/api/auth/magic-link {"email":"..."}` → the response's `dev_magic_link` contains the token → open it (or `GET {backend}/api/auth/verify?token=...`) to set the `access_token` cookie. `rodanis@gmail.com` is a bootstrap admin (is_admin=true).
+- **Smoke test (2026-07-01, all PASS):** health 200 (env=staging) · magic-link→verify→/me authenticated as rodanis (is_admin) · authenticated `POST /api/scan/events` → 200, persisted `scan_event_id=1` + `score_log` BTCUSDT · unauthenticated `/api/scan/events` → 401 (expected, auth-required — not CORS).
+- **Not deployed:** Litestream/R2 backups (skipped for staging), Resend email (dev-return link instead), production domain (finaroda.com), lawyer/accountant sign-off.
 
 ## מה נעשה בסשן האחרון (P1 — תשתית חיה)
 - **Auth (מוקשח, SPEC §4):** magic-link (Resend, console fallback בdev) + Google OAuth (iss תמיד, aud כשיש CLIENT_ID) + Apple stub(501). JWT ב-httpOnly cookie + get_current_user. magic-link token נשמר כ-**SHA-256 hash**. admin כ-role ב-DB (users.is_admin) עם bootstrap לפי ADMIN_BOOTSTRAP_EMAILS. beta gate + allowlist + waitlist. endpoints: /api/auth/{magic-link,verify,google,apple,logout,me} + /api/waitlist.

@@ -4,6 +4,13 @@
 
 ---
 
+## [STAGING / Live deploy from dev + smoke test PASS] — 2026-07-01
+- GOAL: Stand up a live staging environment (not production) and validate end-to-end.
+- ENVIRONMENT: Frontend on Vercel (Root `frontend`, pnpm workspace, branch `dev`) = https://finaroda-saas.vercel.app ; Backend on Railway (nixpacks Python, volume `/app/data`, plain uvicorn, `ENVIRONMENT=staging`, Cardcom TEST) = https://finaroda-saas-production.up.railway.app. No Litestream/R2, no Resend (DEV_RETURN_MAGIC_LINK), no production domain.
+- SMOKE TEST (all PASS): health 200 (env=staging); magic-link→verify→/me authenticated as rodanis@gmail.com (is_admin=true — bootstrap admin works live); authenticated `POST /api/scan/events` → 200 persisted scan_event_id=1 + score_log; unauthenticated `/api/scan/events` → 401 (auth-required by design, not CORS).
+- CODE: none (validation + SESSION_HANDOFF only).
+- BRANCH: dev. main untouched. Cardcom TEST — no real charges. Nothing deployed by Claude (Nadav ran the Railway/Vercel deploys).
+
 ## [CHORE / pnpm workspace — resolve shared engine without a toggle] — 2026-07-01
 - GOAL: Vercel's "Include files outside the root directory" toggle is gone from the current UI, so `link:../shared` still couldn't resolve. Convert to a proper **pnpm workspace** so Vercel (and any tool) resolves `@finaroda/scoring-engine` → `shared/` natively.
 - SOLUTION (config + package.json metadata only):
