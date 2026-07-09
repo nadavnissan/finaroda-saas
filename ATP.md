@@ -22,7 +22,7 @@
 - **TC-C — Decision card** (Entry/SL/Trailing/TP, תלת-דרגתי, תיוג ניתוח-לא-ייעוץ)
 - **TC-D — Score log & backtest** (רישום כל מטבע, cron, "מה היה קורה")
 - **TC-E — Client dashboard** (תשואה היפותטית, ייצוא תוצאות)
-- **TC-F — Billing & trial** (Cardcom, trial-עם-כרטיס, חיוב יום 15, ביטול)
+- **TC-F — Billing & trial** (Cardcom, **trial ללא כרטיס** — change order 2026-07-09, בחירה אקטיבית בסוף, ביטול)
 - **TC-G — Referral** (קוד, 3-חודשים, בקרת אדמין)
 - **TC-H — Admin** (לקוחות, MRR/churn, טיקטים, ברודקאסט, קופונים, סף נשלט)
 - **TC-I — Profile & status tiers** (מבוסס משמעת לא תדירות)
@@ -92,6 +92,8 @@
 | TC-F-005 | start_trial | trial 14 יום, tier מעודכן, next_billing נקבע | ✅ |
 | TC-F-006 | expire_trials | trial שפג → expired/free; מחירי פלאנים seeded | ✅ |
 
+> **הערה (2026-07-09, change order D1):** TC-F-005/006 מתעדים את קוד ה-`start_trial` **הקיים** (trial עם כרטיס/next_billing) שעדיין לא שונה. הספק החדש — **trial ללא כרטיס** — מתועד ב-TC-DOCS-2026-07-09 כ-⬜ pending implementation (ROADMAP S3). כשהקוד יעודכן, TC-F-005 יוחלף במקרה החדש.
+
 ## TC — ENGINE (shared scoring-engine) — automated (shared/scoring-engine.test.js)
 
 ### TC-ENGINE-001 — levels engine extracted, byte-faithful, scorer still a stub
@@ -133,6 +135,59 @@
 | TC-SCORER-002 | 3 profiles logged, momentum only returned | momentum+pullback+continuation rows; only momentum linked for snapshot | ✅ |
 | TC-SCORER-003 | Real score persisted + profile column | score non-null on momentum; score_log.profile present (mig 021) | ✅ |
 | TC-SCORER-004 | 85/82 gate + RED LINE (build/tsc) | PASS ≥85 / WATCH 82-84 / blocked hidden; Risk Style changes levels not score | ✅ (build) |
+
+## TC — DOCS ALIGNMENT 2026-07-09 (spec-level; ⬜ pending implementation — code unchanged)
+
+> נובעים ממשימת יישור הדוקים ל-ALIGNMENT_2026-07-09 (D1 trial ללא כרטיס, D2 Free tier, F13 onboarding, B3 reveal-gating). כולם ⬜ not-run עד מימוש בקוד (ROADMAP S3/X1). מתועדים עכשיו כדי שהמימוש ייבדק מולם.
+
+### TC-DOCS-001 — Trial ללא כרטיס (D1)
+- Feature: F7 (PRD) · SPEC §9/§12.3
+- Precondition: משתמש חדש נרשם (פרטים אישיים בלבד)
+- Steps: 1) הרשמה 2) הפעלת trial 3) בדיקת מצב חיוב
+- Expected: trial 14 יום מופעל **ללא כרטיס ו-ללא tokenization**; אין `next_billing` לחיוב אוטומטי; תזכורת מתוזמנת ליום 11; בסוף התקופה המשתמש נדרש לבחור אקטיבית (פלאן בתשלום או Free) — אין חיוב אוטומטי
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-002 — Trial end → Free fallback (D1)
+- Feature: F7 (PRD)
+- Precondition: trial הגיע לסופו והמשתמש לא בחר פלאן בתשלום
+- Steps: 1) הרצת expire/end-of-trial 2) בדיקת tier
+- Expected: המשתמש נופל ל-**Free** (לא חיוב, לא downgrade עם כרטיס); לכידת כרטיס מתרחשת רק בהמרה אקטיבית לתשלום
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-003 — Free tier limits (D2)
+- Feature: F7 (PRD) · SPEC §9 · UX §6
+- Precondition: משתמש במסלול Free
+- Steps: 1) לבצע 2 סריקות באותו יום 2) לפתוח F3 3) לנסות ייצוא
+- Expected: סריקה 2/יום נחסמת (1/יום); 2 מטבעות; Blueprint מלא זמין; F3 מוגבל ל-7 הימים האחרונים; ייצוא חסום; academy בסיסי. **כל המגבלות נקראות מ-`system_settings`** (ניתנות לכיול אדמין בלי קוד)
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-004 — Paywall "Continue on Free" (D2)
+- Feature: F7 (PRD) · Onboarding §3 מסך 11
+- Precondition: משתמש במסך paywall/פיצול
+- Steps: 1) הצגת מסך הפיצול
+- Expected: אפשרות ראשית "Start 14 days — no credit card"; אפשרות **משנית "Continue on Free"** נוכחת
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-005 — F13 onboarding simulation — אמת אמפירית + טרמינולוגיה
+- Feature: F13 (PRD) · `FINARODA_ONBOARDING_SPEC.md` v1.1 · SPEC §5.5
+- Precondition: סימולציית 60 השניות רצה על `episodes`
+- Steps: 1) מעבר על המסכים 2) בדיקת קופי ומספרים 3) בדיקת מקור הגרפים
+- Expected: כל מספר מגיע מ-`episodes.real_stats_ref` מאומת (אפס סטטיסטיקות מומצאות/הוכחה חברתית מפוברקת); טרמינולוגיה קנונית (Trading Blueprint / PASS-WATCH / "Analysis, not financial advice" על כל מסך); גרפים מרונדרים מ-kline (recharts) — **לא** צילומי TradingView/Bybit; הרשמה ללא כרטיס; אין קנס XP על BUY/SELL
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-006 — F3 reveal-gating (B3)
+- Feature: F3 (PRD) · Onboarding §3 מסך 10
+- Precondition: setup עם תוצאת backtest שהתבשלה
+- Steps: 1) התוצאה מוכנה 2) המשתמש נכנס וסורק שוב 3) בדיקת חשיפה
+- Expected: התוצאה נחשפת **רק בסריקה הבאה** דרך teaser שקט "Your journal has an update"; **אין** נוטיפיקציית פוש יזומה (trust-not-engagement, pull-not-push)
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-007 — regime_state / Episode Library schema notes (B2/B4)
+- Feature: SPEC §5.2 (regime_state) · §5.5 (episodes)
+- Precondition: —
+- Steps: 1) קריאת SPEC §5
+- Expected: מתועדת תוספת `score_log.regime_state TEXT` (bear/bull/transition, BTC, N=5 hysteresis) לפני צבירת דאטה; מתועדת טבלת `episodes` (kline אמיתי מתוארך, רינדור recharts, לא צילומי מסך)
+- Status: ✅ pass (doc check — SPEC §5.2/§5.5 present)
 
 ---
 

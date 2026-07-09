@@ -9,9 +9,20 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit (dev):** deploy/build chore commits (v0.4.2–v0.4.7) + Vercel trigger — on top of P2 scorer.
-- **Validation:** ✅ all green — pytest 25/25, shared node --test 12/12, tsc clean, eslint clean, next build 16 routes.
-- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). The staging deploy/build chores (v0.4.2–v0.4.7) are **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** DOCS alignment to ALIGNMENT_2026-07-09 (v0.4.8) — on top of the deploy/build chores (v0.4.2–v0.4.7) + P2 scorer.
+- **Validation:** ✅ all green — pytest 25/25, shared node --test 12/12, tsc clean, eslint clean.
+- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). The staging deploy/build chores (v0.4.2–v0.4.7) and the v0.4.8 docs alignment are **dev only** — Nadav merges to main manually.
+
+## Latest — DOCS alignment to ALIGNMENT_2026-07-09 (v0.4.8, docs only, no code)
+- Aligned all source-of-truth docs to Nadav's 2026-07-09 decisions. **No app/engine/scorer/backend change.**
+- **D1 — Trial WITHOUT card** (approved change order, supersedes the locked "trial with card"): SPEC §9/§12.3, PRD F7 (flow + AC1/AC2 rewritten) + §17, UX journey step 4 + §6, LEGAL §2.6. 14 days · no tokenization at signup · no auto-charge · day-11 reminder · active choice at end (paid plan or Free) · card capture moves to the paid-conversion moment.
+  - ⚠ **Code still tokenizes:** `start_trial`/renewal in `core/cardcom_service.py` are UNCHANGED and still set `next_billing` (card-based). Reworking them is **⬜ pending implementation** under ROADMAP **S3** (not done in this docs task). TC-F-005/006 still reflect the old code (✅); new spec is TC-DOCS-001/002 (⬜).
+- **D2 — Free tier** (new, approved): Free row in PRD F7 / SPEC §9 / UX §6 — 1 scan/day · 2 coins · full Trading Blueprint · F3 limited to last 7 days · no export · basic academy, all `system_settings`-controlled. Paywall/fork copy: secondary "Continue on Free". SPEC §12 decision 8.
+- **D3 — XP:** OPEN, **not implemented** — added to PRD §17 open items (conflict with UX §9.4; proposed +XP on first scan of the day only).
+- **F13 onboarding simulation** registered in PRD (spec = FINARODA_ONBOARDING_SPEC.md v1.1, complements F12); ROADMAP X1 gains the 12 onboarding screens.
+- **F3 reveal-gating (B3):** outcome revealed on the next scan + "journal has an update" teaser (pull-not-push).
+- **Schema notes (docs only, not migrated):** SPEC §5.2 future `score_log.regime_state TEXT` (bear/bull/transition, BTC, N=5 hysteresis); SPEC §5.5 new `episodes` table (real dated kline, recharts render, never TradingView/Bybit). PRD §3 principle 8 — empirical truth in copy.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, client-side fetch, calculator terminology.
 
 ## 🟢 STAGING — LIVE (deployed from `dev`)
 - **Frontend (Vercel):** https://finaroda-saas.vercel.app  — Root Directory `frontend`, pnpm workspace, Production Branch = `dev`.

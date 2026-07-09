@@ -4,6 +4,29 @@
 
 ---
 
+## [DOCS-ALIGN-2026-07-09 / יישור מסמכי מקור-אמת ל-ALIGNMENT] — 2026-07-09
+- GOAL: ליישר את כל מסמכי מקור-האמת (PRD/SPEC/UX/LEGAL/ROADMAP/ATP) להכרעות נדב ב-`ALIGNMENT_2026-07-09.md` ו-`FINARODA_ONBOARDING_SPEC.md` (v1.1). **דוקים בלבד — אפס שינוי קוד/מנוע/סקורר.**
+- SOLUTION (מה עשינו בפועל):
+  - **D1 — Trial ללא כרטיס** (change order מאושר, מחליף את "trial עם כרטיס" הנעול): SPEC §9 + §12.3 → 14 יום, ללא tokenization בהרשמה, ללא חיוב אוטומטי, תזכורת יום 11, בסוף בחירה אקטיבית (פלאן/Free), לכידת כרטיס ברגע ההמרה. PRD F7 (flow + AC1/AC2 שוכתבו) + §17. UX journey שלב 4 + §6. LEGAL §2.6. ROADMAP S3 (⬜ pending implementation — start_trial לעיבוד מחדש).
+  - **D2 — Free tier חדש:** שורת Free בטבלאות PRD F7 / SPEC §9 / UX §6 — סריקה 1/יום · 2 מטבעות · Blueprint מלא · F3 מוגבל 7 ימים · ללא ייצוא · academy בסיסי, נשלט `system_settings`. paywall/fork: "Continue on Free". SPEC §12 החלטה 8.
+  - **D3 — XP:** נותר פתוח, **לא מומש**. נוסף ל-PRD §17 open items ("XP economy pending — conflict with UX §9.4; proposed +XP on first scan of the day only").
+  - **D4 — English UI:** נעול, ללא שינוי.
+  - **F13 — "First 60 Seconds" onboarding simulation:** נרשם ב-PRD (spec = `FINARODA_ONBOARDING_SPEC.md` v1.1, משלים F12), Design סבב 2 (ROADMAP X1 — נוספו מסכי האונבורדינג).
+  - **F3 reveal-gating (B3):** תוצאה נחשפת בסריקה הבאה + teaser "journal has an update" (pull-not-push).
+  - **Data/learning (B2/B4):** SPEC §5.2 — note לעמודת `regime_state TEXT` עתידית (bear/bull/transition, BTC, N=5 hysteresis). SPEC §5.5 — טבלת `episodes` (kline אמיתי מתוארך, רינדור recharts, לא צילומי TradingView/Bybit). PRD §3 principle 8 — אמת אמפירית בקופי.
+  - **Consistency pass:** grep ל-"עם כרטיס"/"with card" — כל ההיטים שנותרו הם הפניות מכוונות ל"מה שהוחלף" או ה-CHANGELOG ההיסטורי. RED LINE (§3.5.5), סף 85/82, client-side fetch, וטרמינולוגיית המחשבון — לא נגעתי.
+- FILES MODIFIED: FINARODA_SAAS_SPEC.md, FINARODA_SAAS_PRD.md, FINARODA_SAAS_UX.md, FINARODA_SAAS_LEGAL_DRAFT.md, ROADMAP.md, ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md. (ALIGNMENT_2026-07-09.md + FINARODA_ONBOARDING_SPEC.md — נכנסו ל-repo כמקור.)
+- APP/ENGINE/SCORER/BACKEND: **unchanged** (docs only).
+- DB CHANGES: אין (רק *תיעוד* של migration עתידי ל-regime_state + טבלת episodes — לא מיושם).
+- CONFIG ADDED: אין.
+- VALIDATION: pytest 25/25 ✅ · shared node --test 12/12 ✅ · tsc clean ✅ · eslint clean ✅.
+- ATP: TC-F group + TC-F-005/006 note עודכנו; נוספו TC-DOCS-001..007 (001-006 ⬜ pending implementation, 007 ✅ doc-check).
+- VERSION: v0.4.8
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: מסמכי מקור-האמת עקביים עם הכרעות 2026-07-09 (trial ללא כרטיס, Free tier, F13, reveal-gating). המימוש בפועל (start_trial, Free limits, מסכי onboarding) ⬜ pending — ROADMAP S3/X1.
+- DECISIONS: לא לשכתב היסטוריית CHANGELOG/קוד קיים; "trial עם כרטיס" נשמר כהפניה מפורשת ל"מה שהוחלף"; ATP TC-F-005 הקיים נשמר ✅ (מתעד קוד לא-משונה) לצד TC-DOCS החדשים.
+
 ## [STAGING / Live deploy from dev + smoke test PASS] — 2026-07-01
 - GOAL: Stand up a live staging environment (not production) and validate end-to-end.
 - ENVIRONMENT: Frontend on Vercel (Root `frontend`, pnpm workspace, branch `dev`) = https://finaroda-saas.vercel.app ; Backend on Railway (nixpacks Python, volume `/app/data`, plain uvicorn, `ENVIRONMENT=staging`, Cardcom TEST) = https://finaroda-saas-production.up.railway.app. No Litestream/R2, no Resend (DEV_RETURN_MAGIC_LINK), no production domain.

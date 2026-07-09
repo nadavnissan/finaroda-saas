@@ -69,14 +69,14 @@ Cardcom LIVE (C1) ───────────────────┤
 | ID | שלב | תלות | חוסם | פרטים |
 |---|---|---|---|---|
 | **S2** | P3 — למידה + הגדרות | S1 | ⚪ | cron backtest "מה היה קורה", מגבלת מטבעות/פלאן (2/5/10 מ-system_settings), דאשבורד לקוח |
-| **S3** | P4 — מסחרי | S1 | 🔴 | 3 פלאנים חיים, paywall, trial 14 יום, קופונים, referral (50%/3-חודשים+אישור) |
+| **S3** | P4 — מסחרי | S1 | 🔴 | 3 פלאנים חיים **+ Free tier** (D2), paywall (עם "Continue on Free"), **trial 14 יום ללא כרטיס** (D1), קופונים, referral (50%/3-חודשים+אישור). **⬜ pending implementation (D1):** לעבד מחדש את `start_trial` — ללא tokenization בהרשמה, ללא חיוב אוטומטי, תזכורת יום 11, בסוף בחירה אקטיבית (פלאן/Free). לכידת הכרטיס (Cardcom) עוברת לרגע ההמרה לתשלום. _(לא נעשה במשימת הדוקים 2026-07-09 — קוד לא שונה.)_ |
 | **S4** | P5 — מנהל + קהילה | S3, X1 | 🔴 | דאשבורד מנהל (MRR/churn/סיבת עזיבה), טיקטים, ברודקאסט, academy, onboarding survey |
 
 ### 4.2 עיצוב
 
 | ID | שלב | תלות | חוסם | פרטים |
 |---|---|---|---|---|
-| **X1** | סבב Design שני | — | 🔴 | מסכים שלא עוצבו: auth/onboarding, paywall/3-פלאנים, profile+שלבי יוקרה, admin, ייצוא, טיקטים. (ליבה — scan/blueprint/what-if/empty — כבר עוצבה) |
+| **X1** | סבב Design שני | — | 🔴 | מסכים שלא עוצבו: auth/onboarding, **F13 "First 60 Seconds" onboarding simulation (12 מסכים — `FINARODA_ONBOARDING_SPEC.md` v1.1)**, paywall/פלאנים (Free + 3 בתשלום, "Continue on Free"), profile+שלבי יוקרה, admin, ייצוא, טיקטים. (ליבה — scan/blueprint/what-if/empty — כבר עוצבה) |
 
 ### 4.3 תשתית הפעלה
 

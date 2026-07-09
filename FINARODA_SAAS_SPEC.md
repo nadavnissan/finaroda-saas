@@ -140,6 +140,8 @@ CREATE INDEX idx_scorelog_coin ON score_log(coin, logged_at DESC);
 CREATE INDEX idx_scorelog_unresolved ON score_log(outcome) WHERE outcome IS NULL;
 ```
 
+> **תוספת עתידית מתוכננת (migration, לפני צבירת דאטה משמעותית):** עמודת `regime_state TEXT` בכל שורת `score_log` — מצב המשטר (`bear` / `bull` / `transition`, מוגדר לפי BTC, hysteresis N=5 — לפי מודל המשטר, PRD הכלי האישי §15.5). בלעדיה ה-base-rate סובל time-confound (ערבוב בין דגימות ממשטרים שונים). יש להוסיף **לפני** שנצברת דאטה משמעותית כדי שכל שורה תיוחס למשטר מלכתחילה.
+
 ### 5.3 `decision_snapshots` — מצב הכרטיס שהוצג ללקוח (אסמכתא)
 מה שהלקוח ראה בפועל, מתויג "ניתוח לא ייעוץ". משמש לדאשבורד "מה היה קורה".
 ```sql
@@ -169,6 +171,23 @@ CREATE TABLE support_tickets (
 );
 CREATE INDEX idx_ticket_status ON support_tickets(status, created_at DESC);
 ```
+
+### 5.5 `episodes` — ספריית אפיזודות לאונבורדינג (Episode Library)
+משמש את סימולציית האונבורדינג (F13, ראו `FINARODA_ONBOARDING_SPEC.md`). כל אפיזודה = **טווח kline אמיתי ומתוארך** מקובץ הטריידים/בקטסטים + התוצאה בפועל. הגרפים **מרונדרים אצלנו** מ-kline דרך `recharts` הקיים ב-frontend — **לעולם לא צילומי מסך מ-TradingView/Bybit** (רישוי במוצר מסחרי + עקביות ויזואלית).
+```sql
+CREATE TABLE episodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    coin TEXT NOT NULL,
+    date_range TEXT NOT NULL,        -- טווח מתוארך (מקור אמת: trades CSV / AnchorLog)
+    kline_data TEXT NOT NULL,        -- נרות גולמיים לרינדור מקומי (recharts)
+    scenario_type TEXT NOT NULL,     -- trap | valid_setup | discipline_save | patience
+    lesson_flag TEXT,                -- הדגל החינוכי שהאפיזודה מדגימה
+    outcome TEXT NOT NULL,           -- תוצאת האמת של האפיזודה (למשל דעיכה ב-X%)
+    real_stats_ref TEXT,             -- הפניה למספר האמת (אימות מול ה-CSV לפני שילוב)
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+> אמת אמפירית בלבד: כל מספר שמוצג באונבורדינג מגיע מ-`real_stats_ref` מאומת. אין סטטיסטיקות מומצאות ואין הוכחה חברתית מפוברקת.
 
 ---
 
@@ -226,16 +245,18 @@ CREATE INDEX idx_ticket_status ON support_tickets(status, created_at DESC);
 
 ## 9. תשלומים, מנוי, חבר-מביא-חבר
 
-- **Cardcom v11** (V1): checkout (LowProfile/Create), webhook HMAC, recurring (ChargeToken), **trial 14 יום עם כרטיס** (tokenization בהרשמה, חיוב אוטומטי ביום 15 אלא אם ביטל). Stripe גלובלי = V2.
-- **3 פלאנים:**
+- **Cardcom v11** (V1): checkout (LowProfile/Create), webhook HMAC, recurring (ChargeToken), **trial 14 יום ללא כרטיס** (ללא tokenization בהרשמה, ללא חיוב אוטומטי; תזכורת יום 11; בסוף התקופה בחירה אקטיבית: פלאן בתשלום או Free). לכידת הכרטיס (tokenization) עוברת לרגע ההמרה לתשלום בלבד. Stripe גלובלי = V2. _(change order מאושר — נדב 2026-07-09; מחליף את "trial עם כרטיס" שהיה נעול.)_
+- **Free + 3 פלאנים בתשלום:**
 
 | פלאן | מחיר ₪/חודש | מטבעות בסריקה |
 |---|---|---|
+| Free | 0 | 2 (סריקה 1/יום) |
 | בסיס | 50 | 2 |
 | מתקדם | 100 | 5 |
 | פרו | 150 | 10 |
 
 > כל המגבלות (מטבעות, סף) נשלטות מהאדמין דרך `system_settings` בלי קוד. אוצר מילים אחד לפלאנים (לא premium/b2b מול pro/unlimited).
+> **Free tier (D2, נדב 2026-07-09):** סריקה 1/יום · 2 מטבעות · **Trading Blueprint מלא** · דאשבורד F3 מוגבל ל-7 הימים האחרונים · ללא ייצוא · academy בסיסי. כל המגבלות נשלטות דרך `system_settings`. במסכי paywall/פיצול — אפשרות משנית "Continue on Free".
 
 - **קופונים:** Cardcom/migration 020 + admin UI.
 - **חבר מביא חבר:** המגייס מקבל **50% הנחה לחודש** — **רק אחרי שהחבר המגויס התמיד 3 חודשים** (סינון "מטיילים"). דורש: (א) מעקב referrer→referred + תאריך, (ב) בדיקת 3 חודשי מנוי פעיל רצוף, (ג) **מנגנון בקרה/אישור לאדמין** לפני מתן ההנחה. תגמול = הנחה, לא טוקנים.
@@ -269,11 +290,12 @@ CREATE INDEX idx_ticket_status ON support_tickets(status, created_at DESC);
 |---|---|
 | 1 | **3 פלאנים: בסיס 50 / מתקדם 100 / פרו 150 ₪** |
 | 2 | מטבעות בסריקה: בסיס 2 / מתקדם 5 / פרו 10 — **נשלט מהאדמין בלי קוד** |
-| 3 | trial **עם כרטיס** (tokenization בהרשמה, חיוב יום 15) |
+| 3 | trial **ללא כרטיס** (change order, נדב 2026-07-09): 14 יום, ללא tokenization בהרשמה, ללא חיוב אוטומטי, תזכורת יום 11; בסוף התקופה בחירה אקטיבית — פלאן בתשלום או Free. לכידת הכרטיס עוברת לרגע ההמרה לתשלום. _(מחליף את "trial עם כרטיס" שהיה נעול ב-v1.0.)_ |
 | 4 | **חבר מביא חבר:** 50% הנחה לחודש למגייס, רק אחרי 3 חודשי התמדה של המגויס + בקרת אדמין |
 | 5 | קהל V1 ישראלי (Cardcom), **UI באנגלית מלאה**, Stripe בעתיד |
 | 6 | וידאו: YouTube unlisted מספיק ל-V1 |
 | 7 | מנוע משותף ב-**JS** (`scoring-engine.js`); כלי אישי לוקלי, SaaS בענן |
+| 8 | **Free tier** (נדב 2026-07-09): סריקה 1/יום · 2 מטבעות · Blueprint מלא · F3 מוגבל 7 ימים · ללא ייצוא · academy בסיסי — נשלט `system_settings` |
 
 ### עדיין פתוח (לא חוסם מימוש)
 - **מסגור משפטי** — Claude יכתוב טיוטת ToS/דיסקליימר "ניתוח לא ייעוץ" + הסכמת פרטיות; נדב מעביר לעו"ד לאישור.

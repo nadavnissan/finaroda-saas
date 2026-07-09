@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.4.8 | 2026-07-09 | DOCS — יישור מסמכי מקור-אמת ל-ALIGNMENT_2026-07-09: D1 trial ללא כרטיס (change order), D2 Free tier, F13 onboarding simulation, F3 reveal-gating, notes ל-regime_state + episodes, empirical-truth principle. Docs only, אפס קוד/מנוע. | <hash> |
 | v0.4.7 | 2026-07-01 | CHORE — pnpm workspace (workspace:* + exports + root lockfile) so @finaroda/scoring-engine resolves natively on Vercel (no toggle). Metadata/config only. | <hash> |
 | v0.4.6 | 2026-07-01 | CHORE — frontend → Vercel (vercel.json); resolves the link:../shared monorepo engine that Railway root=frontend couldn't. Backend stays on Railway. | <hash> |
 | v0.4.5 | 2026-07-01 | CHORE — frontend build: nix-provided pnpm (nixPkgs) to fix `pnpm: command not found` PATH error. Config only. | <hash> |
