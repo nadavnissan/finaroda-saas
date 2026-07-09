@@ -92,8 +92,11 @@ EMAIL_SENDING_ENABLED = os.getenv("EMAIL_SENDING_ENABLED", "false").lower() == "
 DEV_RETURN_MAGIC_LINK = os.getenv("DEV_RETURN_MAGIC_LINK", "false").lower() == "true"
 
 # ── Trial ─────────────────────────────────────────────────────────────────────
-# Trial with card on file (tokenization at signup, auto-charge on day 15). SPEC §9.
+# Trial WITHOUT card (D1 change order 2026-07-09; SPEC §9/§12.3, PRD F7): no card,
+# no tokenization, no auto-charge. A reminder goes out TRIAL_REMINDER_LEAD_DAYS before
+# the end (day 11 of a 14-day trial); at expiry the user is moved to Free, never charged.
 TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "14"))
+TRIAL_REMINDER_LEAD_DAYS: int = int(os.getenv("TRIAL_REMINDER_LEAD_DAYS", "3"))
 
 # ── Cardcom v11 (sole payment provider for V1 — SPEC §9) ─────────────────────
 FEATURE_CARDCOM_LIVE: bool = os.getenv("FEATURE_CARDCOM_LIVE", "false").lower() == "true"

@@ -263,10 +263,13 @@ async def cancel_subscription(user_id: int, db: aiosqlite.Connection) -> Cardcom
     return CardcomCancelResponse(cancelled_at=now, access_until=next_billing_at, message=msg)
 
 
-async def start_trial(db: aiosqlite.Connection, user_id: int, plan: str = "basic") -> dict:
+async def start_trial(db: aiosqlite.Connection, user_id: int, plan: str = "pro") -> dict:
     """
-    Start the 14-day trial (card-on-file model, SPEC §9). Only from a fresh account.
-    Card tokenization happens via the checkout flow; the day-15 charge is the renewal cron.
+    Start the 14-day trial WITHOUT a card (SPEC §9/§12.3, D1 change order 2026-07-09).
+    No card, no tokenization, no auto-charge: next_billing_at stays NULL. A day-11
+    reminder is sent by the trial-ending cron; at expiry the user is moved to Free
+    (expire_trials), never charged. Card capture happens only at explicit paid
+    conversion via initiate_checkout. Only from a fresh account.
     """
     if plan not in VALID_PLANS:
         raise HTTPException(400, f"Invalid plan: {plan}")
@@ -282,10 +285,11 @@ async def start_trial(db: aiosqlite.Connection, user_id: int, plan: str = "basic
     now = datetime.now(timezone.utc)
     trial_days = await _get_setting_int(db, "trial_days", config.TRIAL_DAYS)
     trial_ends = now + timedelta(days=trial_days)
+    # next_billing_at is explicitly NULL — no card on file, no day-15 auto-charge.
     await db.execute(
         """UPDATE users SET tier=?, subscription_status='trial',
-           trial_started_at=?, trial_ends_at=?, next_billing_at=? WHERE internal_id=?""",
-        (plan, now.isoformat(), trial_ends.isoformat(), trial_ends.isoformat(), user_id),
+           trial_started_at=?, trial_ends_at=?, next_billing_at=NULL WHERE internal_id=?""",
+        (plan, now.isoformat(), trial_ends.isoformat(), user_id),
     )
     await db.execute(
         "INSERT INTO subscription_events (user_id, event_type, tier_after, created_at) VALUES (?, 'trial_started', ?, ?)",
@@ -349,10 +353,12 @@ async def run_renewal_batch(db: aiosqlite.Connection) -> dict:
         return {"total_due": 0, "charged_ok": 0, "charged_failed": 0, "newly_suspended": 0, "dry_run": True}
 
     now = datetime.now(timezone.utc).isoformat()
+    # Only 'active' paid subscriptions are billed. Trials are card-free (no
+    # next_billing_at) and must NEVER be charged (D1, 2026-07-09).
     cursor = await db.execute(
         """SELECT internal_id, tier, cardcom_token, billing_failure_count
            FROM users
-           WHERE subscription_status IN ('active','trial')
+           WHERE subscription_status = 'active'
              AND next_billing_at <= ?
              AND (subscription_cancelled_pending_at IS NULL OR subscription_cancelled_pending_at > ?)""",
         (now, now),
@@ -406,21 +412,26 @@ async def run_renewal_batch(db: aiosqlite.Connection) -> dict:
 
 
 async def expire_trials(db: aiosqlite.Connection) -> dict:
-    """Cron: mark expired trials. trial → expired when trial_ends_at < now (no active sub)."""
+    """
+    Cron: end trials whose date has passed. Trial → **Free** (D1/D2, 2026-07-09):
+    tier='free', subscription_status='none' (the standard free state), never charged
+    and never blocked. A no-card trial has no next_billing_at, so nothing is billed.
+    """
     now = datetime.now(timezone.utc).isoformat()
     cursor = await db.execute(
         "SELECT internal_id FROM users WHERE subscription_status='trial' AND trial_ends_at < ?",
         (now,),
     )
-    expired = [r[0] for r in await cursor.fetchall()]
-    for user_id in expired:
+    moved = [r[0] for r in await cursor.fetchall()]
+    for user_id in moved:
         await db.execute(
-            "UPDATE users SET subscription_status='expired', tier='free' WHERE internal_id=?",
+            "UPDATE users SET subscription_status='none', tier='free', next_billing_at=NULL WHERE internal_id=?",
             (user_id,),
         )
         await db.execute(
-            "INSERT INTO subscription_events (user_id, event_type, created_at) VALUES (?, 'trial_ended_expired', ?)",
+            "INSERT INTO subscription_events (user_id, event_type, tier_before, tier_after, created_at) "
+            "VALUES (?, 'trial_ended_to_free', 'trial', 'free', ?)",
             (user_id, now),
         )
     await db.commit()
-    return {"expired": len(expired)}
+    return {"moved_to_free": len(moved)}

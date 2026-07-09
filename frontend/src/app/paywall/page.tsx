@@ -39,14 +39,17 @@ export default function PaywallPage() {
             <small>{p.coins}</small>
             <div>
               <button onClick={() => choose(p.id)} style={{ marginTop: "0.75rem" }}>
-                Start trial
+                Choose plan
               </button>
             </div>
           </div>
         ))}
       </div>
       {message && <p>{message}</p>}
-      <small>14-day trial, card on file. Analysis, not advice.</small>
+      <small>
+        14-day trial with no credit card — you only add a card when you choose a paid plan.
+        No auto-charge; at the end you pick a paid plan or continue on Free. Analysis, not advice.
+      </small>
     </main>
   );
 }

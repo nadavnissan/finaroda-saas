@@ -32,13 +32,19 @@ async def subscription_renewal_task() -> dict:
 
 
 async def trial_ending_soon_task() -> dict:
-    """Day-13 reminder: find trials ending within ~1 day. Emails are best-effort."""
+    """Day-11 reminder (no-card trial, D1): find trials ending ~TRIAL_REMINDER_LEAD_DAYS
+    out (default 3 → day 11 of a 14-day trial). Daily cron + a 1-day window fires once
+    per trial. Emails are best-effort. No charge — the reminder just prompts an active
+    choice (paid plan or Free) before the trial ends."""
     from datetime import datetime, timedelta, timezone
 
+    from backend.config import TRIAL_REMINDER_LEAD_DAYS
     from backend.core.email import send_welcome_email  # placeholder reminder sender
 
-    window_start = datetime.now(timezone.utc).isoformat()
-    window_end = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    lead = TRIAL_REMINDER_LEAD_DAYS
+    now = datetime.now(timezone.utc)
+    window_start = (now + timedelta(days=lead)).isoformat()
+    window_end = (now + timedelta(days=lead + 1)).isoformat()
     async with aiosqlite.connect(_db_path()) as db:
         db.row_factory = aiosqlite.Row
         rows = await db.execute_fetchall(

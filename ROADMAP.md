@@ -69,7 +69,7 @@ Cardcom LIVE (C1) ───────────────────┤
 | ID | שלב | תלות | חוסם | פרטים |
 |---|---|---|---|---|
 | **S2** | P3 — למידה + הגדרות | S1 | ⚪ | cron backtest "מה היה קורה", מגבלת מטבעות/פלאן (2/5/10 מ-system_settings), דאשבורד לקוח |
-| **S3** | P4 — מסחרי | S1 | 🔴 | 3 פלאנים חיים **+ Free tier** (D2), paywall (עם "Continue on Free"), **trial 14 יום ללא כרטיס** (D1), קופונים, referral (50%/3-חודשים+אישור). **⬜ pending implementation (D1):** לעבד מחדש את `start_trial` — ללא tokenization בהרשמה, ללא חיוב אוטומטי, תזכורת יום 11, בסוף בחירה אקטיבית (פלאן/Free). לכידת הכרטיס (Cardcom) עוברת לרגע ההמרה לתשלום. _(לא נעשה במשימת הדוקים 2026-07-09 — קוד לא שונה.)_ |
+| **S3** | P4 — מסחרי | S1 | 🔴 | 3 פלאנים חיים **+ Free tier** (D2), paywall (עם "Continue on Free"), **trial 14 יום ללא כרטיס** (D1), קופונים, referral (50%/3-חודשים+אישור). **✅ D1 backend מומש (v0.5.0):** `start_trial` ללא כרטיס/tokenization + `next_billing_at` NULL; `expire_trials`→Free (לא expired); renewal batch מחייב רק `active`; תזכורת יום 11 (`TRIAL_REMINDER_LEAD_DAYS`); migration 022 (`trial_ended_to_free`). לכידת כרטיס = `initiate_checkout` בהמרה בלבד. **⬜ נותר ל-P4:** הפעלת פלאנים חיים + paywall מלא, **אכיפת מגבלות Free** (סריקה 1/יום · F3 7 ימים · ייצוא) מ-`system_settings`, קופונים, referral. |
 | **S4** | P5 — מנהל + קהילה | S3, X1 | 🔴 | דאשבורד מנהל (MRR/churn/סיבת עזיבה), טיקטים, ברודקאסט, academy, onboarding survey |
 
 ### 4.2 עיצוב

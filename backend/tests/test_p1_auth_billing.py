@@ -130,8 +130,9 @@ def test_cardcom_webhook_bad_signature_is_ignored():
 
 
 @pytest.mark.asyncio
-async def test_start_trial_sets_trial_state():
-    """start_trial puts the user on a 14-day trial with a billing date."""
+async def test_start_trial_no_card_no_autocharge():
+    """TC-F-005 (D1, no-card trial): start_trial puts the user on a 14-day trial with
+    NO card and NO auto-charge — next_billing_at stays NULL."""
     async with aiosqlite.connect(cfg.DATABASE_URL) as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute(
@@ -141,40 +142,109 @@ async def test_start_trial_sets_trial_state():
         await db.commit()
         user_id = cur.lastrowid
 
-        result = await cardcom_service.start_trial(db, user_id, plan="advanced")
+        result = await cardcom_service.start_trial(db, user_id, plan="pro")
         assert result["subscription_status"] == "trial"
-        assert result["tier"] == "advanced"
+        assert result["tier"] == "pro"
 
         rows = await db.execute_fetchall(
-            "SELECT subscription_status, tier, trial_ends_at FROM users WHERE internal_id=?", (user_id,)
+            """SELECT subscription_status, tier, trial_ends_at, next_billing_at, cardcom_token
+               FROM users WHERE internal_id=?""",
+            (user_id,),
         )
     assert rows[0]["subscription_status"] == "trial"
     assert rows[0]["trial_ends_at"] is not None
+    # No auto-charge, no card on file (D1).
+    assert rows[0]["next_billing_at"] is None
+    assert rows[0]["cardcom_token"] is None
 
 
 @pytest.mark.asyncio
-async def test_expire_trials_marks_expired():
-    """expire_trials flips a past-due trial to expired/free."""
+async def test_start_trial_rejects_second_trial():
+    """A second start_trial on the same account → 409 (trial already used)."""
+    from fastapi import HTTPException
+
+    async with aiosqlite.connect(cfg.DATABASE_URL) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "INSERT INTO users (email, auth_provider, created_at) VALUES (?, 'email', ?)",
+            ("retrial@example.com", datetime.now(timezone.utc).isoformat()),
+        )
+        await db.commit()
+        user_id = cur.lastrowid
+        await cardcom_service.start_trial(db, user_id, plan="pro")
+        with pytest.raises(HTTPException) as exc:
+            await cardcom_service.start_trial(db, user_id, plan="pro")
+    assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_expire_trials_moves_to_free_never_charges():
+    """TC-F-006 (D1/D2): a past-due trial is moved to Free (tier='free',
+    subscription_status='none') — not expired/blocked — and is never charged."""
     past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     async with aiosqlite.connect(cfg.DATABASE_URL) as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute(
             """INSERT INTO users (email, auth_provider, subscription_status, tier,
                                   trial_started_at, trial_ends_at, created_at)
-               VALUES (?, 'email', 'trial', 'basic', ?, ?, ?)""",
-            ("expired@example.com", past, past, past),
+               VALUES (?, 'email', 'trial', 'pro', ?, ?, ?)""",
+            ("lapsed@example.com", past, past, past),
         )
         await db.commit()
         user_id = cur.lastrowid
 
         result = await cardcom_service.expire_trials(db)
-        assert result["expired"] >= 1
+        assert result["moved_to_free"] >= 1
 
         rows = await db.execute_fetchall(
-            "SELECT subscription_status, tier FROM users WHERE internal_id=?", (user_id,)
+            "SELECT subscription_status, tier, next_billing_at FROM users WHERE internal_id=?", (user_id,)
         )
-    assert rows[0]["subscription_status"] == "expired"
+        # A 'trial_ended_to_free' event was logged.
+        evt = await db.execute_fetchall(
+            "SELECT event_type FROM subscription_events WHERE user_id=? ORDER BY id DESC LIMIT 1", (user_id,)
+        )
+    assert rows[0]["subscription_status"] == "none"
     assert rows[0]["tier"] == "free"
+    assert rows[0]["next_billing_at"] is None
+    assert evt[0]["event_type"] == "trial_ended_to_free"
+
+
+@pytest.mark.asyncio
+async def test_renewal_batch_never_charges_trials(monkeypatch):
+    """The renewal batch charges only 'active' subscriptions. A trial with a stray past
+    next_billing_at is NEVER charged (status != 'active'), while a genuine active
+    subscription due for billing is. charge_recurring is stubbed; live flag forced on."""
+    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    async with aiosqlite.connect(cfg.DATABASE_URL) as db:
+        db.row_factory = aiosqlite.Row
+        trial_cur = await db.execute(
+            """INSERT INTO users (email, auth_provider, subscription_status, tier,
+                                  trial_started_at, trial_ends_at, next_billing_at,
+                                  cardcom_token, created_at)
+               VALUES (?, 'email', 'trial', 'pro', ?, ?, ?, 'tok_trial', ?)""",
+            ("trialbill@example.com", past, past, past, past),
+        )
+        active_cur = await db.execute(
+            """INSERT INTO users (email, auth_provider, subscription_status, tier,
+                                  next_billing_at, cardcom_token, created_at)
+               VALUES (?, 'email', 'active', 'pro', ?, 'tok_active', ?)""",
+            ("activebill@example.com", past, past),
+        )
+        await db.commit()
+        trial_id, active_id = trial_cur.lastrowid, active_cur.lastrowid
+
+        charged: list[int] = []
+
+        async def _fake_charge(db_, user_id, token, tier, amount):  # noqa: ANN001
+            charged.append(user_id)
+            return {"success": True, "transaction_id": 0}
+
+        monkeypatch.setattr(cfg, "FEATURE_CARDCOM_LIVE", True)
+        monkeypatch.setattr(cardcom_service, "charge_recurring", _fake_charge)
+        await cardcom_service.run_renewal_batch(db)
+
+    assert trial_id not in charged          # a trial is never charged
+    assert active_id in charged             # an active due subscription is charged
 
 
 @pytest.mark.asyncio

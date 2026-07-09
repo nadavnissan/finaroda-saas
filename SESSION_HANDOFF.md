@@ -9,9 +9,21 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit (dev):** DOCS alignment to ALIGNMENT_2026-07-09 (v0.4.8) — on top of the deploy/build chores (v0.4.2–v0.4.7) + P2 scorer.
-- **Validation:** ✅ all green — pytest 25/25, shared node --test 12/12, tsc clean, eslint clean.
-- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). The staging deploy/build chores (v0.4.2–v0.4.7) and the v0.4.8 docs alignment are **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** D1 trial-without-card implementation (v0.5.0) — on top of the v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
+- **Validation:** ✅ all green — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
+- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.0) is **dev only** — Nadav merges to main manually.
+
+## Latest — D1 trial WITHOUT card implemented (v0.5.0, code + migration 022)
+- **Model change (SPEC §9/§12.3, PRD F7):** trial no longer needs a card. Card capture happens ONLY at explicit paid conversion (`initiate_checkout`, Cardcom LowProfile). Still TEST mode (`FEATURE_CARDCOM_LIVE=false` → 503 on initiate, dry-run renewal).
+- **`start_trial`** (`core/cardcom_service.py`): no card/tokenization; `next_billing_at=NULL`; default plan `pro` (full 14-day Pro). Re-trial → 409.
+- **`expire_trials`**: trial end → **Free** (`tier='free'`, `subscription_status='none'`, `next_billing_at=NULL`) — never expired/blocked, never charged. New event `trial_ended_to_free`. Returns `{"moved_to_free": N}`.
+- **`run_renewal_batch`**: narrowed to `subscription_status='active'` — trials are never billing candidates.
+- **Day-11 reminder:** `trial_ending_soon_task` fires `TRIAL_REMINDER_LEAD_DAYS` (default 3) before end (day 11 of 14). New config `TRIAL_REMINDER_LEAD_DAYS`. railway.toml comment day-13→day-11.
+- **Migration 022** (`022_subscription_events_trial_to_free.py`): rebuilds `subscription_events` to add `event_type='trial_ended_to_free'` to the CHECK (SQLite can't ALTER a CHECK). Table count unchanged.
+- **Frontend:** `paywall/page.tsx` copy fixed ("no credit card / card only at paid plan / continue on Free"); button "Start trial"→"Choose plan".
+- **Free representation:** `tier='free' + subscription_status='none'` (the existing free state) — no users-table rebuild needed. `'free'` is not a valid `subscription_status` (CHECK), by design.
+- **Tests:** TC-F-005/006 rewritten (no-card trial + Free downgrade), TC-F-007 (re-trial 409), TC-F-008 (renewal never charges trials). ATP TC-DOCS-001/002 → ✅.
+- **⬜ Still pending for P4 (ROADMAP S3):** live plans + full paywall, **Free-tier limit enforcement** (1 scan/day, F3 7-day window, export gate) from `system_settings`, coupons, referral. This task did the trial/billing spine only.
 
 ## Latest — DOCS alignment to ALIGNMENT_2026-07-09 (v0.4.8, docs only, no code)
 - Aligned all source-of-truth docs to Nadav's 2026-07-09 decisions. **No app/engine/scorer/backend change.**

@@ -4,6 +4,28 @@
 
 ---
 
+## [D1-TRIAL-NO-CARD / trial ללא כרטיס + downgrade ל-Free] — 2026-07-09
+- GOAL: לממש את D1 (trial ללא כרטיס) בקוד ה-billing, לפי SPEC §9/§12.3 + PRD F7 שיושרו במשימת הדוקים. trial בלי כרטיס/tokenization, בלי חיוב אוטומטי; בסוף ה-trial המשתמש עובר ל-Free (D2) — לעולם לא מחויב. לכידת כרטיס רק בהמרה אקטיבית לתשלום.
+- SOLUTION (מה עשינו בפועל):
+  - **`start_trial`** (`core/cardcom_service.py`): ללא כרטיס/tokenization; `next_billing_at=NULL` (אין חיוב אוטו). ברירת מחדל plan=`pro` (14 ימי Pro מלא, לפי onboarding). event `trial_started` נשמר. re-trial → 409.
+  - **`expire_trials`**: trial שפג → `tier='free'`, `subscription_status='none'` (מצב ה-Free הקנוני; לא expired/blocked, `next_billing_at=NULL`); event חדש `trial_ended_to_free`. הפונקציה מחזירה `{"moved_to_free": N}`.
+  - **`run_renewal_batch`**: הצטמצם ל-`subscription_status='active'` בלבד — trial (חסר כרטיס/next_billing) לעולם לא נכנס למועמדי החיוב.
+  - **תזכורת יום 11**: `trial_ending_soon_task` יורה `TRIAL_REMINDER_LEAD_DAYS` (ברירת מחדל 3) לפני סוף ה-trial (יום 11 מתוך 14) בחלון יומי; config חדש `TRIAL_REMINDER_LEAD_DAYS`. railway.toml cron comment עודכן day-13→day-11.
+  - **לכידת כרטיס בהמרה**: `initiate_checkout` (Cardcom LowProfile) — ללא שינוי לוגי; זהו רגע לכידת הכרטיס היחיד. נשאר בגייטינג TEST (503 עד `FEATURE_CARDCOM_LIVE=true`).
+  - **Frontend**: `paywall/page.tsx` — הקופי "card on file" הוחלף ב"no credit card / card only at paid plan / continue on Free"; כפתור "Start trial"→"Choose plan".
+  - **Webhook/HMAC/charge_recurring**: ללא שינוי מעבר לצמצום ה-WHERE של ה-renewal.
+- FILES MODIFIED: backend/core/cardcom_service.py, backend/config.py, backend/app/tasks/billing_tasks.py, backend/tests/test_p1_auth_billing.py, railway.toml, frontend/src/app/paywall/page.tsx, ATP.md, ROADMAP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md.
+- FILES CREATED: backend/migrations/022_subscription_events_trial_to_free.py.
+- DB CHANGES: **migration 022** — rebuild של `subscription_events` להוספת `event_type='trial_ended_to_free'` ל-CHECK (SQLite לא תומך ALTER ל-CHECK; שורות/עמודות/index נשמרו). ספירת הטבלאות ללא שינוי.
+- CONFIG ADDED (שמות בלבד): `TRIAL_REMINDER_LEAD_DAYS`.
+- VALIDATION: pytest **27/27** ✅ · shared node --test 12/12 ✅ · tsc clean ✅ · eslint clean ✅.
+- ATP: TC-F-005/006 נכתבו מחדש (no-card trial + Free downgrade); נוספו TC-F-007 (re-trial 409) + TC-F-008 (renewal לא מחייב trial); TC-DOCS-001/002 → ✅.
+- VERSION: v0.5.0 (MINOR — פיצ'ר תואם-אחורה: מודל trial חדש)
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: משתמש מתחיל trial בלי כרטיס ובלי סיכון חיוב; בסוף ה-trial עובר ל-Free (המשך שימוש, לא חסום). חיוב קורה רק אחרי בחירה אקטיבית של פלאן בתשלום. staging נשאר TEST mode — אין חיוב אמיתי.
+- DECISIONS: Free מיוצג כ-`tier='free' + subscription_status='none'` (מצב ה-Free הקיים) — בלי להרחיב את CHECK של subscription_status (נמנע rebuild של טבלת users הכבדה); event `trial_ended_to_free` כן נוסף כי הוא נחוץ ל-audit/analytics. ברירת מחדל trial plan הועברה ל-`pro` (Pro מלא, תואם onboarding).
+
 ## [DOCS-ALIGN-2026-07-09 / יישור מסמכי מקור-אמת ל-ALIGNMENT] — 2026-07-09
 - GOAL: ליישר את כל מסמכי מקור-האמת (PRD/SPEC/UX/LEGAL/ROADMAP/ATP) להכרעות נדב ב-`ALIGNMENT_2026-07-09.md` ו-`FINARODA_ONBOARDING_SPEC.md` (v1.1). **דוקים בלבד — אפס שינוי קוד/מנוע/סקורר.**
 - SOLUTION (מה עשינו בפועל):

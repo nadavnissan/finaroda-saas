@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.5.0 | 2026-07-09 | MINOR — D1 trial ללא כרטיס: start_trial בלי כרטיס/tokenization + next_billing NULL, expire_trials→Free (לא expired), renewal מחייב רק active, תזכורת יום 11 (TRIAL_REMINDER_LEAD_DAYS), migration 022 (trial_ended_to_free), paywall copy. TEST mode. pytest 27/27. | <hash> |
 | v0.4.8 | 2026-07-09 | DOCS — יישור מסמכי מקור-אמת ל-ALIGNMENT_2026-07-09: D1 trial ללא כרטיס (change order), D2 Free tier, F13 onboarding simulation, F3 reveal-gating, notes ל-regime_state + episodes, empirical-truth principle. Docs only, אפס קוד/מנוע. | <hash> |
 | v0.4.7 | 2026-07-01 | CHORE — pnpm workspace (workspace:* + exports + root lockfile) so @finaroda/scoring-engine resolves natively on Vercel (no toggle). Metadata/config only. | <hash> |
 | v0.4.6 | 2026-07-01 | CHORE — frontend → Vercel (vercel.json); resolves the link:../shared monorepo engine that Railway root=frontend couldn't. Backend stays on Railway. | <hash> |

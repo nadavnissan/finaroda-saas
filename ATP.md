@@ -89,10 +89,12 @@
 | TC-F-002 | initiate ב-test mode (authed) | 503 (אין חיוב אמיתי) | ✅ |
 | TC-F-003 | status אחרי login | subscription_status=none, tier=free | ✅ |
 | TC-F-004 | webhook עם חתימה שגויה | 200 received, בלי שינוי state | ✅ |
-| TC-F-005 | start_trial | trial 14 יום, tier מעודכן, next_billing נקבע | ✅ |
-| TC-F-006 | expire_trials | trial שפג → expired/free; מחירי פלאנים seeded | ✅ |
+| TC-F-005 | start_trial (**ללא כרטיס**, D1) | trial 14 יום · tier=pro · `next_billing_at` **NULL** · `cardcom_token` NULL (אין חיוב אוטו) | ✅ |
+| TC-F-006 | expire_trials (**→ Free**, D1/D2) | trial שפג → tier=free, subscription_status=none, `next_billing_at` NULL, event `trial_ended_to_free` (לא expired/blocked, אף פעם לא מחויב) | ✅ |
+| TC-F-007 | start_trial פעם שנייה | 409 (trial already used) | ✅ |
+| TC-F-008 | renewal batch לא מחייב trials | רק `subscription_status='active'` מחויב; trial (גם עם next_billing עבר) אף פעם לא | ✅ |
 
-> **הערה (2026-07-09, change order D1):** TC-F-005/006 מתעדים את קוד ה-`start_trial` **הקיים** (trial עם כרטיס/next_billing) שעדיין לא שונה. הספק החדש — **trial ללא כרטיס** — מתועד ב-TC-DOCS-2026-07-09 כ-⬜ pending implementation (ROADMAP S3). כשהקוד יעודכן, TC-F-005 יוחלף במקרה החדש.
+> **מומש (2026-07-09, change order D1 — v0.5.0):** TC-F-005/006 **נכתבו מחדש** ל-trial ללא כרטיס + downgrade ל-Free. הקוד (`start_trial`/`expire_trials`/`run_renewal_batch`) שונה בהתאם; migration 022 הוסיפה את event_type `trial_ended_to_free`. TC-DOCS-001/002 עברו ל-✅.
 
 ## TC — ENGINE (shared scoring-engine) — automated (shared/scoring-engine.test.js)
 
@@ -144,15 +146,15 @@
 - Feature: F7 (PRD) · SPEC §9/§12.3
 - Precondition: משתמש חדש נרשם (פרטים אישיים בלבד)
 - Steps: 1) הרשמה 2) הפעלת trial 3) בדיקת מצב חיוב
-- Expected: trial 14 יום מופעל **ללא כרטיס ו-ללא tokenization**; אין `next_billing` לחיוב אוטומטי; תזכורת מתוזמנת ליום 11; בסוף התקופה המשתמש נדרש לבחור אקטיבית (פלאן בתשלום או Free) — אין חיוב אוטומטי
-- Status: ⬜ not-run (pending implementation)
+- Expected: trial 14 יום מופעל **ללא כרטיס ו-ללא tokenization**; אין `next_billing` לחיוב אוטומטי; תזכורת מתוזמנת ליום 11 (`TRIAL_REMINDER_LEAD_DAYS=3`); בסוף התקופה המשתמש נדרש לבחור אקטיבית (פלאן בתשלום או Free) — אין חיוב אוטומטי
+- Status: ✅ pass (v0.5.0 — `start_trial` no-card; automated: TC-F-005)
 
 ### TC-DOCS-002 — Trial end → Free fallback (D1)
 - Feature: F7 (PRD)
 - Precondition: trial הגיע לסופו והמשתמש לא בחר פלאן בתשלום
 - Steps: 1) הרצת expire/end-of-trial 2) בדיקת tier
-- Expected: המשתמש נופל ל-**Free** (לא חיוב, לא downgrade עם כרטיס); לכידת כרטיס מתרחשת רק בהמרה אקטיבית לתשלום
-- Status: ⬜ not-run (pending implementation)
+- Expected: המשתמש נופל ל-**Free** (tier=free, subscription_status=none; לא חיוב, לא expired/blocked); לכידת כרטיס מתרחשת רק בהמרה אקטיבית לתשלום; renewal batch אף פעם לא מחייב trial
+- Status: ✅ pass (v0.5.0 — `expire_trials`→Free + renewal excludes trials; automated: TC-F-006, TC-F-008)
 
 ### TC-DOCS-003 — Free tier limits (D2)
 - Feature: F7 (PRD) · SPEC §9 · UX §6

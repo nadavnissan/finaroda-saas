@@ -19,7 +19,9 @@ name = "expire-trials"
 schedule = "0 1 * * *"
 command = "python -m backend.scripts.run_expire_trials"
 
-# Cron: day-13 trial reminder — daily 07:00 UTC (~09:00 IST).
+# Cron: day-11 trial reminder (no-card trial, D1) — daily 07:00 UTC (~09:00 IST).
+# Fires ~TRIAL_REMINDER_LEAD_DAYS (default 3) before trial end. No charge — prompts
+# an active choice (paid plan or Free) before expiry.
 [[crons]]
 name = "trial-ending-soon"
 schedule = "0 7 * * *"
