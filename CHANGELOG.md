@@ -4,6 +4,30 @@
 
 ---
 
+## [DOCS-ALIGN-E-2026-07-11 / יישום section E — החלטות מוצר 11/07] — 2026-07-11
+- GOAL: ליישם את section E של `ALIGNMENT_2026-07-09.md` (החלטות נדב 11/07) על מסמכי מקור-האמת. **דוקים בלבד — אפס שינוי קוד/מנוע/סקורר/backend.**
+- SOLUTION (מה עשינו בפועל):
+  - **E1 — Concept Tooltip (F-education):** נוסף **F14** ל-PRD — קומפוננטת בועת-לימוד אחידה על כל מונח מהאונבורדינג ואילך, תוכן מהאקדמיה (F6), display-only (לא נוגע ב-RED LINE). UX §3 (בתוך ה-Blueprint) + §8 (אינטראקציה).
+  - **E2 — free-coin analysis:** נוסף ל-PRD backlog **V2 בלבד** — ניתוח מטבע מעבר ליקום 10, בפלאנים בתשלום, אחרי ולידציה+אישור נדב, עם **תווית חובה "Learning mode — outside the validated universe"**. לא v1.
+  - **E3 — טבלת השוואה בעמוד Subscribe:** PRD F7 + UX §6 — הטבלה (Free forever: 1 scan/day · 2 coins · full Blueprint · journal 7 days · no export) **חייבת להיות מוצגת בעמוד ה-Subscribe**. נוסף AC ל-paywall + **TC-J-002** copy-guard.
+  - **E5 — תפריט המבורגר אחרי תשלום** (Dashboard/Profile/Academy/Settings): נכנס להיקף Design סבב 2 (ROADMAP X1). UX §8.
+  - **E6 — רטט SCAN:** SPEC §6.2 — `navigator.vibrate` עם fallback שקט (iOS Safari לא נתמך → לא ירטוט, בלי שגיאה).
+  - **E7 — Live Chart + overlays פר-מטבע:** נוסף **F15** ל-PRD + UX §3 — גרף חי (recharts מ-kline) עם שכבות הסבר; gating: Free=chart+EMA200 / בתשלום=כל השכבות. Design סבב 2. display-only (RED LINE).
+  - **E8 — באנר טיקר רץ:** נרשם כ-**REJECTED** ב-PRD §17 (סותר trust-not-engagement + רישוי דאטה למדדים/סחורות); החלופה = שורת marketContext סטטית פר-סריקה (קיימת); פתיחה מחדש רק כ-opt-in כבוי-כברירת-מחדל.
+  - **E4** — ETF ממונפים: מסלול מחקר בכלי האישי בלבד, **לא נוגע ב-SaaS** — לא שונה דבר במסמכי ה-SaaS (מכוון).
+  - **Consistency pass:** F14/F15 מזהים ייחודיים (F1–F13 קיימים); grep ל-ticker/hamburger/vibrate/Learning mode — אין סתירות. RED LINE §3.5.5, סף 85/82, client-side fetch, טרמינולוגיית המחשבון — לא נגעתי.
+- FILES MODIFIED: FINARODA_SAAS_PRD.md, FINARODA_SAAS_UX.md, FINARODA_SAAS_SPEC.md, ROADMAP.md, ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md. (ALIGNMENT_2026-07-09.md — section E נכנס כמקור.)
+- APP/ENGINE/SCORER/BACKEND: **unchanged** (docs only).
+- DB CHANGES: אין.
+- CONFIG ADDED: אין.
+- VALIDATION: docs-only (אפס שינוי קוד), אך הורץ לאימות: pytest **27/27** ✅ · shared node --test **12/12** ✅ · tsc clean ✅ · eslint clean ✅.
+- ATP: נוספו TC-J-002 (copy-guard, E3) + TC-DOCS-E01..E05 (E01-E03 ⬜ pending implementation; E04/E05 ✅ doc-check).
+- VERSION: v0.5.1 (PATCH — יישור דוקים, אפס קוד)
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: מסמכי מקור-האמת עקביים עם החלטות נדב 11/07. המימוש בפועל (F14 tooltip, F15 live chart, טבלה בעמוד Subscribe, vibrate, hamburger) ⬜ pending — ROADMAP X1 / P4.
+- DECISIONS: free-coin analysis (E2) נרשם כ-V2 מפורש (לא MVP) כדי לא לזהם את יקום ה-base-rate המאומת; ticker banner (E8) נדחה במפורש ב-§17 (חדש: subsection "פריטים שנדחו") ולא רק הושמט, כדי שלא ייפתח מחדש בטעות.
+
 ## [D1-TRIAL-NO-CARD / trial ללא כרטיס + downgrade ל-Free] — 2026-07-09
 - GOAL: לממש את D1 (trial ללא כרטיס) בקוד ה-billing, לפי SPEC §9/§12.3 + PRD F7 שיושרו במשימת הדוקים. trial בלי כרטיס/tokenization, בלי חיוב אוטומטי; בסוף ה-trial המשתמש עובר ל-Free (D2) — לעולם לא מחויב. לכידת כרטיס רק בהמרה אקטיבית לתשלום.
 - SOLUTION (מה עשינו בפועל):

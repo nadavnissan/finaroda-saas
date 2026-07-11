@@ -213,6 +213,7 @@ CREATE TABLE episodes (
 - **Fallback:** proxy דק ב-backend רק ל-endpoints בעייתיים — לא מאחד דאטה, רק מעקף CORS.
 - **חישוב:** דרך `scoring-engine.js` המשותף. דטרמיניסטי.
 - **מספר מטבעות בסריקה:** לפי פלאן (בסיס 2 / מתקדם 5 / פרו 10), נשלט מהאדמין דרך `system_settings` בלי קוד.
+- **רטט בלחיצת SCAN (E6, נדב 2026-07-11):** לחיצת כפתור ה-SCAN מפעילה `navigator.vibrate(...)` עם **fallback שקט** — היכן שה-API לא נתמך (iOS Safari לא תומך ב-Vibration API) פשוט לא יורטט, בלי שגיאה ובלי חסימת הסריקה. haptic feedback עדין בלבד; אינו נוגע בלוגיקת הסריקה/הציון.
 - **כתיבה:** כל סריקה → `scan_events` + שורת `score_log` לכל מטבע (גם שלא עבר). הכרטיס שמוצג → `decision_snapshots`.
 
 ---

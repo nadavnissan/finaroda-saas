@@ -57,6 +57,8 @@ Pre-scan the user sets a light, remembered **Analysis Lens** (EMA200/RSI/Volume/
 - **Analysis Lens** decides which extra panel is shown (e.g. RSI reading) — display only; the levels/score are identical across lenses.
 - **Risk Style** shifts the calculated levels via `computeSlTp` `opt` — the score is unchanged.
 - **מודיעין מתקפל:** volume (נאסף).
+- **Concept Tooltip ("What's this?", PRD F14):** כל מונח מקצועי בכרטיס (EMA7 slope, PASS/WATCH, Mathematical Trigger Point וכו') נושא בועת-לימוד אחידה — תמצית בשפה פשוטה מהאקדמיה + קישור לשיעור. חינוכי בלבד, לא נוגע בציון/סף. מהאונבורדינג ואילך על כל surface.
+- **Live Chart + Explanation Overlays (PRD F15):** גרף חי לכל מטבע נסרק (מרונדר מ-kline דרך recharts — לא צילום TradingView/Bybit), עם שכבות הסבר. **Gating:** Free = גרף + EMA200 · בתשלום = כל השכבות (EMA7, רמות ה-Blueprint על הגרף). השכבות הצגה בלבד — לא משנות ציון (RED LINE). **Design סבב 2.**
 - **תיוג קבוע:** "Analysis, not financial advice."
 - **(V2)** כפתור "Copy to LLM" — בלוק טקסט מובנה לחיזוק שיקול דעת חיצוני.
 
@@ -103,6 +105,7 @@ Pre-scan the user sets a light, remembered **Analysis Lens** (EMA200/RSI/Volume/
 
 > כל המספרים נשלטים מהאדמין בלי קוד. הטבלה היא ברירת מחדל מוצעת — לאישור נדב.
 > **Free tier (D2, נדב 2026-07-09):** מסלול חינמי קבוע — סריקה 1/יום, 2 מטבעות, Blueprint מלא, F3 מוגבל ל-7 ימים, ללא ייצוא, academy בסיסי. במסך paywall/פיצול — אפשרות משנית **"Continue on Free"**.
+> **טבלת ההשוואה — חובה בעמוד ה-Subscribe (E3, נדב 2026-07-11):** טבלת ה-Free-מול-בתשלום שלמעלה **חייבת להיות מוצגת ללקוח בעמוד ה-Subscribe/paywall עצמו** — כדי שהמשתמש רואה בדיוק מה כלול בכל מסלול לפני החלטה. שורת ה-Free מתויגת "Free forever" (1 סריקה/יום · 2 מטבעות · Blueprint מלא · יומן 7 ימים · ללא ייצוא). ראו PRD F7 (AC paywall) + copy-guard ATP TC-J-002.
 > **שליטה ובחירה** = ארבעה מסלולים (Free + 3 בתשלום) נותנים ללקוח תחושת בקרה. **trial 14 יום ללא כרטיס** בכל הפלאנים בתשלום; אין חיוב אוטומטי — בסוף התקופה בחירה אקטיבית.
 
 ---
@@ -125,6 +128,8 @@ Pre-scan the user sets a light, remembered **Analysis Lens** (EMA200/RSI/Volume/
 - **Analysis Lens / Risk Style toggles:** light, minimal segmented controls near the scan button (pre-scan). Remembered per user; applied on the next single scan press. Lens = display only; Risk Style = output geometry only. Neither touches the score (RED LINE).
 - **עיגולי מטבע:** קטנים, מסביב לכפתור, צבע לפי כיוון/ציון. לחיצה → Trading Blueprint.
 - **כפתורי כרטיס:** משניים, נקיים. (V2: "Copy to LLM".)
+- **Concept Tooltip (PRD F14):** אינדיקטור עדין (מקווקו / אייקון "?") על מונחים; לחיצה/ריחוף → בועה קצרה מהאקדמיה. קומפוננטה אחת משותפת בכל המסכים. **Design סבב 2.**
+- **תפריט המבורגר אחרי תשלום (E5, נדב 2026-07-11):** אחרי המרה לתשלום — ניווט המבורגר עם **Dashboard / Profile / Academy / Settings**. נכנס להיקף **Design סבב 2 (ROADMAP X1)**.
 - **CTA שדרוג:** נוכח אך לא אגרסיבי (trust-not-engagement).
 - מצבי ריק: "No setups pass right now" מעוצב כהישג, לא כשגיאה.
 

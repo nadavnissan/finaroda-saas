@@ -76,7 +76,7 @@ Cardcom LIVE (C1) ───────────────────┤
 
 | ID | שלב | תלות | חוסם | פרטים |
 |---|---|---|---|---|
-| **X1** | סבב Design שני | — | 🔴 | מסכים שלא עוצבו: auth/onboarding, **F13 "First 60 Seconds" onboarding simulation (12 מסכים — `FINARODA_ONBOARDING_SPEC.md` v1.1)**, paywall/פלאנים (Free + 3 בתשלום, "Continue on Free"), profile+שלבי יוקרה, admin, ייצוא, טיקטים. (ליבה — scan/blueprint/what-if/empty — כבר עוצבה) |
+| **X1** | סבב Design שני | — | 🔴 | מסכים שלא עוצבו: auth/onboarding, **F13 "First 60 Seconds" onboarding simulation (12 מסכים — `FINARODA_ONBOARDING_SPEC.md` v1.1)**, paywall/פלאנים (Free + 3 בתשלום, "Continue on Free", **טבלת השוואה מוצגת בעמוד ה-Subscribe — E3**), profile+שלבי יוקרה, admin, ייצוא, טיקטים. **חדש (E, 2026-07-11):** תפריט המבורגר אחרי תשלום (Dashboard/Profile/Academy/Settings — **E5**), Concept Tooltip אחיד (**F14/E1**), Live Chart + overlays פר-מטבע (Free=chart+EMA200 / בתשלום=כל השכבות — **F15/E7**). (ליבה — scan/blueprint/what-if/empty — כבר עוצבה) |
 
 ### 4.3 תשתית הפעלה
 

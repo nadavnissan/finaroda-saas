@@ -191,6 +191,52 @@
 - Expected: מתועדת תוספת `score_log.regime_state TEXT` (bear/bull/transition, BTC, N=5 hysteresis) לפני צבירת דאטה; מתועדת טבלת `episodes` (kline אמיתי מתוארך, רינדור recharts, לא צילומי מסך)
 - Status: ✅ pass (doc check — SPEC §5.2/§5.5 present)
 
+## TC — DOCS E (החלטות מוצר 2026-07-11) — spec-level; ⬜ pending implementation
+
+> נובעים מיישום section E של `ALIGNMENT_2026-07-09.md` (E1 Concept Tooltip · E2 free-coin V2 · E3 comparison table on Subscribe · E5 hamburger nav · E6 SCAN vibrate · E7 live chart · E8 ticker banner rejected). מתועדים עכשיו כדי שהמימוש ייבדק מולם.
+
+### TC-J-002 — Subscribe page: Free-vs-paid comparison table (copy-guard, E3)
+- Feature: F7 (PRD) · UX §6 · TC-J (Legal/copy guard)
+- Precondition: משתמש נכנס לעמוד ה-Subscribe/paywall
+- Steps: 1) טעינת עמוד ה-Subscribe 2) בדיקת נוכחות הטבלה 3) בדיקת קופי שורת ה-Free
+- Expected: טבלת ההשוואה מוצגת בעמוד עצמו עם כל 4 המסלולים (Free + Basic/Advanced/Pro); שורת ה-Free מתויגת "Free forever" עם התנאים המדויקים (1 scan/day · 2 coins · full Blueprint · journal last 7 days · no export); אין ניסוח שמבטיח רווח/ייעוץ; דיסקליימר "Analysis, not financial advice" נוכח
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-E01 — Concept Tooltip אחיד (E1/F14)
+- Feature: F14 (PRD) · UX §3/§8 · F6 (Academy)
+- Precondition: מסך כלשהו עם מונח מקצועי (onboarding/scan/Blueprint/dashboard)
+- Steps: 1) פתיחת בועת מונח 2) בדיקת מקור התוכן 3) בדיקת שיתוף קומפוננטה בין מסכים
+- Expected: קומפוננטה אחת משותפת; תוכן מהאקדמיה (F6), לא כפול/מפוברק; מונח בלי ערך אקדמיה → אין בועה ריקה; display-only — לא נוגע בציון/סף (RED LINE)
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-E02 — Live Chart gating פר-פלאן (E7/F15)
+- Feature: F15 (PRD) · UX §3 · SPEC §5.5
+- Precondition: מטבע נסרק, משתמש Free מול משתמש בתשלום
+- Steps: 1) פתיחת הגרף כ-Free 2) פתיחת הגרף כמשתמש בתשלום
+- Expected: Free = גרף + EMA200 בלבד; בתשלום = כל השכבות (EMA7 + רמות Blueprint על הגרף); הגרף מרונדר מ-kline (recharts) — לא צילום TradingView/Bybit; gating נקרא מ-`system_settings`; overlays הצגה בלבד (RED LINE)
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-E03 — SCAN vibrate + silent fallback (E6)
+- Feature: SPEC §6.2
+- Precondition: לחיצת SCAN בדפדפן תומך ובדפדפן לא-תומך (iOS Safari)
+- Steps: 1) לחיצת SCAN בדפדפן עם Vibration API 2) לחיצת SCAN ב-iOS Safari
+- Expected: `navigator.vibrate` נקרא כשנתמך; ב-iOS Safari (לא נתמך) — אין רטט, **אין שגיאה**, הסריקה ממשיכה כרגיל
+- Status: ⬜ not-run (pending implementation)
+
+### TC-DOCS-E04 — Ticker banner נדחה (E8, doc-check)
+- Feature: PRD §17 (REJECTED)
+- Precondition: —
+- Steps: 1) קריאת PRD §17 "פריטים שנדחו"
+- Expected: באנר טיקר רץ מתועד כ-REJECTED (סותר trust-not-engagement + רישוי דאטה); החלופה = שורת marketContext סטטית פר-סריקה; פתיחה מחדש רק כ-opt-in כבוי-כברירת-מחדל
+- Status: ✅ pass (doc check — PRD §17 REJECTED present)
+
+### TC-DOCS-E05 — free-coin analysis = V2 בלבד + תווית חובה (E2, doc-check)
+- Feature: PRD V2 backlog
+- Precondition: —
+- Steps: 1) קריאת PRD "V2 (מתועד, לא MVP)"
+- Expected: ניתוח מטבע מחוץ ליקום 10 מתועד כ-**V2 בלבד**, בפלאנים בתשלום, אחרי ולידציה+אישור נדב, עם תווית חובה "Learning mode — outside the validated universe". לא v1
+- Status: ✅ pass (doc check — PRD V2 present)
+
 ---
 
 ## ATR (Acceptance Test Reports)

@@ -9,9 +9,23 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit (dev):** D1 trial-without-card implementation (v0.5.0) — on top of the v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
-- **Validation:** ✅ all green — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
-- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.0) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** DOCS section-E alignment (v0.5.1) — on top of D1 trial-without-card (v0.5.0), v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
+- **Validation:** ✅ all green (v0.5.1 is docs-only; ran to confirm) — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
+- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.1) is **dev only** — Nadav merges to main manually.
+
+## Latest — DOCS section-E alignment (v0.5.1, docs only, no code)
+- Applied **section E** of `ALIGNMENT_2026-07-09.md` (Nadav's 2026-07-11 product decisions) to the source-of-truth docs. **No app/engine/scorer/backend change.**
+- **E1 — Concept Tooltip:** new **PRD F14** (F-education) — one shared learn-bubble on every term from onboarding onward, content sourced from Academy (F6), display-only. UX §3 + §8.
+- **E2 — free-coin analysis:** added to PRD **V2 backlog only** (paid plans, after validation + Nadav approval, mandatory "Learning mode — outside the validated universe" label). Not v1.
+- **E3 — comparison table on Subscribe:** PRD F7 + UX §6 — the Free-vs-paid table ("Free forever": 1 scan/day · 2 coins · full Blueprint · journal 7 days · no export) MUST render on the Subscribe page. New paywall AC + **ATP TC-J-002** copy-guard.
+- **E5 — post-payment hamburger nav** (Dashboard/Profile/Academy/Settings): into Design round-2 scope (ROADMAP X1). UX §8.
+- **E6 — SCAN vibrate:** SPEC §6.2 — `navigator.vibrate` with silent fallback (iOS Safari unsupported → no buzz, no error).
+- **E7 — Live Chart + overlays per coin:** new **PRD F15** + UX §3 — recharts-from-kline chart with explanation layers; gating Free = chart+EMA200 / paid = all layers (EMA7 + Blueprint levels). Design round-2. display-only.
+- **E8 — running ticker banner: REJECTED** — recorded in PRD §17 (new "פריטים שנדחו" subsection): conflicts with trust-not-engagement + index/commodity data licensing; alternative = existing static per-scan marketContext line; reopen only as an off-by-default opt-in.
+- **E4** (leveraged-ETF research) — personal-tool research track only, **does not touch SaaS**; SaaS docs deliberately unchanged.
+- **ATP:** +TC-J-002 (E3 copy-guard) + TC-DOCS-E01..E05 (E01-E03 ⬜ pending implementation; E04/E05 ✅ doc-check).
+- **⬜ Still pending (implementation):** F14 tooltip, F15 live chart, the Subscribe-page table, SCAN vibrate, hamburger nav — all land under ROADMAP **X1** (Design round-2) / **P4**.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, client-side fetch, calculator terminology, engine/scorer/backend.
 
 ## Latest — D1 trial WITHOUT card implemented (v0.5.0, code + migration 022)
 - **Model change (SPEC §9/§12.3, PRD F7):** trial no longer needs a card. Card capture happens ONLY at explicit paid conversion (`initiate_checkout`, Cardcom LowProfile). Still TEST mode (`FEATURE_CARDCOM_LIVE=false` → 503 on initiate, dry-run renewal).
