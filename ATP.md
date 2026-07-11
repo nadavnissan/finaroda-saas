@@ -237,6 +237,13 @@
 - Expected: ניתוח מטבע מחוץ ליקום 10 מתועד כ-**V2 בלבד**, בפלאנים בתשלום, אחרי ולידציה+אישור נדב, עם תווית חובה "Learning mode — outside the validated universe". לא v1
 - Status: ✅ pass (doc check — PRD V2 present)
 
+### TC-DOCS-E06 — Horizon selector: SWING active / POSITION locked (E9/F1c)
+- Feature: F1c (PRD) · UX §3/§8
+- Precondition: מסך הסריקה, שורת הבקרים pre-scan
+- Steps: 1) בדיקת בקר Horizon 2) בדיקת מצב POSITION + קופי/tooltip 3) בדיקת honesty guardrail 4) בדיקת RED LINE פר-יקום
+- Expected: SWING (1–7 days) פעיל ונשלח; POSITION (weeks+) מרונדר **נעול** (לא-אינטראקטיבי) עם "In validation. Unlocks when it earns it." + tooltip מאושר; **honesty guardrail (principle 8):** קופי "in validation" מוצג רק אם קיים מודל POSITION שרושם תוצאות ל-`score_log` — אחרת "planned" ולא "in validation"; אין ETA (POSITION עשוי לעולם לא להיפתח, פתיחה = 30+/2+ משטרים); SWING/POSITION יקומים נפרדים, הבקר לא משנה ציון/סף בתוך יקום (RED LINE)
+- Status: ⬜ not-run (pending implementation) · ⚠ open: honesty-guardrail copy decision (AC2) ממתין להכרעת נדב
+
 ---
 
 ## ATR (Acceptance Test Reports)

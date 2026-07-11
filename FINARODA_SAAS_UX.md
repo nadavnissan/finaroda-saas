@@ -36,7 +36,7 @@
 ## 3. מסך הסריקה — הלב
 
 ### זרימה
-Pre-scan the user sets a light, remembered **Analysis Lens** (EMA200/RSI/Volume/Full — display only) and **Risk Style** (Conservative/Balanced/Aggressive — output geometry only). Neither changes the score or which coins pass (RED LINE, PRD §3.5.5). Then: כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **Trading Blueprint**.
+Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–7 days = active · POSITION weeks+ = **locked**, "In validation. Unlocks when it earns it." — PRD F1c), **Analysis Lens** (EMA200/RSI/Volume/Full — display only) and **Risk Style** (Conservative/Balanced/Aggressive — output geometry only). None changes the score or which coins pass within the active horizon (RED LINE, PRD §3.5.5). Then: כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **Trading Blueprint**.
 
 ### כללי עיצוב
 - **פריסה (נעול):** ring עד 5 מטבעות, list מעבר ל-5.
@@ -125,7 +125,7 @@ Pre-scan the user sets a light, remembered **Analysis Lens** (EMA200/RSI/Volume/
 ## 8. כפתורים ואינטראקציה (להחלטה ב-Claude Design)
 
 - **כפתור הסריקה (נעול):** עגול 158px, מרכזי, gradient כהה, pulse ב-idle. מצבים: idle / scanning (log) / results.
-- **Analysis Lens / Risk Style toggles:** light, minimal segmented controls near the scan button (pre-scan). Remembered per user; applied on the next single scan press. Lens = display only; Risk Style = output geometry only. Neither touches the score (RED LINE).
+- **Horizon / Analysis Lens / Risk Style toggles:** light, minimal segmented controls in one pre-scan row near the scan button. Remembered per user; applied on the next single scan press. **Horizon** = SWING (active) / POSITION (locked — a *separate* validated universe, not a cosmetic toggle; PRD F1c); **Lens** = display only; **Risk Style** = output geometry only. None touches the score within the active horizon (RED LINE). ⚠ **Minimalism note:** three pre-scan controls is the ceiling — keep the row light so it doesn't crowd the "one button, one decision" core (§1.5).
 - **עיגולי מטבע:** קטנים, מסביב לכפתור, צבע לפי כיוון/ציון. לחיצה → Trading Blueprint.
 - **כפתורי כרטיס:** משניים, נקיים. (V2: "Copy to LLM".)
 - **Concept Tooltip (PRD F14):** אינדיקטור עדין (מקווקו / אייקון "?") על מונחים; לחיצה/ריחוף → בועה קצרה מהאקדמיה. קומפוננטה אחת משותפת בכל המסכים. **Design סבב 2.**

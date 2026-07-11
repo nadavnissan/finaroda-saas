@@ -4,6 +4,7 @@
 
 | גרסה | תאריך | תקציר | Commit |
 |------|-------|--------|--------|
+| v0.5.2 | 2026-07-11 | PATCH — DOCS: E9 Horizon selector. PRD F1c (SWING 1–7d active / POSITION weeks+ locked, "In validation. Unlocks when it earns it.") + V2 backlog (position engine) · UX §3/§8 pre-scan controls row · ROADMAP X1 · ATP TC-DOCS-E06. Honesty guardrail baked into AC2 (no position engine yet → "planned" not "in validation"; ⚠ open for Nadav). Docs only. | <hash> |
 | v0.5.1 | 2026-07-11 | PATCH — DOCS: יישום section E של ALIGNMENT (11/07). E1 Concept Tooltip (F14) · E2 free-coin V2+"Learning mode" label · E3 טבלת השוואה חובה בעמוד Subscribe (F7/UX §6 + TC-J-002) · E5 hamburger nav (X1) · E6 SCAN navigator.vibrate+fallback (SPEC §6.2) · E7 Live Chart+overlays (F15, Free=chart+EMA200/paid=all) · E8 ticker banner REJECTED (PRD §17). Docs only, אפס קוד. | <hash> |
 | v0.5.0 | 2026-07-09 | MINOR — D1 trial ללא כרטיס: start_trial בלי כרטיס/tokenization + next_billing NULL, expire_trials→Free (לא expired), renewal מחייב רק active, תזכורת יום 11 (TRIAL_REMINDER_LEAD_DAYS), migration 022 (trial_ended_to_free), paywall copy. TEST mode. pytest 27/27. | <hash> |
 | v0.4.8 | 2026-07-09 | DOCS — יישור מסמכי מקור-אמת ל-ALIGNMENT_2026-07-09: D1 trial ללא כרטיס (change order), D2 Free tier, F13 onboarding simulation, F3 reveal-gating, notes ל-regime_state + episodes, empirical-truth principle. Docs only, אפס קוד/מנוע. | <hash> |

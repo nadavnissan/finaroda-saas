@@ -130,7 +130,7 @@ same verified threshold, so the base-rate stays clean and comparable.
 **תיאור.** כפתור עגול מרכזי. לחיצה → משיכה client-side טרייה מ-Bybit → אנימציית log → תוצאות (עוברי-סף בלבד).
 
 **Flow:**
-1. idle: כפתור "SCAN · N MARKETS" (N לפי פלאן) + pulse. Pre-scan, the user's **Analysis Lens** and **Risk Style** (§3.5.3–3.5.4) are shown as light, remembered toggles — neither changes the score or which coins pass (RED LINE §3.5.5).
+1. idle: כפתור "SCAN · N MARKETS" (N לפי פלאן) + pulse. Pre-scan, the user's **Horizon** (F1c — SWING active / POSITION locked), **Analysis Lens** and **Risk Style** (§3.5.3–3.5.4) are shown as light, remembered controls — none changes the score or which coins pass within the active horizon (RED LINE §3.5.5).
 2. לחיצה → scanning: log זורם — Downloading tickers → Analyzing candles → Computing volume → Scoring setups (checkmark לכל שלב).
 3. משיכה client-side מ-`api.bybit.com/v5/market/*` (IP של הלקוח, אין קאש משותף). חישוב דרך `scoring-engine.js`.
 4. results: "X PASS · N SCANNED" + עיגולי מטבעות שעברו (ring עד 5, list מעבר).
@@ -145,6 +145,22 @@ same verified threshold, so the base-rate stays clean and comparable.
 - AC5: ring כש-passes ≤5, list כש->5.
 
 **מצבי קצה:** 0 עוברים → F1b. rate-limit/שגיאה → הודעה + retry, לא קורס. מטבע בודד → ring עם עיגול אחד.
+
+## F1c — Horizon Selector (E9, נדב 2026-07-11)
+
+**תיאור.** בקר Horizon מדורג במסך הסריקה (pre-scan, בשורת הבקרים לצד Analysis Lens ו-Risk Style):
+- **SWING (1–7 days)** — **פעיל מ-v1.** ה-edge המאומת (שיפוע EMA7) הוא edge בטווח סווינג; זו הסריקה שנשלחת.
+- **POSITION (weeks+)** — **מוצג נעול** ב-v1 (לא-אינטראקטיבי). קופי נעילה (מאושר נדב): **"In validation. Unlocks when it earns it."** · tooltip (מאושר נדב): "Our position-trading engine is being validated against live outcomes across market regimes. We don't ship what we haven't proven."
+- **קריטריון פתיחה:** 30+ תוצאות שהתבשלו על פני 2+ משטרים (אותו כלל-ברזל של §13). בפתיחה — מועמד לפיצ'ר **Pro**.
+
+**⚠ הבחנה קונספטואלית (חשוב):** Horizon **אינו** בחירת-לקוח קוסמטית כמו Lens (תצוגה) או Risk Style (גאומטריה). SWING ו-POSITION הם **שני יקומי-מדידה נפרדים**, לכל אחד **סף ו-base-rate מאומתים משלו**. הבקר בוחר יקום — אך לעולם אינו נותן ללקוח לשנות את הציון/הסף *בתוך* יקום נתון (RED LINE §3.5.5 נשמר פר-יקום).
+
+**AC:**
+- AC1: SWING פעיל; POSITION מרונדר נעול (לא-אינטראקטיבי) עם הקופי + tooltip המאושרים.
+- AC2 (**honesty guardrail — principle 8, §3**): קופי ה-"in validation" אמיתי **רק** ברגע שקיים מודל POSITION שמלוֹג בפועל תוצאות שהתבשלו ל-`score_log`. **כל עוד אין מודל POSITION שרושם תוצאות — POSITION הוא "planned", לא "in validation"**; אסור שהקופי יטען validation פעיל שאינו מתרחש. ⬜ פתוח להכרעת נדב: או לבנות position-outcome log לפני שהקופי מוצג, או לרכך את הקופי ל-future-tense.
+- AC3: הפתיחה מותנית ב-30+/2+ משטרים; **אין התחייבות ל-ETA** — לפי הקריטריון, תוצאות POSITION מתבשלות על פני שבועות, כך ש-2+ משטרים ≈ טווח רב-שנתי; **POSITION עשוי לעולם לא להיפתח**, וזו התנהגות תקינה (משמעת, לא באג).
+- AC4: SWING/POSITION = יקומים נפרדים; הבקר לעולם אינו משנה את הציון/הסף בתוך יקום פעיל (RED LINE).
+**UX:** ראו UX §3 (שורת הבקרים pre-scan) + §8. **Design:** סבב 2 (ROADMAP X1). **POSITION (המימוש):** V2 backlog.
 
 ## F1b — Empty State ("מחסור מכובד")
 
@@ -271,7 +287,7 @@ same verified threshold, so the base-rate stays clean and comparable.
 **UX:** ראו UX §3. **Design:** סבב 2 (ROADMAP X1).
 
 ## V2 (מתועד, לא MVP)
-Stripe גלובלי · "Copy to LLM" · PWA push · daylight light-mode · סבב Design למסכים שלא עוצבו · **ניתוח מטבע חופשי מעבר ליקום 10 המטבעות המאומת (E2, נדב 2026-07-11):** בפלאנים בתשלום בלבד, **אחרי** ולידציה ואישור נדב, עם **תווית חובה "Learning mode — outside the validated universe"** על כל תוצאה מחוץ ליקום. **לא v1** — היקום המאומת (10 מטבעות) נשאר הבסיס לסף ול-base-rate.
+Stripe גלובלי · "Copy to LLM" · PWA push · daylight light-mode · סבב Design למסכים שלא עוצבו · **ניתוח מטבע חופשי מעבר ליקום 10 המטבעות המאומת (E2, נדב 2026-07-11):** בפלאנים בתשלום בלבד, **אחרי** ולידציה ואישור נדב, עם **תווית חובה "Learning mode — outside the validated universe"** על כל תוצאה מחוץ ליקום. **לא v1** — היקום המאומת (10 מטבעות) נשאר הבסיס לסף ול-base-rate · **POSITION horizon (weeks+) — מימוש מודל ה-position (E9, F1c):** מנוע position-trading נפרד + סף/base-rate משלו, נפתח רק אחרי 30+ תוצאות/2+ משטרים; מועמד לפיצ'ר Pro. **בלוק v1** מציג את הבקר נעול בלבד (ראו F1c) — המנוע עצמו הוא V2+ ועשוי לעולם לא להיפתח.
 
 ---
 

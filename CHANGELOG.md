@@ -4,6 +4,25 @@
 
 ---
 
+## [DOCS-E9-HORIZON / Horizon selector — SWING active / POSITION locked] — 2026-07-11
+- GOAL: ליישם את **E9** (`ALIGNMENT_2026-07-09.md`) — בקר Horizon במסך הסריקה. **דוקים בלבד — אפס שינוי קוד/מנוע.**
+- SOLUTION (מה עשינו בפועל):
+  - **PRD:** נוסף **F1c — Horizon Selector**. SWING (1–7 days) פעיל מ-v1; POSITION (weeks+) מוצג נעול עם קופי מאושר "In validation. Unlocks when it earns it." + tooltip. F1 flow step 1 עודכן (Horizon לצד Lens/Risk Style). POSITION (המנוע) נוסף ל-V2 backlog. קריטריון פתיחה 30+/2+ משטרים; מועמד Pro.
+  - **UX §3 + §8:** Horizon נוסף לשורת הבקרים pre-scan (ליד Lens/Risk Style); הובהר ש-POSITION הוא **יקום נפרד** ולא toggle קוסמטי; נוספה הערת מינימליזם (3 בקרים = תקרה).
+  - **ROADMAP X1:** Horizon selector נוסף להיקף Design סבב 2.
+  - **ATP:** נוסף TC-DOCS-E06 (SWING active / POSITION locked + honesty guardrail + RED LINE פר-יקום).
+  - **⚠ honesty guardrail (הוטמע ב-AC2 של F1c + TC-E06):** הקופי "in validation" אמיתי **רק** אם קיים מודל POSITION שרושם תוצאות ל-`score_log`. אין כרגע מנוע position (ה-edge המאומת = swing/EMA7 בלבד) — לכן POSITION הוא "planned", לא "in validation". **פתוח להכרעת נדב:** לבנות position-outcome log לפני הצגת הקופי, או לרכך ל-future-tense. תועד גם כי לפי הקריטריון POSITION עשוי לעולם לא להיפתח (אין ETA).
+- FILES MODIFIED: FINARODA_SAAS_PRD.md, FINARODA_SAAS_UX.md, ROADMAP.md, ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md. (ALIGNMENT_2026-07-09.md — E9 נכנס כמקור.)
+- APP/ENGINE/SCORER/BACKEND: **unchanged** (docs only).
+- DB CHANGES: אין. CONFIG ADDED: אין.
+- VALIDATION: docs-only (אפס שינוי קוד). באסליין ירוק אחרון: pytest 27/27 · shared node --test 12/12 · tsc clean · eslint clean.
+- ATP: +TC-DOCS-E06 (⬜ pending implementation; honesty-guardrail copy decision ⚠ open).
+- VERSION: v0.5.2 (PATCH — יישור דוקים, אפס קוד)
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: מסך הסריקה יקבל בקר Horizon (SWING פעיל / POSITION נעול). המימוש ⬜ pending — ROADMAP X1. חובה לפתור את honesty-guardrail לפני שהקופי מוצג בפועל.
+- DECISIONS: POSITION מוגדר כ**יקום-מדידה נפרד** (סף/base-rate משלו), לא toggle קוסמטי — כדי לא לטשטש את ה-RED LINE. honesty guardrail עוגן ב-AC (principle 8) במקום להעתיק את הקופי המאושר as-is בלי הסתייגות; הקופי המאושר תועד + הסתייגות מפורשת + open item לנדב.
+
 ## [DOCS-ALIGN-E-2026-07-11 / יישום section E — החלטות מוצר 11/07] — 2026-07-11
 - GOAL: ליישם את section E של `ALIGNMENT_2026-07-09.md` (החלטות נדב 11/07) על מסמכי מקור-האמת. **דוקים בלבד — אפס שינוי קוד/מנוע/סקורר/backend.**
 - SOLUTION (מה עשינו בפועל):

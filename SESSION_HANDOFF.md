@@ -9,9 +9,17 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit (dev):** DOCS section-E alignment (v0.5.1) — on top of D1 trial-without-card (v0.5.0), v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
-- **Validation:** ✅ all green (v0.5.1 is docs-only; ran to confirm) — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
-- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.1) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** DOCS E9 Horizon selector (v0.5.2) — on top of section-E alignment (v0.5.1), D1 trial-without-card (v0.5.0), v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
+- **Validation:** ✅ all green (v0.5.2 is docs-only) — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
+- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.2) is **dev only** — Nadav merges to main manually.
+
+## Latest — DOCS E9 Horizon selector (v0.5.2, docs only, no code)
+- Applied **E9** of `ALIGNMENT_2026-07-09.md` to the source-of-truth docs. **No app/engine/scorer/backend change.**
+- **New PRD F1c — Horizon Selector:** pre-scan control. **SWING (1–7 days) active** in v1 (the verified EMA7-slope edge is a swing edge). **POSITION (weeks+) locked** — approved copy "In validation. Unlocks when it earns it." + tooltip. Unlock = 30+ outcomes / 2+ regimes; candidate Pro feature. POSITION engine → PRD V2 backlog.
+- **UX §3 + §8:** Horizon added to the pre-scan controls row (next to Lens/Risk Style). Documented that POSITION is a **separate validated universe**, not a cosmetic toggle; added a minimalism ceiling note (3 controls).
+- **ROADMAP X1:** Horizon selector added to Design round-2 scope. **ATP:** +TC-DOCS-E06.
+- **⚠ OPEN — honesty guardrail (needs Nadav's call):** the approved tooltip claims the position engine "is being validated against live outcomes" — but **there is no position engine** (the only verified edge is swing/EMA7; nothing logs position outcomes). Per Principle 8 (empirical truth in copy) this claim isn't currently true. Baked into **F1c AC2 + TC-DOCS-E06**: copy is truthful only once a position-outcome log actually exists; until then POSITION is "planned," not "in validation." Also flagged: by the 30+/2+regimes criterion, position outcomes resolve over weeks → ~multi-year to unlock → **POSITION may never unlock; no ETA promised.** Decision needed: (a) build a position-outcome log before showing the copy, or (b) soften the copy to future-tense.
+- **Untouched (as required):** RED LINE §3.5.5 (preserved per-universe), 85/82 threshold, client-side fetch, calculator terminology, engine/scorer/backend.
 
 ## Latest — DOCS section-E alignment (v0.5.1, docs only, no code)
 - Applied **section E** of `ALIGNMENT_2026-07-09.md` (Nadav's 2026-07-11 product decisions) to the source-of-truth docs. **No app/engine/scorer/backend change.**

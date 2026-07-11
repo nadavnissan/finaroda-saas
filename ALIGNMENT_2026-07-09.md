@@ -47,3 +47,4 @@
 | E6 | רטט בלחיצת SCAN | ✅ navigator.vibrate עם fallback שקט (iOS Safari — אין תמיכה, לא ירטוט) |
 | E7 | גרף חי + שכבות הסבר לכל מטבע שנסרק | ✅ מאושר; gating: Free = גרף+EMA200 · בתשלום = כל השכבות (EMA7, רמות Blueprint). נכנס להיקף Design |
 | E8 | באנר טיקר רץ (מטבעות/מדדים/סחורות) | ❌ נדחה — סותר trust-not-engagement + בעיית רישוי דאטה למדדים/סחורות. החלופה: שורת marketContext סטטית פר-סריקה (קיימת). פתיחה מחדש = רק ככבוי-כברירת-מחדל בהגדרות |
+| E9 | **Horizon selector** במסך הסריקה (11/07) | ✅ מאושר — `SWING (1–7 days)` פעיל מ-v1 · `POSITION (weeks+)` מוצג נעול. קופי הנעילה (מאושר, קצר וטהור): **"In validation. Unlocks when it earns it."** + tooltip: "Our position-trading engine is being validated against live outcomes across market regimes. We don't ship what we haven't proven." נפתח רק בעמידה ברף 30+/2+ משטרים; מועמד לפיצ'ר Pro |
