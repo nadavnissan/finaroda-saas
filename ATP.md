@@ -244,6 +244,13 @@
 - Expected: SWING (1–7 days) פעיל ונשלח; POSITION (weeks+) מרונדר **נעול** (לא-אינטראקטיבי) עם "In validation. Unlocks when it earns it." + tooltip מאושר; **honesty guardrail (principle 8):** קופי "in validation" מוצג רק אם קיים מודל POSITION שרושם תוצאות ל-`score_log` — אחרת "planned" ולא "in validation"; אין ETA (POSITION עשוי לעולם לא להיפתח, פתיחה = 30+/2+ משטרים); SWING/POSITION יקומים נפרדים, הבקר לא משנה ציון/סף בתוך יקום (RED LINE)
 - Status: ⬜ not-run (pending implementation) · ⚠ open: honesty-guardrail copy decision (AC2) ממתין להכרעת נדב
 
+### TC-DOCS-XP01 — XP economy נעולה: tiers = XP בלבד + xp_events idempotent (`XP_ECONOMY.md` v1.0)
+- Feature: UX §5 (Status Tiers) · PRD F5/F6 · SPEC §5.6 · Onboarding §4/§8 · `XP_ECONOMY.md`
+- Precondition: מסמכי מקור-אמת אחרי סגירת החוב (docs-only)
+- Steps: 1) UX §5 + PRD F5 — קריטריון "מדייק"/Precise 2) PRD F6 — קישור ל-XP_ECONOMY + מודולי בונוס 3) Onboarding §4/§8 — חוב מסומן סגור + קישור 4) SPEC §5.6 — סכמת xp_events
+- Expected: (a) שלב "מדייק"/Precise = **סף XP בלבד**, אין קריטריון מבוסס what-if באף מסמך; איכות what-if = סטטיסטיקת דשבורד בלבד. (b) F6 מפנה ל-`XP_ECONOMY.md` ומתאר דרגות פותחות מודולי בונוס אורתוגונלית לפלאן. (c) Onboarding §8 מסומן ✅ נסגר → `XP_ECONOMY.md`; §4 מפנה למקורות הסגורים. (d) SPEC §5.6 `xp_events` עם `UNIQUE (user_id, source, ref)`, כתיבה **צד-שרת בלבד**, מקורות מרשימה סגורה, אין תגמול על רווח/תדירות/רצף.
+- Status: ✅ doc-check (docs-only; מימוש xp_events ⬜ pending — P3/P4)
+
 ---
 
 ## ATR (Acceptance Test Reports)

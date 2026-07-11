@@ -189,6 +189,23 @@ CREATE TABLE episodes (
 ```
 > אמת אמפירית בלבד: כל מספר שמוצג באונבורדינג מגיע מ-`real_stats_ref` מאומת. אין סטטיסטיקות מומצאות ואין הוכחה חברתית מפוברקת.
 
+### 5.6 `xp_events` — לוג צבירת XP (מקור-אמת: `XP_ECONOMY.md` v1.0)
+כל צבירת XP נרשמת כאירוע בדיד. **מקורות מותרים = רשימה סגורה** (`XP_ECONOMY.md` §1): `daily_first_scan` (+50, פעם ביום), `academy_lesson` (+100, פעם לשיעור), `journal_reveal_viewed` (+25, פעם לתרחיש), `onboarding` (חד-פעמי, תסריטאי). **אסור לצמיתות:** XP על רווח/תוצאת what-if, מספר סריקות, רצפים, הזמנת חברים (RED LINE תרבותית).
+```sql
+CREATE TABLE xp_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source TEXT NOT NULL,             -- daily_first_scan | academy_lesson | journal_reveal_viewed | onboarding (רשימה סגורה)
+    ref TEXT NOT NULL,                -- מפתח ה-idempotency: YYYY-MM-DD (סריקה יומית) | lesson_id | scenario_id
+    amount INTEGER NOT NULL,          -- +50 / +100 / +25 / תסריט אונבורדינג
+    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(internal_id),
+    UNIQUE (user_id, source, ref)     -- idempotent: אירוע כפול לא מזכה XP פעמיים
+);
+CREATE INDEX idx_xp_user ON xp_events(user_id, ts DESC);
+```
+> **חוקתי:** כתיבת XP **צד-שרת בלבד** — לעולם לא מהלקוח (client-side scan מחשב ציון, אך לא מזכה XP). ה-`UNIQUE (user_id, source, ref)` הוא הגנת ה-farming (סריקה שנייה באותו יום → 0, ללא cooldown). דרגות ה-XP נגזרות מ-`SUM(amount)` — אין עמודת "rank" נפרדת לסנכרן. סף הדרגות והמקורות המלאים: `XP_ECONOMY.md`.
+
 ---
 
 ## 6. מנוע הסריקה (client-side) + המנוע המשותף

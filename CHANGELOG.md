@@ -4,6 +4,28 @@
 
 ---
 
+## [DOCS-XP-ECONOMY / XP_ECONOMY.md v1.0 — סגירת החוב + תיקון UX §5] — 2026-07-11
+- GOAL: לעגן את `XP_ECONOMY.md` v1.0 (נעול, repo root) במסמכי מקור-האמת, לסגור את חוב כלכלת ה-XP (Onboarding §8 / ALIGNMENT D3), ולתקן את הסתירה ב-Status Tiers. **דוקים בלבד — אפס שינוי קוד/מנוע/סקורר/backend.**
+- SOLUTION (מה עשינו בפועל):
+  - **UX §5 (תיקון הסתירה):** קריטריון שלב "מדייק" שונה מ"היסטוריית מה-היה-קורה חיובית" (תגמול על תוצאות — סתר trust-not-engagement) ל-**סף XP על משמעת/למידה**. נוספה הערת תיקון מפורשת: שלבים = XP בלבד, איכות ה-what-if נשארת **סטטיסטיקת דשבורד בלבד**, לעולם לא קריטריון שלב. הפניה ל-`XP_ECONOMY.md`.
+  - **PRD F5 (עקביות):** אותה סתירה תוקנה — "Precise" = סף XP, לא what-if; AC1 מחריג במפורש תגמול מתוצאות what-if.
+  - **PRD F6 (Academy):** נוסף קישור ל-`XP_ECONOMY.md` — +100 XP לשיעור, דרגות פותחות מודולי בונוס (Spike Autopsies / Regime Transitions) **אורתוגונלית לשערי פלאן**; AC4 חדש.
+  - **SPEC §5.6 (חדש):** טבלת `xp_events (user_id, source, ref, amount, ts)` עם `UNIQUE (user_id, source, ref)` (idempotent, הגנת farming), מקורות מרשימה סגורה, כתיבה **צד-שרת בלבד**, דרגות נגזרות מ-`SUM(amount)`.
+  - **Onboarding §4/§8:** §8 סומן **✅ נסגר → `XP_ECONOMY.md`**; §4 מפנה למקורות ה-XP הסגורים (+50 סריקה ראשונה/יום · +100 שיעור · +25 יומן שנחשף · streak לא קיים ב-v1).
+  - **ATP:** +TC-DOCS-XP01 (doc-check: tiers=XP בלבד · F6 קישור · §8 סגור · xp_events idempotent/server-side).
+  - **סקופ מעבר להנחיה המפורשת:** תוקנה גם הסתירה הזהה ב-**PRD F5** (ההנחיה נקבה רק ב-UX §5) — הושארתה הייתה משאירה RED-LINE contradiction בין שני מסמכי מקור-אמת. מסומן לתשומת לב נדב.
+- FILES CREATED: אין (XP_ECONOMY.md נחת בעבר, נעול).
+- FILES MODIFIED: FINARODA_SAAS_UX.md, FINARODA_SAAS_PRD.md, FINARODA_SAAS_SPEC.md, FINARODA_ONBOARDING_SPEC.md, ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md.
+- APP/ENGINE/SCORER/BACKEND: **unchanged** (docs only).
+- DB CHANGES: אין (סכמת `xp_events` תועדה ב-SPEC §5.6, מימוש/migration ⬜ pending — P3/P4). CONFIG ADDED: אין.
+- VALIDATION: docs-only (אפס שינוי קוד). באסליין ירוק אחרון: pytest 27/27 · shared node --test 12/12 · tsc clean · eslint clean.
+- ATP: +TC-DOCS-XP01 (✅ doc-check; מימוש xp_events ⬜ pending).
+- VERSION: v0.5.3 (PATCH — יישור/תיקון דוקים, אפס קוד)
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: כלכלת ה-XP מעוגנת במקור-אמת יחיד ונעול; הוסרה סתירת ה-Status Tiers (what-if → XP) משני מסמכים; מתכנת המימוש מקבל סכמת `xp_events` מוכנה עם הגנת idempotency.
+- DECISIONS: תיקנתי גם את PRD F5 (לא רק UX §5) לשמירת עקביות בין מסמכי מקור-אמת — סומן לאישור נדב. דרגות נגזרות מ-SUM(amount) ולא כעמודה נשמרת (למניעת סנכרון כפול).
+
 ## [DOCS-E9-HORIZON / Horizon selector — SWING active / POSITION locked] — 2026-07-11
 - GOAL: ליישם את **E9** (`ALIGNMENT_2026-07-09.md`) — בקר Horizon במסך הסריקה. **דוקים בלבד — אפס שינוי קוד/מנוע.**
 - SOLUTION (מה עשינו בפועל):

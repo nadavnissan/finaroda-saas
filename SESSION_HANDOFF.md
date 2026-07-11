@@ -9,9 +9,19 @@
 ## Where we are now
 - **Active branch:** dev
 - **Remote:** `origin` = https://github.com/nadavnissan/finaroda-saas.git ✅
-- **Last commit (dev):** DOCS E9 Horizon selector (v0.5.2) — on top of section-E alignment (v0.5.1), D1 trial-without-card (v0.5.0), v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
-- **Validation:** ✅ all green (v0.5.2 is docs-only) — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
-- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.2) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** DOCS XP economy — XP_ECONOMY.md v1.0 anchored + debt closed (v0.5.3) — on top of E9 Horizon selector (v0.5.2), section-E alignment (v0.5.1), D1 trial-without-card (v0.5.0), v0.4.8 docs alignment, deploy/build chores (v0.4.2–v0.4.7), P2 scorer.
+- **Validation:** ✅ all green (v0.5.3 is docs-only) — pytest **27/27**, shared node --test 12/12, tsc clean, eslint clean.
+- **main:** = `1338a26` (P2 scorer, from the authorized dev→main merge). Everything since (v0.4.2–v0.5.3) is **dev only** — Nadav merges to main manually.
+
+## Latest — DOCS XP economy anchored + debt closed (v0.5.3, docs only, no code)
+- Anchored **`XP_ECONOMY.md` v1.0** (locked, repo root) into the source-of-truth docs; closed the XP-economy debt (Onboarding §8 / ALIGNMENT D3). **No app/engine/scorer/backend change.**
+- **UX §5 + PRD F5 — tier contradiction fixed:** the "מדייק"/Precise tier no longer keys on "positive what-if history" (that rewarded outcomes → broke trust-not-engagement). Now **XP threshold only**; what-if quality stays a **dashboard statistic**, never a tier criterion. Explicit correction note cites `XP_ECONOMY.md` §4.
+- **PRD F6 (Academy):** links `XP_ECONOMY.md` — +100 XP/lesson; XP ranks unlock **bonus knowledge modules** (Spike Autopsies, Regime Transitions) **orthogonal to plan gates**. New AC4.
+- **SPEC §5.6 (new):** `xp_events (user_id, source, ref, amount, ts)` with `UNIQUE (user_id, source, ref)` (idempotent farming-guard), closed-list sources, **server-side write only**, ranks derived from `SUM(amount)` (no stored rank column).
+- **Onboarding §4/§8:** §8 marked **✅ closed → `XP_ECONOMY.md`**; §4 points to the closed XP sources (+50 first daily scan · +100 lesson · +25 journal reveal · no streak in v1).
+- **ATP:** +TC-DOCS-XP01 (doc-check).
+- **⚠ FLAG for Nadav (scope):** the instruction named only **UX §5** for the tier fix, but the identical "positive what-if history" contradiction lived in **PRD F5** too. I fixed both — leaving PRD F5 would keep a RED-LINE contradiction between two source-of-truth docs. If you'd rather I'd stayed strictly in UX §5, say so and I'll revert the F5 edit.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, client-side fetch, calculator terminology, engine/scorer/backend. `xp_events` migration ⬜ pending (P3/P4).
 
 ## Latest — DOCS E9 Horizon selector (v0.5.2, docs only, no code)
 - Applied **E9** of `ALIGNMENT_2026-07-09.md` to the source-of-truth docs. **No app/engine/scorer/backend change.**
