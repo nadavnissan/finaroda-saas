@@ -4,6 +4,24 @@
 
 ---
 
+## [F13-ONBOARDING / "First 60 Seconds" — episode engine + 12 screens] — 2026-07-12
+- GOAL: לממש את **F13** (`FINARODA_ONBOARDING_SPEC.md` v1.2) — 12 מסכי אונבורדינג + רכיבים משותפים, עם ליבת אפיזודות אמת, withholding צד-שרת, XP ו-funnel. פיצ'ר חדש (MINOR).
+- SOLUTION (מה עשינו בפועל):
+  - **Episode engine (backend):** migration **023** `episodes` (הורחב: `ext_id`/`direction`/`entry_index`/`entry_price`/`outcome`, כל נר עם `ema7`/`ema200` אמיתיים). **Seed** `backend/data/onboarding_episodes.json` נבנה מ-Bybit עם **assertions של אמת אמפירית** — הבנייה נכשלת אם הנרות לא תומכים בכניסה/תוצאה. E1 (trap) **נבחר-מחדש LINK→BTCUSDT 25/06** אחרי אימות klines (LINK עלה בחלון המקורי — שגיאת אצירה; מתועד ב-`EPISODES_AND_VERIFIED_NUMBERS.md`). E3 (ADA short +3R), E4 (ETH long +3.33R) תואמים את המסמך.
+  - **Withholding + API:** migration **024** `xp_events`, **025** `onboarding_funnel_events`. router `api/onboarding.py`: `GET /episodes[/{id}]` מחזיר **רק setup** (ללא outcome/reveal candles); `POST …/{id}/reveal` חושף; `POST /xp` (amount צד-שרת, idempotent), `POST /funnel` (optional-auth), `POST /complete`.
+  - **Frontend:** `/onboarding` route + `OnboardingFlow` (S0–S11 + ענף S1a) · `EpisodeChart` (SVG candlestick in-app מנרות אמת — **לא recharts**, נמנע peer-dep של React 19; רפרנס מנוע ה-SVG v25.67) · `ConceptTooltip` (תוכן placeholders keyed by term id — הגדרות פיננסיות יסופקו ע"י נדב, לא נכתבו) · `XPMeter` · `Disclaimer` על כל מסך · `vibrateScan()` (fallback שקט ל-iOS) חובר גם למסך הסריקה האמיתי.
+  - **ACs מולאו:** "Analysis, not financial advice" על כל מסך · outcome של S10/S1 **לא ב-DOM** לפני reveal (נבדק) · vibrate+fallback · funnel §5 · טבלת Free-vs-paid ב-S11.
+- FILES CREATED: backend/data/onboarding_episodes.json, backend/migrations/{023_episodes,024_xp_events,025_onboarding_funnel_events}.py, backend/models/onboarding.py, backend/api/onboarding.py, backend/tests/test_p3_onboarding.py, frontend/src/lib/onboarding/{types,api,haptics,anon,concepts}.ts, frontend/src/components/onboarding/{OnboardingFlow,OnboardingShell,EpisodeChart,ConceptTooltip,XPMeter,Disclaimer}.tsx, frontend/src/app/(onboarding)/onboarding/page.tsx.
+- FILES MODIFIED: backend/main.py (router), backend/tests/test_smoke.py (+3 tables), backend/models/onboarding.py (ema fields), frontend scan/page.tsx (vibrate), FINARODA_SAAS_SPEC.md (§5.7/§5.8), EPISODES_AND_VERIFIED_NUMBERS.md (E1 re-pick), ATP/CHANGELOG/VERSIONS/SESSION_HANDOFF.
+- DB CHANGES: migrations 023/024/025 (episodes, xp_events, onboarding_funnel_events). CONFIG ADDED: אין.
+- VALIDATION: **pytest 39/39** (was 27; +12 onboarding) · **tsc clean** · **eslint clean** · **next build 17/17** (/onboarding 7.63kB). shared node --test 12/12 (unchanged).
+- ATP: +TC-P3-ONB-01..05 (01–04 ✅ automated; 05 build-verified, manual click-through ⬜ pending — Design סבב 2).
+- VERSION: v0.6.0 (MINOR — פיצ'ר חדש תואם-אחורה)
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: מסלול אונבורדינג עובד מקצה-לקצה על נתוני אמת; מנוע אפיזודות + withholding + XP idempotent מוכנים; מד XP + tooltip + haptics חוברו. ליטוש חזותי סופי (fonts/animations) = Design סבב 2.
+- DECISIONS: (1) E1 נבחר-מחדש ל-BTC אחרי שהתגלה שנרות LINK 30/06 סתרו את שיעור ה-trap (אישור נדב בסשן). (2) EpisodeChart ב-SVG in-app במקום recharts — נמנע peer-dep של React 19 ב-build של Vercel; זהה בתוצאה (נרות אמת, ללא צילומים) — **מסומן לאישור נדב**. (3) הגדרות ה-tooltip הן placeholders — נדב יספק את התוכן. (4) signup ב-S5: נתיב magic-link מלא (בdev סוגר את הלולאה in-session); Google/Apple = כפתורים, wiring מלא של OAuth SDK = סבב 2 (auth bundle).
+
 ## [DOCS-XP-ECONOMY / XP_ECONOMY.md v1.0 — סגירת החוב + תיקון UX §5] — 2026-07-11
 - GOAL: לעגן את `XP_ECONOMY.md` v1.0 (נעול, repo root) במסמכי מקור-האמת, לסגור את חוב כלכלת ה-XP (Onboarding §8 / ALIGNMENT D3), ולתקן את הסתירה ב-Status Tiers. **דוקים בלבד — אפס שינוי קוד/מנוע/סקורר/backend.**
 - SOLUTION (מה עשינו בפועל):

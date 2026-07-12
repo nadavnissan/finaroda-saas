@@ -41,6 +41,9 @@ EXPECTED_TABLES = {
     "score_log",
     "decision_snapshots",
     "support_tickets",
+    "episodes",
+    "xp_events",
+    "onboarding_funnel_events",
 }
 
 # Career/Agent tables that must NOT exist (discarded — SPEC §3.3).

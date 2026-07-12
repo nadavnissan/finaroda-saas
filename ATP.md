@@ -251,6 +251,37 @@
 - Expected: (a) שלב "מדייק"/Precise = **סף XP בלבד**, אין קריטריון מבוסס what-if באף מסמך; איכות what-if = סטטיסטיקת דשבורד בלבד. (b) F6 מפנה ל-`XP_ECONOMY.md` ומתאר דרגות פותחות מודולי בונוס אורתוגונלית לפלאן. (c) Onboarding §8 מסומן ✅ נסגר → `XP_ECONOMY.md`; §4 מפנה למקורות הסגורים. (d) SPEC §5.6 `xp_events` עם `UNIQUE (user_id, source, ref)`, כתיבה **צד-שרת בלבד**, מקורות מרשימה סגורה, אין תגמול על רווח/תדירות/רצף.
 - Status: ✅ doc-check (docs-only; מימוש xp_events ⬜ pending — P3/P4)
 
+## TC — P3 (F13 "First 60 Seconds" onboarding) — automated (backend/tests/test_p3_onboarding.py) + build-verified (frontend)
+
+### TC-P3-ONB-01 — Episode seed + אמת אמפירית (E1 BTC / E3 ADA / E4 ETH)
+- Feature: Episode Library (SPEC §5.5/§5.8) · `EPISODES_AND_VERIFIED_NUMBERS.md`
+- Steps: 1) build seed מ-Bybit עם assertions 2) `GET /api/onboarding/episodes`
+- Expected: 3 אפיזודות (E1 trap, E3 valid_setup, E4 patience) נזרעו מנרות אמיתיים ומתוארכים; ה-builder **נכשל** אם הנרות לא תומכים בכניסה/תוצאה (E1 fade ≥5%, E3 short מגיע ל-target, E4 long מגיע ל-target). E3 חושף score=86.
+- Status: ✅ automated (test_episodes_seeded, test_trap_outcome_is_a_real_loss)
+
+### TC-P3-ONB-02 — Server-side outcome withholding (S1 trap / S10 time-machine)
+- Feature: withholding AC · SPEC §5.8
+- Steps: 1) `GET …/episodes/E4` 2) בדיקת ה-payload 3) `POST …/episodes/E4/reveal`
+- Expected: תגובת ה-setup **אינה מכילה** `outcome`, ולא את נרות ה-reveal, ולא את הערכים המוסתרים (+3.33R / 1770 / 10%); `reveal_count>0`. ה-reveal מחזיר את הנרות שהוסתרו + `outcome` (resolved=win, r=3.33, pct=10). **הערך אינו ב-DOM לפני reveal.**
+- Status: ✅ automated (test_setup_withholds_outcome_pre_reveal, test_reveal_returns_withheld_outcome)
+
+### TC-P3-ONB-03 — XP idempotency + amounts צד-שרת (סה"כ 300)
+- Feature: XP_ECONOMY §1 · SPEC §5.6
+- Steps: 1) `POST /xp {ref:s2_scan}` פעמיים 2) ארבעת ה-refs 3) `POST /xp {ref:hack…}`
+- Expected: award כפול לא מכפיל (total=50, event יחיד); ארבעת ה-refs = **300**; ref לא-מוכר → 400; ללא cookie → 401; הלקוח לא שולח amount.
+- Status: ✅ automated (test_xp_award_idempotent_and_server_priced, test_full_onboarding_xp_totals_300, test_xp_rejects_unknown_ref, test_xp_requires_auth, test_xp_events_unique_constraint)
+
+### TC-P3-ONB-04 — Funnel + completion (Onboarding Spec §5)
+- Steps: 1) `POST /funnel` anon (branch_1a_to_s2) 2) `POST /funnel` user (fork_choice) 3) `POST /complete`
+- Expected: אירוע anon נרשם ללא auth; אירוע user נרשם עם auth; complete מסמן `onboarding_completed_at` ו-`/me` מחזיר `onboarding_completed=true`.
+- Status: ✅ automated (test_funnel_accepts_anon_and_user, test_complete_marks_user_and_logs_completion)
+
+### TC-P3-ONB-05 — זרימת 12 המסכים + ACs חזותיים (frontend)
+- Feature: `/onboarding` (S0–S11 + S1a) · UX §7 palette
+- Steps: מעבר S0 (auto)→S1 (BUY/SELL)→S1a (erosion)→S1 (SCAN מודגש)→S2 (אנימציה)→S3 (EMA200 lesson)→S4 (+100)→S5 (signup ללא כרטיס)→S6→S7→S8 (PASS+Blueprint)→S9 (call-sign)→S10 (reveal-gated)→S11 (fork+טבלה)
+- Expected: תווית "Analysis, not financial advice." על **כל** מסך; גרפים מרונדרים in-app מנרות אמת (SVG, לא צילומים); `navigator.vibrate` על SCAN עם fallback שקט (iOS); Concept Tooltip (קו מקווקו) על מונחים; מד XP בכותרת; S11 מציג טבלת Free-vs-paid (TC-J-002).
+- Status: ✅ build/tsc/eslint verified (next build 17/17, /onboarding 7.63kB) · ⬜ manual runtime click-through pending (Design סבב 2 לליטוש חזותי)
+
 ---
 
 ## ATR (Acceptance Test Reports)

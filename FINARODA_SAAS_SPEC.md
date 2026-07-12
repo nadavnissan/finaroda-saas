@@ -206,6 +206,25 @@ CREATE INDEX idx_xp_user ON xp_events(user_id, ts DESC);
 ```
 > **חוקתי:** כתיבת XP **צד-שרת בלבד** — לעולם לא מהלקוח (client-side scan מחשב ציון, אך לא מזכה XP). ה-`UNIQUE (user_id, source, ref)` הוא הגנת ה-farming (סריקה שנייה באותו יום → 0, ללא cooldown). דרגות ה-XP נגזרות מ-`SUM(amount)` — אין עמודת "rank" נפרדת לסנכרן. סף הדרגות והמקורות המלאים: `XP_ECONOMY.md`.
 
+### 5.7 `onboarding_funnel_events` — משפך האונבורדינג (Onboarding Spec §5)
+מדדי משפך מיום 1: השלמת 60 השניות, השלמת ענף הכישלון (`branch_1a_to_s2`), הרשמה, בחירת פיצול trial/Free (`fork_choice`), חזרת D1. אירועים לפני הרשמה (S0–S4) נושאים `anon_id` בלבד; אחרי הרשמה — `user_id`. **Append-only analytics — לא gamification** (אין רצפים/תדירות; trust-not-engagement).
+```sql
+CREATE TABLE onboarding_funnel_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(internal_id),  -- NULL לפני הרשמה
+    anon_id TEXT,                                    -- session id טרום-הרשמה
+    stage   TEXT NOT NULL,   -- screen_view|branch_1a_to_s2|signup|completion|fork_choice|d1_return
+    detail  TEXT,            -- JSON
+    ts      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 5.8 מימוש F13 — Episode Library + withholding + onboarding API (migrations 023–025)
+- **`episodes` (§5.5) הורחב למימוש** בעמודות: `ext_id` (מפתח seed טבעי, E1/E3/E4), `direction`, `entry_index` (נקודת פיצול ל-withholding), `entry_price`, ו-`outcome` (JSON). כל נר נושא `ema7`/`ema200` אמיתיים. **Seed:** `backend/data/onboarding_episodes.json`, נבנה מ-Bybit עם **assertions של אמת אמפירית** (הבנייה נכשלת אם הנרות האמיתיים לא תומכים בכניסה/תוצאה המתועדת). E1 נבחר-מחדש ל-BTCUSDT 25/06 (ראה `EPISODES_AND_VERIFIED_NUMBERS.md`).
+- **Server-side outcome withholding (AC):** `GET /api/onboarding/episodes/{id}` מחזיר רק נרות ה-setup (`0..entry_index`) — **ללא** `outcome` וללא נרות ה-reveal. `POST …/{id}/reveal` מחזיר את הנרות שהוסתרו + ה-outcome (S1 trap, S10 time-machine).
+- **XP:** `POST /api/onboarding/xp` — הלקוח שולח `ref` בלבד; הסכום צד-שרת (מפה סגורה 50/100/50/100=300), idempotent. **Funnel:** `POST /api/onboarding/funnel` (optional-auth). **Complete:** `POST /api/onboarding/complete` (מסמן `users.onboarding_completed_at`).
+- **Charts:** מרונדרים in-app (SVG candlestick, הרפרנס של מנוע ה-SVG v25.67) מנרות אמיתיים — **לעולם לא צילומים חיצוניים**. `navigator.vibrate` על SCAN עם fallback שקט (iOS).
+
 ---
 
 ## 6. מנוע הסריקה (client-side) + המנוע המשותף

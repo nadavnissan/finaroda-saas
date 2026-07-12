@@ -153,6 +153,7 @@ async def health_check():
 from backend.api.auth import router as auth_router
 from backend.api.cardcom import router as cardcom_router
 from backend.api.market_proxy import router as market_proxy_router
+from backend.api.onboarding import router as onboarding_router
 from backend.api.scan import router as scan_router
 from backend.api.waitlist import router as waitlist_router
 
@@ -161,3 +162,4 @@ app.include_router(waitlist_router)
 app.include_router(cardcom_router, prefix="/api")
 app.include_router(scan_router)
 app.include_router(market_proxy_router)
+app.include_router(onboarding_router)

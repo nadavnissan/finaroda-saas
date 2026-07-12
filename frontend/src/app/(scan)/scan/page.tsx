@@ -8,6 +8,7 @@ import { LensToggle, RiskStyleToggle } from "@/components/scan/Controls";
 import { Results, EmptyState } from "@/components/scan/Results";
 import { SCAN_STEPS, ScanningLog } from "@/components/scan/ScanningLog";
 import { TradingBlueprint } from "@/components/scan/TradingBlueprint";
+import { vibrateScan } from "@/lib/onboarding/haptics";
 import { buildMarketContext, fetchMarketData, SCAN_UNIVERSE } from "@/lib/scan/bybit";
 import { buildBlueprint, PASS_THRESHOLD } from "@/lib/scan/engine";
 import { recordScan, recordSnapshot, toScoreLogItems } from "@/lib/scan/persist";
@@ -51,6 +52,7 @@ export default function ScanPage() {
   }
 
   async function runScan() {
+    vibrateScan(); // haptic on SCAN; silent fallback where unsupported (iOS Safari)
     setPhase("scanning");
     setSelected(null);
     setStep(0);
