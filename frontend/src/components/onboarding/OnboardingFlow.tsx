@@ -246,7 +246,7 @@ export function OnboardingFlow() {
   async function chooseFork(choice: "trial" | "free") {
     void onboardingApi.funnel("fork_choice", { choice }, anon.current);
     await onboardingApi.complete(); // grants the one-time onboarding XP
-    router.replace(choice === "trial" ? "/paywall" : "/scan"); // back never re-enters
+    router.replace(choice === "trial" ? "/subscribe" : "/scan"); // back never re-enters
   }
 
   if (checking) {

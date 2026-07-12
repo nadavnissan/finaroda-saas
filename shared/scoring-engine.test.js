@@ -2,8 +2,52 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calcEMA, calcRSI, calcATR, calcADX, closedCandles,
-  ema7Slope, computeSlTp, computeReversalAnchor, scoreDirection, TODO,
+  ema7Slope, computeSlTp, computeReversalAnchor, findRecentSwingLevels,
+  scoreDirection, TODO,
 } from './scoring-engine.js';
+
+// Reference implementation — copied VERBATIM from the personal tool
+// (C:\Users\rodan\FINARODA\engine.mjs, `findRecentSwingLevels`). The equivalence
+// test below asserts the ported shared-engine version produces byte-identical
+// swings for identical klines, so the SaaS chart draws exactly the S/R the
+// personal-tool scorer measured all 680 logged trades against.
+const referenceFindRecentSwingLevels = (highs, lows, lookback = 3, scanRange = 30) => {
+  let swingHigh = null, swingLow = null;
+  const start = Math.max(lookback, highs.length - scanRange);
+  const end = highs.length - lookback;
+  for (let i = end - 1; i >= start; i--) {
+    let isHigh = true, isLow = true;
+    for (let j = 1; j <= lookback && (isHigh || isLow); j++) {
+      if (highs[i] <= highs[i - j] || highs[i] <= highs[i + j]) isHigh = false;
+      if (lows[i]  >= lows[i  - j] || lows[i]  >= lows[i  + j]) isLow  = false;
+    }
+    if (isHigh && swingHigh === null) swingHigh = { idx: i, value: highs[i] };
+    if (isLow  && swingLow  === null) swingLow  = { idx: i, value: lows[i] };
+    if (swingHigh && swingLow) break;
+  }
+  return { swingHigh, swingLow };
+};
+
+// Deterministic PRNG (mulberry32) — no Math.random, so the vectors are fixed
+// across runs and CI. Generates coherent-ish OHLC-style highs/lows.
+function makeSeries(seed, len) {
+  let s = seed >>> 0;
+  const rnd = () => {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const highs = [], lows = [];
+  let base = 100;
+  for (let i = 0; i < len; i++) {
+    base += (rnd() - 0.5) * 6;
+    const spread = rnd() * 2 + 0.5;
+    highs.push(base + spread);
+    lows.push(base - spread);
+  }
+  return { highs, lows };
+}
 
 test('calcEMA golden vectors', () => {
   assert.equal(calcEMA([1,2,3,4,5], 3), 4.0625);
@@ -56,6 +100,36 @@ test('computeReversalAnchor: floor on correct side + fires on 2/2', () => {
   assert.equal(f.core.reclaimedEarly, true);
   assert.equal(f.core.slopeFlipped, true);
   assert.equal(f.core.fired, true);
+});
+
+test('findRecentSwingLevels: equivalent to personal-tool engine.mjs', () => {
+  // Byte-identical swings for identical klines across many deterministic series,
+  // varying lengths and the lookback/scanRange params.
+  for (let seed = 1; seed <= 25; seed++) {
+    for (const len of [8, 15, 30, 45, 60, 120]) {
+      const { highs, lows } = makeSeries(seed * 97, len);
+      for (const [lb, sr] of [[3, 30], [2, 20], [5, 50], [1, 10]]) {
+        const got = findRecentSwingLevels(highs, lows, lb, sr);
+        const ref = referenceFindRecentSwingLevels(highs, lows, lb, sr);
+        assert.deepEqual(got, ref, `mismatch seed=${seed} len=${len} lb=${lb} sr=${sr}`);
+      }
+    }
+  }
+});
+
+test('findRecentSwingLevels: pivot semantics + defaults', () => {
+  // Clear pivot high at idx 4 (peak) and pivot low at idx 5 (valley), both inside
+  // the [lookback, len-lookback) scan window so they survive the margins.
+  const highs = [10, 11, 12, 13, 30, 13, 12, 11, 10, 9];
+  const lows  = [20, 19, 18, 17, 16,  5, 16, 17, 18, 19];
+  const r = findRecentSwingLevels(highs, lows); // lookback 3, scanRange 30
+  assert.equal(r.swingHigh.idx, 4);
+  assert.equal(r.swingHigh.value, 30);
+  assert.equal(r.swingLow.idx, 5);
+  assert.equal(r.swingLow.value, 5);
+  // Too-short series → no pivot survives the lookback margins.
+  const flat = findRecentSwingLevels([1, 2, 3], [1, 2, 3]);
+  assert.deepEqual(flat, { swingHigh: null, swingLow: null });
 });
 
 test('scoreDirection is a guarded stub (pass 2)', () => {

@@ -15,6 +15,17 @@ declare module "@finaroda/scoring-engine" {
   export function closedCandles(series: number[]): number[];
   export function ema7Slope(closes: number[]): number | null;
 
+  export interface SwingPivot {
+    idx: number;
+    value: number;
+  }
+  export function findRecentSwingLevels(
+    highs: number[],
+    lows: number[],
+    lookback?: number,
+    scanRange?: number,
+  ): { swingHigh: SwingPivot | null; swingLow: SwingPivot | null };
+
   export interface SlTpOpt {
     slAtrMult?: number;
     tp1Mult?: number;

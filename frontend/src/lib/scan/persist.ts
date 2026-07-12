@@ -48,24 +48,28 @@ export function toScoreLogItems(bp: Blueprint): ScoreLogItemPayload[] {
   ];
 }
 
+export interface RecordScanResult {
+  scan_event_id: number;
+  score_logs: { coin: string; id: number }[];
+  first_scan_of_day: boolean;
+  xp_awarded: number;
+}
+
 export async function recordScan(
   coinsScanned: number,
   coinsPassed: number,
   threshold: number | null,
   coins: ScoreLogItemPayload[],
-): Promise<{ scan_event_id: number; score_logs: { coin: string; id: number }[] } | null> {
-  const res = await apiFetch<{ scan_event_id: number; score_logs: { coin: string; id: number }[] }>(
-    "/api/scan/events",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        coins_scanned: coinsScanned,
-        coins_passed: coinsPassed,
-        threshold,
-        coins,
-      }),
-    },
-  );
+): Promise<RecordScanResult | null> {
+  const res = await apiFetch<RecordScanResult>("/api/scan/events", {
+    method: "POST",
+    body: JSON.stringify({
+      coins_scanned: coinsScanned,
+      coins_passed: coinsPassed,
+      threshold,
+      coins,
+    }),
+  });
   return res.ok ? res.data : null;
 }
 

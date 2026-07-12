@@ -341,6 +341,77 @@
 
 ---
 
+## TC — Package B phase 1 (B1 scan + B2 subscribe + B3 nav) — v0.8.0
+
+### TC-B-101 — Scan gating: coin count enforced server-side
+- Feature: B1 / E3 · PRD §3.5.5
+- Precondition: משתמש Free (2 מטבעות), משתמש Pro (10).
+- Steps: 1) POST /api/scan/events עם 3 מטבעות כ-Free. 2) POST עם 10 מטבעות כ-Pro.
+- Expected: (1) 403 code=PLAN_COIN_LIMIT, coins_per_scan=2. (2) 200. הלקוח חותך את היקום ל-coins_per_scan.
+- Status: ✅ automated (backend test_b1_gating: gating_rejects_over_limit_for_free / allows_more_coins_for_pro; frontend scan.unit: universe slice)
+
+### TC-B-102 — Entitlements endpoint per plan
+- Feature: B1
+- Steps: GET /api/scan/entitlements כ-Free וכ-Pro.
+- Expected: Free = {coins 2, chart_layers ema200_only, scans/day 1}; Pro = {coins 10, chart_layers full, scans/day 0}.
+- Status: ✅ automated (test_b1_gating: entitlements_free_defaults / pro_full_layers)
+
+### TC-B-103 — Chart layer gating (E7)
+- Feature: B1d/B1e
+- Steps: פתח Blueprint כ-Free וכ-paid.
+- Expected: Free = גרף + EMA200 בלבד, chips EMA7/LEVELS נעולים + SEE PLANS; paid = כל השכבות (EMA7 + Blueprint levels + swing S/R). ה-Blueprint עצמו מלא בשני המקרים.
+- Status: ✅ build/tsc verified (BlueprintChart gating) · ⬜ manual visual
+
+### TC-B-104 — E7b non-passer why-not sourcing
+- Feature: B1g · E7b
+- Precondition: מטבע שלא עבר (HIDE).
+- Steps: הקש על מטבע non-passer בתוצאות.
+- Expected: אותו גרף (שכבות לפי פלאן) + שורת "why not" בשפה פשוטה עם Concept Tooltip; הבדיקה החוסמת מזוהה מנתון מאומת (regime = מחיר מול EMA200); אין ציון/משקל/נוסחה בטקסט. header = SNAPSHOT + timestamp (לא live).
+- Status: ✅ automated (frontend scan.unit: deriveWhyNot regime/methodology/threshold, no digits leaked) · ⬜ manual visual
+
+### TC-B-105 — First-scan-of-day XP (D3)
+- Feature: B1c · XP_ECONOMY §1
+- Steps: סרוק פעמיים באותו יום.
+- Expected: סריקה 1 → first_scan_of_day=true, xp_awarded=50, chip "+50 XP"; סריקה 2 → false, 0, ללא chip. השרת בעל-הסמכות על הכמות; idempotent per calendar day.
+- Status: ✅ automated (test_b1_gating: first_scan_of_day_awards_xp_once)
+
+### TC-B-106 — F1b empty state (no scan CTA)
+- Feature: B1f
+- Steps: סריקה עם 0 עוברי-סף.
+- Expected: ✓ ירוק, "No setups pass right now", "Most days are skip days...", badge משמעת מבוסס נתון-אמיתי (ללא יחס-דילוג מומצא), "Precision, not habit"; אין CTA שמעודד סריקה כפייתית.
+- Status: ✅ build verified (Results.EmptyState, no CTA) · ⬜ manual visual
+
+### TC-B-107 — New scan returns to controls (no auto re-scan)
+- Feature: B1c AC · F1b
+- Steps: לחץ "new scan" מהתוצאות/empty. לחץ back/refresh.
+- Expected: חוזר למסך הבקרות (idle), לעולם לא re-scan מיידי; back/refresh לא נכנס לאונבורדינג.
+- Status: ✅ build verified (phase→idle) · ⬜ manual
+
+### TC-B-108 — Report a problem files a ticket
+- Feature: B3
+- Steps: drawer → Report a problem → מלא + שלח.
+- Expected: POST /api/support/tickets → 200 {id, status:"open"}; דורש auth (401 בלי).
+- Status: ✅ automated (test_b1_gating: support_ticket_filed / requires_auth)
+
+### TC-B-201 — Subscribe comparison table + D1 trial (TC-J-002)
+- Feature: B2 / E3 / D1
+- Steps: פתח /subscribe.
+- Expected: 4 עמודות Free/Basic/Advanced/Pro, Free ראשון ותמיד גלוי; מחירים 0/50/100/150 ומטבעות 2/2/5/10 מ-system_settings; 3 trust shields; CTA "START 14 DAYS OF PRO — NO CREDIT CARD"; "same engine, same threshold"; "Continue on Free". CTA מפעיל trial ללא כרטיס (409 אם כבר נוצל).
+- Status: ✅ automated (test_b1_gating: plans_public_comparison_table / trial_start_no_card) · ⬜ manual visual
+
+### TC-B-301 — Nav drawer + header (E5)
+- Feature: B3
+- Expected: header אחיד (≡/FINARODA/LevelMeter chip) בכל מסכי B; drawer עם Dashboard[UPDATE]/Profile/Academy/Settings + identity LevelMeter + Report a problem נפרד בתחתית; דיסקליימר בכל מסך.
+- Status: ✅ build/tsc verified · ⬜ manual visual
+
+### TC-B-401 — Swing S/R equivalence (shared engine = personal tool)
+- Feature: shared engine port
+- Steps: הרץ shared/scoring-engine.test.js.
+- Expected: findRecentSwingLevels המשותף מפיק swings זהים למימוש האישי (engine.mjs) על עשרות סדרות דטרמיניסטיות ופרמטרים; lib/onboarding/levels.ts נמחק; הגרפים משתמשים ב-swingLevels.
+- Status: ✅ automated (shared node --test: equivalent to personal-tool engine.mjs)
+
+---
+
 ## ATR (Acceptance Test Reports)
 מיוצרים בהרצה, נשמרים כ-ATR-{date}.md. לא בקובץ זה.
 

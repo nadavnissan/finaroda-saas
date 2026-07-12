@@ -39,6 +39,7 @@ function shapeKline(list: string[][]): OHLCV {
     l: rows.map((r) => parseFloat(r[3])),
     c: rows.map((r) => parseFloat(r[4])),
     v: rows.map((r) => parseFloat(r[5])),
+    t: rows.map((r) => parseInt(r[0], 10)), // candle start ms (for the chart)
   };
 }
 

@@ -30,6 +30,16 @@ class ScanEventCreate(BaseModel):
 class ScanEventResponse(BaseModel):
     scan_event_id: int
     score_logs: list[dict]  # [{coin, id}]
+    first_scan_of_day: bool = False   # true only on the day's first scan (D3)
+    xp_awarded: int = 0               # +50 on first scan of day, else 0 (server-authoritative)
+
+
+class EntitlementsResponse(BaseModel):
+    """Server-authoritative scan gating for the current user's plan (B1)."""
+    tier: str
+    coins_per_scan: int
+    chart_layers: Literal["ema200_only", "full"]
+    scans_per_day: int  # 0 = unlimited
 
 
 class SnapshotCreate(BaseModel):

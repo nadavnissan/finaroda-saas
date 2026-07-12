@@ -8,9 +8,21 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** F13 validation round 2 polish (v0.7.1) — on top of round 1 (v0.7.0), F13 onboarding (v0.6.0).
-- **Validation:** ✅ all green — **pytest 43/43** (+risk/checks), **frontend unit 7/7** (node --test type-strip), shared node --test 12/12, **tsc clean**, **eslint clean**, **next build 17/17** (/onboarding route 16.8kB), em-dash lint 0.
-- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.7.1) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** Package B phase 1 — B1 scan + B2 subscribe + B3 nav (v0.8.0) — on top of F13 v0.7.1/v0.7.0/v0.6.0.
+- **Validation:** ✅ all green — **pytest 55/55**, **frontend unit 14/14** (node --test type-strip), **shared node --test 14/14** (incl. swing equivalence), **tsc clean**, **eslint clean**, **next build clean**, em-dash lint 0.
+- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.8.0) is **dev only** — Nadav merges to main manually.
+
+## Latest — Package B phase 1: B1 scan + B2 subscribe + B3 nav (v0.8.0, code + migration 027)
+- **What shipped:** the full scan screen (B1a–B1g, the product's heart) replacing the P2 page; the Subscribe page (B2); and the post-auth hamburger nav + unified header (B3). Backend gating is now server-authoritative.
+- **Shared engine (S/R canon):** ported the personal tool's `findRecentSwingLevels` ({swingHigh,swingLow}) into `@finaroda/scoring-engine` byte-faithfully — it is the one S/R source the scorer measures against. Deleted `frontend/src/lib/onboarding/levels.ts` (the week-old SaaS pivot approximation) and repointed EpisodeChart + the new B1 chart to a shared `swingLevels` adapter. Added an **equivalence test** (shared/scoring-engine.test.js) that asserts identical swings vs a verbatim copy of engine.mjs across many deterministic vectors. Per your decision, the onboarding chart's drawn S/R may shift slightly — intended, so the chart draws exactly what the engine scores.
+- **B1 gating (server-authoritative, your decision):** the scan stays client-side, but `GET /api/scan/entitlements` is binding (coins/scan, chart_layers, scans/day per tier from system_settings, mig 027), and `POST /api/scan/events` rejects an over-limit scan (403 PLAN_COIN_LIMIT). First-scan-of-day XP (+50) is credited server-side, idempotent per calendar day (source=daily_first_scan, ref=date); the client only learns whether it was awarded (drives the chip). Chart layers gate EMA7 + Blueprint levels (Free=EMA200 only + SEE PLANS).
+- **E7b:** every scanned coin (incl. non-passers) is tappable → the same Chart Standard v1 + a plain-language "why not" line naming only the blocking check (regime = price vs EMA200, else the threshold) with its Concept Tooltip. No score/weight/formula is exposed; snapshot header is timestamped (not live).
+- **B2:** 4-plan comparison table (TC-J-002, Free first + always visible), D1 no-card trial CTA + 3 trust shields, "same engine, same threshold" line. Prices/coins come from system_settings via `GET /api/plans`. Legacy `/paywall` now redirects to `/subscribe`; the onboarding trial fork routes to `/subscribe`.
+- **B3:** unified header (≡ / FINARODA / LevelMeter chip) that kills the old per-page header; hamburger drawer (Dashboard[UPDATE]/Profile/Academy/Settings) with a LevelMeter identity block; "Report a problem" files a real ticket (`POST /api/support/tickets`).
+- **⚠ DECISIONS ALREADY MADE BY NADAV (this session):** (1) gating = server-as-authority + client compute (unpersisted local computation is acceptable leakage). (2) swing canon = the personal-tool algorithm (not the SaaS pivot). (3) journal scenarios from scans **deferred** — F3 plumbing does NOT exist yet; scans persist to score_log + decision_snapshots as before. (4) B7 admin console (settings editor + ticket queue) = phase 2.
+- **⬜ Gaps / follow-ups:** F3 journal-scenario creation (score_log→journal) still to be built; scans_per_day is exposed in entitlements but only coins/scan + chart_layers are HARD-gated this phase (Free 1-scan/day not enforced — matches B1c "scan again always allowed"); the empty-state discipline badge shows a real scan count, NOT a fabricated "skipped X of Y days" ratio (no scan_events per-day skip endpoint yet — honest per §8); B7 admin console (edit prices/coins, ticket queue) is phase 2; fonts still system-fallback (Design round 2). Nav routes /profile, /settings are stubs (may 404 until built).
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, calculator terminology, main branch.
+- **Ready for production?** Not yet — recommend a manual mobile click-through of B1/B2/B3 first (charts, tooltips, gating visuals, trial CTA). Nadav decides the dev→main merge.
 
 ## Latest — F13 validation round 2 polish (v0.7.1, frontend-focused)
 - Applied Nadav's 10 click-through polish items.

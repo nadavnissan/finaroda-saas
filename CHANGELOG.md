@@ -4,6 +4,26 @@
 
 ---
 
+## [PKG-B-P1 / Package B phase 1: B1 scan + B2 subscribe + B3 nav] — 2026-07-13
+- GOAL: לממש את חבילת Design B שלב 1 — מסך הסריקה (B1a–B1g, לב המוצר), עמוד ה-Subscribe (B2), וניווט ההמבורגר + header (B3). Server-authoritative gating, first-scan XP, Chart Standard בגרף הסריקה, E7b why-not, מנוע swing משותף. MINOR.
+- SOLUTION (מה עשינו בפועל):
+  1. **Shared engine — swing S/R canon:** הועבר `findRecentSwingLevels` (‏{swingHigh,swingLow}) מהכלי האישי (`engine.mjs`) אל `@finaroda/scoring-engine` byte-faithfully — זהו מקור ה-S/R היחיד שהמנוע מודד מולו (liquidity check + כל הטריידים המתועדים). נמחק `lib/onboarding/levels.ts` (קירוב pivot בן שבוע); הגרפים (onboarding + B1) מצביעים כעת ל-`swingLevels` (adapter מעל השיתופי). **Equivalence test** מול העתק verbatim של המימוש האישי על עשרות סדרות דטרמיניסטיות (25×6×4 וקטורים) — swings זהים.
+  2. **B1 — scan screen (החלפה מלאה של מסך P2):** בקרות pre-scan (Horizon: SWING פעיל / POSITION נעול + E9 tooltip · Analysis Lens display-only · Risk Style geometry-only · RED-LINE caption); כפתור SCAN (190px) עם ספירת מטבעות לפי הפלאן; אנימציית 4 צעדים נעולה (זהה ל-S2); תוצאות ring/list; **first-scan-of-day XP chip** (‏+50, מהשרת בלבד); **Chart Standard v1** בכל Blueprint (EMA200+EMA7, swing S/R, Blueprint levels, candle-tap OHLC, annotation tooltips) עם **layer gating** (Free=chart+EMA200, paid=all + SEE PLANS); Blueprint מלא בכל פלאן; **E7b** — כל מטבע (כולל non-passers) לחיץ → אותו גרף + שורת "why not" בשפה פשוטה עם Concept Tooltip, ללא ציון/משקל/נוסחה; empty state F1b (חגיגת דילוג, ללא CTA לסריקה); "new scan" חוזר למסך הבקרות (לא re-scan מיידי). כל סריקה נשמרת ל-score_log (יומן F3 — נדחה עד בניית F3, מתועד ב-HANDOFF).
+  3. **B2 — Subscribe:** 4 עמודות Free/Basic/Advanced/Pro; **טבלת השוואה חובה** (TC-J-002) עם Free ראשון ותמיד גלוי; D1 trial CTA (‏"START 14 DAYS OF PRO — NO CREDIT CARD", ללא כרטיס); 3 trust shields (no auto-charge / reminder day 11 / you decide); "same engine, same threshold" line; "Continue on Free". מחירים/מטבעות/מטבעות-לסריקה נקראים מ-`system_settings` דרך `GET /api/plans` (admin-editable).
+  4. **B3 — nav + header:** header אחיד (‏≡ / FINARODA / LevelMeter chip) שמחליף את הישן, בכל מסכי B; drawer המבורגר (Dashboard[UPDATE]/Profile/Academy/Settings) + identity block עם LevelMeter (תג משושה + דרגה + XP); "Report a problem" שמגיש טיקט אמיתי (`POST /api/support/tickets`).
+  5. **Backend gating (server-authoritative):** `GET /api/scan/entitlements` (coins/scan + chart_layers + scans/day לפי tier) — binding; `POST /api/scan/events` דוחה סריקה מעל מכסת המטבעות (403 PLAN_COIN_LIMIT); first-scan XP (+50, source=daily_first_scan, ref=date, idempotent per day, השרת בעל-הסמכות על הכמות); `GET /api/plans` (public); `POST /api/support/tickets`; `POST /api/cardcom/trial` (D1 no-card trial route).
+- FILES CREATED: shared: findRecentSwingLevels (scoring-engine.js) + test. frontend: lib/chart/swings.ts, lib/scan/{chart,entitlements}.ts, components/scan/{AppHeader,BlueprintChart,NavDrawer,NonPasser}.tsx, app/subscribe/page.tsx, tests/scan.unit.test.ts. backend: core/entitlements.py, api/{support,plans}.py, models/support.py, migrations/027_scan_entitlements.py, tests/test_b1_gating.py.
+- FILES MODIFIED: shared/scoring-engine.js(+test), frontend/src/types/scoring-engine.d.ts, components/onboarding/EpisodeChart.tsx (swingLevels + emaMode "ema200"), components/scan/{Controls,Results,ScanningLog,TradingBlueprint}.tsx, app/(scan)/scan/page.tsx, app/paywall/page.tsx (→ redirect /subscribe), components/onboarding/OnboardingFlow.tsx (fork→/subscribe), lib/scan/{types,bybit,engine,persist}.ts, lib/api.ts, backend/main.py, api/scan.py, api/cardcom.py, models/scan.py. DELETED: frontend/src/lib/onboarding/levels.ts.
+- DB CHANGES: migration 027_scan_entitlements (system_settings seeds: scan_coins_free, chart_layers_{free,basic,advanced,pro}, scans_per_day_{…}). support_tickets/xp_events tables pre-existed.
+- CONFIG ADDED: אין (הכל דרך system_settings).
+- VALIDATION: pytest 55/55, frontend unit 14/14, shared node --test 14/14, tsc clean, eslint clean, next build clean, em-dash lint 0.
+- ATP: TC-B-101..108 (scan gating, chart layers, E7b why-not, first-scan XP, empty state, new-scan routing), TC-B-201 (subscribe table + trial), TC-B-301 (nav + report-a-problem), TC-B-401 (swing equivalence).
+- VERSION: v0.8.0
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: המשתמש מקבל את מסך הסריקה המלא (הלב), עמוד מנויים אמיתי, וניווט — עם gating אכיף בשרת ו-XP אמין. הליבה הדטרמיניסטית, סף 85/82, וטרמינולוגיית המחשבון לא נגעו.
+- DECISIONS: (1) gating = server-as-authority + client compute (הסריקה נשארת client-side; leakage לא-מתמשך מקובל). (2) swing canon = המימוש האישי (לא ה-pivot של ה-SaaS). (3) journal scenarios נדחו (אין F3 plumbing עדיין) — נשמר ל-score_log. (4) B7 admin console = שלב 2. (5) empty-state "skipped X of Y" הוחלף ב-badge מבוסס-נתון-אמיתי (ללא יחס-דילוג מומצא, §8).
+
 ## [F13-ONBOARDING-V2 / validation round 2 (polish)] — 2026-07-13
 - GOAL: 10 פריטי ליטוש מ-click-through של נדב (frontend-focused). PATCH.
 - SOLUTION (מה עשינו בפועל):

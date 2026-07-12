@@ -35,6 +35,15 @@ async def initiate(
     )
 
 
+@router.post("/trial")
+async def start_trial(
+    user: CurrentUser = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> dict:
+    """Start the 14-day Pro trial WITHOUT a card (D1). 409 if already used."""
+    return await cardcom_service.start_trial(db=db, user_id=user.internal_id, plan="pro")
+
+
 @router.post("/webhook")
 async def webhook(
     request: Request,

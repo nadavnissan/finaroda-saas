@@ -45,4 +45,6 @@ export const api = {
     apiFetch("/api/waitlist", { method: "POST", body: JSON.stringify({ email }) }),
   initiateCheckout: (plan: string) =>
     apiFetch("/api/cardcom/initiate", { method: "POST", body: JSON.stringify({ plan }) }),
+  startTrial: () => apiFetch("/api/cardcom/trial", { method: "POST" }),
+  getPlans: () => apiFetch("/api/plans", { method: "GET" }),
 };

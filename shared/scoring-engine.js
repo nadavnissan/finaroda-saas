@@ -255,6 +255,40 @@ export function computeReversalAnchor(b) {
   };
 }
 
+/**
+ * Recent swing high / low — the verified support/resistance the personal-tool
+ * scorer measures against (liquidity-proximity check + all 680 logged trades).
+ * Ported byte-faithfully from the personal tool (engine.mjs `findRecentSwingLevels`).
+ * A pivot is a candle whose high (low) strictly exceeds (undercuts) the `lookback`
+ * candles on both sides; the scan walks newest→oldest inside the last `scanRange`
+ * closed candles and returns the first pivot of each kind found.
+ *
+ * This is the ONE canonical S/R source — the SaaS chart draws exactly the levels
+ * the engine scores against. Do not fork with a different pivot definition.
+ *
+ * @param {number[]} highs     ordered highs (oldest → newest)
+ * @param {number[]} lows      ordered lows (oldest → newest)
+ * @param {number}   lookback  bars on each side that a pivot must beat (default 3)
+ * @param {number}   scanRange how many recent bars to search (default 30)
+ * @returns {{ swingHigh: {idx:number,value:number}|null, swingLow: {idx:number,value:number}|null }}
+ */
+export function findRecentSwingLevels(highs, lows, lookback = 3, scanRange = 30) {
+  let swingHigh = null, swingLow = null;
+  const start = Math.max(lookback, highs.length - scanRange);
+  const end = highs.length - lookback;
+  for (let i = end - 1; i >= start; i--) {
+    let isHigh = true, isLow = true;
+    for (let j = 1; j <= lookback && (isHigh || isLow); j++) {
+      if (highs[i] <= highs[i - j] || highs[i] <= highs[i + j]) isHigh = false;
+      if (lows[i]  >= lows[i  - j] || lows[i]  >= lows[i  + j]) isLow  = false;
+    }
+    if (isHigh && swingHigh === null) swingHigh = { idx: i, value: highs[i] };
+    if (isLow  && swingLow  === null) swingLow  = { idx: i, value: lows[i] };
+    if (swingHigh && swingLow) break;
+  }
+  return { swingHigh, swingLow };
+}
+
 // ---------------------------------------------------------------------------
 // SCORER — NOT YET EXTRACTED (pass 2). See file header.
 // ---------------------------------------------------------------------------

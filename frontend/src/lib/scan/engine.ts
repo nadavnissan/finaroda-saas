@@ -1,10 +1,10 @@
-// Blueprint builder — wraps the shared engine (IMPORT ONLY, never reimplement).
+// Blueprint builder - wraps the shared engine (IMPORT ONLY, never reimplement).
 // The REAL scorer is now wired (scorer.js, verbatim v25.80). The momentum profile is
 // displayed; pullback/continuation are computed and logged (measure-first), not shown.
 //
 // RED LINE (PRD §3.5.5): the score comes from scoreDirection with FIXED inputs
 // (DEFAULT_RISK + MOMENTUM_CAL). The client's Risk Style feeds ONLY computeSlTp's opt
-// (the displayed levels) — it never touches the score, weights, edge, or threshold.
+// (the displayed levels) - it never touches the score, weights, edge, or threshold.
 
 import {
   calcADX,
@@ -26,7 +26,7 @@ import {
   type ScoreResult,
 } from "@finaroda/scoring-engine/scorer.js";
 
-import type { Blueprint, Direction, MarketData, PassLabel, Profile, RiskStyle } from "./types";
+import type { Blueprint, Direction, MarketData, PassLabel, Profile, RiskStyle, WhyNot } from "./types";
 
 // Real SaaS gate is now ON (score exists). PASS/WATCH per PRD/UX §3.
 export const SCORE_GATE_ENABLED = true;
@@ -44,7 +44,7 @@ const PROFILE_CAL: Record<Profile, Calibration> = {
 };
 
 // Risk Style → computeSlTp opt (PRD §3.5.4). Balanced === engine defaults.
-// OUTPUT geometry only — NEVER the score (RED LINE §3.5.5).
+// OUTPUT geometry only - NEVER the score (RED LINE §3.5.5).
 export const RISK_STYLE_OPT: Record<RiskStyle, SlTpOpt> = {
   Conservative: { slAtrMult: 1.0, tp1Mult: 1.0, tp2Mult: 2.0 },
   Balanced: { slAtrMult: 1.5, tp1Mult: 1.5, tp2Mult: 3.0 },
@@ -70,6 +70,45 @@ function passLabelFor(score: number, blocked: boolean): PassLabel {
   if (score >= PASS_THRESHOLD) return "PASS";
   if (score >= WATCH_THRESHOLD) return "WATCH";
   return "HIDE";
+}
+
+// E7b - name the blocking check for a non-passing coin in plain language, sourced
+// from verified data only (regime = price vs EMA200; else the threshold). No score,
+// weight or formula is exposed. Deterministic; each names a locked Concept Tooltip.
+export function deriveWhyNot(
+  direction: Direction,
+  price: number,
+  ema200: number,
+  blocked: boolean,
+): WhyNot {
+  const regimeAgainst = direction === "long" ? price < ema200 : price > ema200;
+  if (blocked && regimeAgainst) {
+    const side = direction === "long" ? "below" : "above";
+    const sign = direction === "long" ? "negative" : "positive";
+    return {
+      checkId: "regime",
+      checkLabel: "regime",
+      tooltipId: "ema200",
+      term: "the 200-day average",
+      text: `Price is ${side} the 200-day average - regime ${sign}. Setups against the regime usually fade. No PASS.`,
+    };
+  }
+  if (blocked) {
+    return {
+      checkId: "methodology_conditions",
+      checkLabel: "methodology conditions",
+      tooltipId: "methodology_conditions",
+      term: "methodology conditions",
+      text: "A mandatory methodology condition did not hold on this coin, so it is not a valid setup right now. No PASS.",
+    };
+  }
+  return {
+    checkId: "score",
+    checkLabel: "threshold",
+    tooltipId: "pass_watch",
+    term: "verified threshold",
+    text: "This coin cleared the methodology but did not reach the verified threshold. No PASS.",
+  };
 }
 
 function volumeRatio(v: number[]): number {
@@ -104,7 +143,7 @@ export function buildBlueprint(
   });
   const { dir: direction, r: momentum } = results[0];
 
-  // Other-profile scores for the SAME direction — logged for measure-first, not shown.
+  // Other-profile scores for the SAME direction - logged for measure-first, not shown.
   const profileScores: Record<Profile, number | null> = {
     momentum: momentum.score,
     pullback: scoreSafe(md, direction, PROFILE_CAL.pullback, ctx, coin)?.score ?? null,
@@ -113,11 +152,13 @@ export function buildBlueprint(
 
   const ema14 = calcEMA(closes, 14);
   const ema28 = calcEMA(closes, 28);
+  const ema200 = calcEMA(closes, 200);
   const rsi = calcRSI(closes, 14);
   const adx = calcADX(highs, lows, closes, 14);
   const price = md.price;
+  const passLabel = passLabelFor(momentum.score, momentum.blocked);
 
-  // Displayed levels — Risk Style adjustable (NEVER affects the score).
+  // Displayed levels - Risk Style adjustable (NEVER affects the score).
   const opt = RISK_STYLE_OPT[riskStyle];
   const levels = computeSlTp(direction, price, ema14, ema28, atr, opt);
   const trailMult = opt.slAtrMult ?? 1.5;
@@ -130,7 +171,7 @@ export function buildBlueprint(
     direction,
     score: Math.round(momentum.score * 10) / 10,
     signal: momentum.signal,
-    passLabel: passLabelFor(momentum.score, momentum.blocked),
+    passLabel,
     profileScores,
     mathematicalTriggerPoint: {
       value: price,
@@ -156,7 +197,9 @@ export function buildBlueprint(
     volumeRatio: volumeRatio(md.daily.v),
     rsi,
     adx,
+    ema200,
     price,
     riskStyle,
+    whyNot: passLabel === "HIDE" ? deriveWhyNot(direction, price, ema200, momentum.blocked) : null,
   };
 }

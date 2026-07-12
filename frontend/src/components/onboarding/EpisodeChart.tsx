@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
+import { swingLevels } from "@/lib/chart/swings";
 import { getTerm, renderNow } from "@/lib/onboarding/concepts";
-import { computeRangeLevels } from "@/lib/onboarding/levels";
 import { C, type Candle } from "@/lib/onboarding/types";
 
 import { ConceptTooltip } from "./ConceptTooltip";
@@ -74,7 +74,7 @@ export function EpisodeChart({
   data: Candle[];
   entryIndex: number;
   entryPrice?: number | null;
-  emaMode?: "none" | "ema7" | "both";
+  emaMode?: "none" | "ema7" | "ema200" | "both";
   symbol?: string;
   dateRange?: string;
   annotations?: ChartAnnotation[];
@@ -84,7 +84,10 @@ export function EpisodeChart({
   const [tap, setTap] = useState<{ candle: Candle; x: number; y: number } | null>(null);
   if (data.length === 0) return null;
 
-  const levels = showSwingLevels ? computeRangeLevels(data) : { support: null, resistance: null };
+  const levels = showSwingLevels ? swingLevels(data) : { support: null, resistance: null };
+
+  const showEma7 = emaMode === "ema7" || emaMode === "both";
+  const showEma200 = emaMode === "ema200" || emaMode === "both";
 
   const lows = data.map((c) => c.l);
   const highs = data.map((c) => c.h);
@@ -92,9 +95,9 @@ export function EpisodeChart({
   let max = Math.max(...highs);
   const consider: number[] = [];
   const ema7s = data.map((c) => c.ema7).filter((x): x is number => x != null);
-  if (emaMode !== "none") consider.push(...ema7s);
+  if (showEma7) consider.push(...ema7s);
   const ema200s = data.map((c) => c.ema200).filter((x): x is number => x != null);
-  if (emaMode === "both") consider.push(...ema200s);
+  if (showEma200) consider.push(...ema200s);
   if (entryPrice != null) consider.push(entryPrice);
   for (const v of [levels.support, levels.resistance, blueprint?.trigger, blueprint?.risk, blueprint?.target]) {
     if (v != null) consider.push(v);
@@ -123,8 +126,8 @@ export function EpisodeChart({
 
   // collect right-side labels, then declutter so they never overlap
   const rawLabels: SideLabel[] = [];
-  if (emaMode !== "none" && ema7s.length) rawLabels.push({ y: y(ema7s[ema7s.length - 1]), text: "EMA7", color: C.green });
-  if (emaMode === "both" && ema200s.length) rawLabels.push({ y: y(ema200s[ema200s.length - 1]), text: "EMA200", color: C.amber });
+  if (showEma7 && ema7s.length) rawLabels.push({ y: y(ema7s[ema7s.length - 1]), text: "EMA7", color: C.green });
+  if (showEma200 && ema200s.length) rawLabels.push({ y: y(ema200s[ema200s.length - 1]), text: "EMA200", color: C.amber });
   if (levels.resistance != null) rawLabels.push({ y: y(levels.resistance), text: "Resistance", color: C.muted });
   if (levels.support != null) rawLabels.push({ y: y(levels.support), text: "Support", color: C.muted });
   if (blueprint?.trigger != null) rawLabels.push({ y: y(blueprint.trigger), text: "Trigger", color: C.fg });
@@ -194,8 +197,8 @@ export function EpisodeChart({
           })}
 
           {/* EMA overlays */}
-          {emaMode === "both" && emaPath("ema200") && <path d={emaPath("ema200")} fill="none" stroke={C.amber} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.9} />}
-          {emaMode !== "none" && emaPath("ema7") && <path d={emaPath("ema7")} fill="none" stroke={C.green} strokeWidth={1.2} opacity={0.9} />}
+          {showEma200 && emaPath("ema200") && <path d={emaPath("ema200")} fill="none" stroke={C.amber} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.9} />}
+          {showEma7 && emaPath("ema7") && <path d={emaPath("ema7")} fill="none" stroke={C.green} strokeWidth={1.2} opacity={0.9} />}
 
           {/* entry marker */}
           {entryPrice != null && (

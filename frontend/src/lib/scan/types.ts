@@ -10,6 +10,7 @@ export interface OHLCV {
   l: number[];
   c: number[];
   v: number[];
+  t?: number[]; // candle start epoch ms (daily; used to draw the Chart Standard)
 }
 
 // The marketData contract (shared/scoring-engine.api.md) + scorer inputs
@@ -27,6 +28,17 @@ export interface MarketData {
 
 export type Profile = "momentum" | "pullback" | "continuation";
 export type PassLabel = "PASS" | "WATCH" | "HIDE";
+
+// E7b — why a non-passing coin did not PASS. Names the blocking check in plain
+// language via a locked concept label + its Concept Tooltip. NEVER exposes a
+// score, weight or formula (RED LINE). Deterministic, sourced from verified data.
+export interface WhyNot {
+  checkId: string;   // short blocking-check id (e.g. "regime")
+  checkLabel: string; // locked concept label shown after "blocking check:"
+  tooltipId: string;  // Concept Tooltip id for the dotted term
+  term: string;       // the dotted term inside the sentence (e.g. "the 200-day average")
+  text: string;       // the plain-language why-not sentence (term rendered as a tooltip)
+}
 
 // One calculated level on the Trading Blueprint, with its transparency note.
 export interface Level {
@@ -56,8 +68,10 @@ export interface Blueprint {
   volumeRatio: number; // collected
   rsi: number;
   adx: { adx: number; plusDI: number; minusDI: number } | null;
+  ema200: number; // regime reference (drawn on the chart; sources E7b why-not)
   price: number;
   riskStyle: RiskStyle;
+  whyNot: WhyNot | null; // set only when passLabel === "HIDE" (E7b)
 }
 
 export interface CoinScanResult {
