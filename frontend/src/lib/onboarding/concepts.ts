@@ -1,40 +1,91 @@
-// Concept Tooltip content (F14 / E1) — SINGLE source file, keyed by term id.
+// Concept Tooltip content — loaded from the LOCKED root file concept_tooltips_content.json
+// (this is a verbatim bundled copy; a pytest drift-guard asserts it matches root).
 //
-// IMPORTANT: `whatItMeasures` is intentionally left EMPTY. Per the internal guide,
-// Nadav supplies the plain-language definitions (35+ terms) — they are NOT written
-// here (empirical-truth / no invented copy). Until a definition is supplied the
-// bubble shows a neutral "pending" line, never a fabricated explanation.
-//
-// The contextual "what it means here, right now" line is passed by the caller at
-// each usage site (it is per-screen context, not static content).
+// Each term: { term, what, now (template), academy }. The `now` template uses:
+//   {key}                         -> ctx[key] (empty string if missing, gracefully)
+//   {a: 'text' | b: 'text2'}      -> the branch whose label is TRUTHY in ctx
+// Placeholders inside a chosen branch are resolved recursively.
+import content from "./concept_tooltips_content.json";
 
-export interface ConceptContent {
-  id: string;
-  term: string; // display label (not a definition)
-  whatItMeasures: string; // PLACEHOLDER — filled by Nadav from the internal guide
-  academyHref: string; // deep-link to the full Academy lesson (F6)
+export interface TermContent {
+  term: string;
+  what: string;
+  now: string;
+  academy: string;
 }
 
-function pending(id: string, term: string): ConceptContent {
-  return { id, term, whatItMeasures: "", academyHref: `/academy#${id}` };
+const TERMS = (content as { terms: Record<string, TermContent> }).terms;
+
+export function getTerm(id: string): TermContent | null {
+  return TERMS[id] ?? null;
 }
 
-// Onboarding surface terms (extend to the full 35+ as the guide is supplied).
-export const CONCEPTS: Record<string, ConceptContent> = {
-  ema200: pending("ema200", "200-day average"),
-  "ema7-slope": pending("ema7-slope", "EMA7 slope"),
-  "pass-watch": pending("pass-watch", "PASS / WATCH"),
-  threshold: pending("threshold", "threshold"),
-  "mathematical-trigger-point": pending("mathematical-trigger-point", "Mathematical Trigger Point"),
-  "calculated-risk-level": pending("calculated-risk-level", "Calculated Risk Level"),
-  "calculated-target-level": pending("calculated-target-level", "Calculated Target Level"),
-  "dynamic-risk-level": pending("dynamic-risk-level", "Dynamic Risk Level"),
-  "r-multiple": pending("r-multiple", "R multiple"),
-  "volume-ratio": pending("volume-ratio", "volume ratio"),
-  "weekly-structure": pending("weekly-structure", "weekly structure"),
-  regime: pending("regime", "market regime"),
-};
+export function termCount(): number {
+  return Object.keys(TERMS).length;
+}
 
-export function getConcept(id: string): ConceptContent {
-  return CONCEPTS[id] ?? pending(id, id);
+// ── template renderer ─────────────────────────────────────────────────────────
+
+export function renderNow(template: string, ctx: Record<string, unknown> = {}): string {
+  let out = "";
+  let i = 0;
+  while (i < template.length) {
+    if (template[i] === "{") {
+      const { inner, end } = readBraced(template, i);
+      out += resolveToken(inner, ctx);
+      i = end + 1;
+    } else {
+      out += template[i];
+      i += 1;
+    }
+  }
+  // collapse any double spaces left by empty placeholders
+  return out.replace(/\s{2,}/g, " ").trim();
+}
+
+function readBraced(s: string, start: number): { inner: string; end: number } {
+  let depth = 0;
+  for (let j = start; j < s.length; j++) {
+    if (s[j] === "{") depth += 1;
+    else if (s[j] === "}") {
+      depth -= 1;
+      if (depth === 0) return { inner: s.slice(start + 1, j), end: j };
+    }
+  }
+  return { inner: s.slice(start + 1), end: s.length - 1 };
+}
+
+function resolveToken(inner: string, ctx: Record<string, unknown>): string {
+  // conditional group: starts with `label:` and contains a quoted branch
+  if (/^\s*[a-zA-Z_]+\s*:/.test(inner) && inner.includes("'")) {
+    for (const branch of splitTopLevel(inner, "|")) {
+      const m = branch.match(/^\s*([a-zA-Z_]+)\s*:\s*'([\s\S]*)'\s*$/);
+      if (!m) continue;
+      const [, label, text] = m;
+      if (ctx[label]) return renderNow(text, ctx); // first truthy branch wins
+    }
+    return ""; // no branch selected -> empty, gracefully
+  }
+  const v = ctx[inner.trim()];
+  return v == null ? "" : String(v);
+}
+
+function splitTopLevel(s: string, sep: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let inQuote = false;
+  let cur = "";
+  for (const c of s) {
+    if (c === "'") inQuote = !inQuote;
+    else if (!inQuote && c === "{") depth += 1;
+    else if (!inQuote && c === "}") depth -= 1;
+    if (!inQuote && depth === 0 && c === sep) {
+      parts.push(cur);
+      cur = "";
+    } else {
+      cur += c;
+    }
+  }
+  parts.push(cur);
+  return parts;
 }

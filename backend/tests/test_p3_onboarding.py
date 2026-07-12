@@ -82,52 +82,67 @@ def test_unknown_episode_404():
         assert client.get("/api/onboarding/episodes/E9").status_code == 404
 
 
-# ── XP: server-authoritative + idempotent ─────────────────────────────────────
+# ── XP: single lifetime grant + anti-farming (once per user ever) ─────────────
 
 
-def test_xp_award_idempotent_and_server_priced():
-    """Awarding the same ref twice never doubles; amount comes from the server."""
+def test_onboarding_xp_granted_once_at_completion():
+    """Completion credits the one-time onboarding grant of 300 (server-priced)."""
     with TestClient(app) as client:
         _login(client, "xp1@example.com")
-        r1 = client.post("/api/onboarding/xp", json={"ref": "s2_scan"})
-        assert r1.status_code == 200
-        assert r1.json()["total"] == 50
-        # replay the same ref → no double award
-        r2 = client.post("/api/onboarding/xp", json={"ref": "s2_scan"})
-        assert r2.json()["total"] == 50
-        assert len(r2.json()["events"]) == 1
-
-
-def test_full_onboarding_xp_totals_300():
-    """The four onboarding awards sum to the locked 300 (50+100+50+100)."""
-    with TestClient(app) as client:
-        _login(client, "xp2@example.com")
-        for ref in ("s2_scan", "s4_first_decision", "s8_scan", "s8_lesson"):
-            client.post("/api/onboarding/xp", json={"ref": ref})
+        assert client.get("/api/onboarding/xp").json()["total"] == 0  # nothing before completion
+        client.post("/api/onboarding/complete")
         state = client.get("/api/onboarding/xp").json()
     assert state["total"] == 300
+    assert len(state["events"]) == 1
 
 
-def test_xp_rejects_unknown_ref():
-    """A client cannot invent a ref (and cannot inject an amount)."""
+def test_onboarding_xp_replay_grants_zero():
+    """REGRESSION: replaying onboarding (completing again) grants 0 more XP."""
     with TestClient(app) as client:
-        _login(client, "xp3@example.com")
-        r = client.post("/api/onboarding/xp", json={"ref": "hack_1000000"})
-    assert r.status_code == 400
+        _login(client, "xp2@example.com")
+        client.post("/api/onboarding/complete")
+        client.post("/api/onboarding/complete")  # replay
+        client.post("/api/onboarding/complete")  # replay
+        state = client.get("/api/onboarding/xp").json()
+    assert state["total"] == 300  # still exactly one grant
+    assert len(state["events"]) == 1
 
 
 def test_xp_requires_auth():
     with TestClient(app) as client:
-        r = client.post("/api/onboarding/xp", json={"ref": "s2_scan"})
+        r = client.get("/api/onboarding/xp")
     assert r.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_xp_events_unique_constraint():
-    """The farming guard is enforced at the schema level."""
+async def test_xp_onboarding_once_per_user_index():
+    """The anti-farming guard is a partial unique index (once per user+source)."""
     async with aiosqlite.connect(cfg.DATABASE_URL) as db:
         idx = await db.execute_fetchall("PRAGMA index_list(xp_events)")
-    assert any("unique" in str(row).lower() or row[2] == 1 for row in idx)
+    names = {row[1] for row in idx}
+    assert "ux_xp_onboarding_once" in names
+
+
+@pytest.mark.asyncio
+async def test_xp_partial_unique_blocks_second_onboarding_row():
+    """A direct second onboarding row for the same user is rejected by the index."""
+    import aiosqlite as _sq
+
+    async with _sq.connect(cfg.DATABASE_URL) as db:
+        await db.execute("PRAGMA foreign_keys=OFF")
+        await db.execute(
+            "INSERT INTO xp_events (user_id, source, ref, amount) VALUES (999001, 'onboarding', 'a', 300)"
+        )
+        await db.commit()
+        raised = False
+        try:
+            await db.execute(
+                "INSERT INTO xp_events (user_id, source, ref, amount) VALUES (999001, 'onboarding', 'b', 300)"
+            )
+            await db.commit()
+        except _sq.IntegrityError:
+            raised = True
+    assert raised, "partial unique index must block a second onboarding row per user"
 
 
 # ── Funnel ────────────────────────────────────────────────────────────────────

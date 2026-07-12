@@ -222,7 +222,7 @@ CREATE TABLE onboarding_funnel_events (
 ### 5.8 מימוש F13 — Episode Library + withholding + onboarding API (migrations 023–025)
 - **`episodes` (§5.5) הורחב למימוש** בעמודות: `ext_id` (מפתח seed טבעי, E1/E3/E4), `direction`, `entry_index` (נקודת פיצול ל-withholding), `entry_price`, ו-`outcome` (JSON). כל נר נושא `ema7`/`ema200` אמיתיים. **Seed:** `backend/data/onboarding_episodes.json`, נבנה מ-Bybit עם **assertions של אמת אמפירית** (הבנייה נכשלת אם הנרות האמיתיים לא תומכים בכניסה/תוצאה המתועדת). E1 נבחר-מחדש ל-BTCUSDT 25/06 (ראה `EPISODES_AND_VERIFIED_NUMBERS.md`).
 - **Server-side outcome withholding (AC):** `GET /api/onboarding/episodes/{id}` מחזיר רק נרות ה-setup (`0..entry_index`) — **ללא** `outcome` וללא נרות ה-reveal. `POST …/{id}/reveal` מחזיר את הנרות שהוסתרו + ה-outcome (S1 trap, S10 time-machine).
-- **XP:** `POST /api/onboarding/xp` — הלקוח שולח `ref` בלבד; הסכום צד-שרת (מפה סגורה 50/100/50/100=300), idempotent. **Funnel:** `POST /api/onboarding/funnel` (optional-auth). **Complete:** `POST /api/onboarding/complete` (מסמן `users.onboarding_completed_at`).
+- **XP (12/07):** מענק **חד-פעמי לכל החיים (300), מזוכה ב-`POST /api/onboarding/complete`**. אנטי-farming: אינדקס unique חלקי `ux_xp_onboarding_once` על `xp_events(user_id) WHERE source='onboarding'` (migration **026**) → הרצה חוזרת מזכה 0. המונה 50/100/50/100 = תצוגת-לקוח בלבד. **Funnel:** `POST /api/onboarding/funnel` (optional-auth). **Routing:** משתמש שהשלים אונבורדינג ננותב ל-`/scan` (once-per-lifetime; back לא חוזר).
 - **Charts:** מרונדרים in-app (SVG candlestick, הרפרנס של מנוע ה-SVG v25.67) מנרות אמיתיים — **לעולם לא צילומים חיצוניים**. `navigator.vibrate` על SCAN עם fallback שקט (iOS).
 
 ---

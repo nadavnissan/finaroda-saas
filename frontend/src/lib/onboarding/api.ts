@@ -12,10 +12,7 @@ export const onboardingApi = {
   revealEpisode: (extId: string) =>
     apiFetch<EpisodeReveal>(`/api/onboarding/episodes/${extId}/reveal`, { method: "POST" }),
 
-  // Award a known onboarding XP ref (amount is server-authoritative; idempotent).
-  awardXp: (ref: string) =>
-    apiFetch<XPState>("/api/onboarding/xp", { method: "POST", body: JSON.stringify({ ref }) }),
-
+  // XP is granted once, server-side, at completion (see complete()). Read-only here.
   getXp: () => apiFetch<XPState>("/api/onboarding/xp", { method: "GET" }),
 
   // Funnel event (optional-auth: anon before signup, user after).

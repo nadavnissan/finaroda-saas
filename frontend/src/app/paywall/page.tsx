@@ -47,7 +47,7 @@ export default function PaywallPage() {
       </div>
       {message && <p>{message}</p>}
       <small>
-        14-day trial with no credit card — you only add a card when you choose a paid plan.
+        14-day trial with no credit card. You only add a card when you choose a paid plan.
         No auto-charge; at the end you pick a paid plan or continue on Free. Analysis, not advice.
       </small>
     </main>

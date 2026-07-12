@@ -4,6 +4,24 @@
 
 ---
 
+## [F13-ONBOARDING-V1 / validation round 1 + tooltip content] — 2026-07-12
+- GOAL: יישום הערות ה-click-through של נדב + חיווט תוכן ה-Concept Tooltips + Chart Standard v1. פיצ'ר/תיקונים (MINOR).
+- SOLUTION (מה עשינו בפועל):
+  - **Tooltip content:** `concept_tooltips_content.json` (root, נעול, 46 מונחים) חובר. `concepts.ts` טוען אותו + מנוע תבניות ל-`now` (‏`{key}` + `{cond:'a'|cond2:'b'}`, placeholder חסר → ריק בחן). `ConceptTooltip` מרנדר what+now+Learn more, ctx per-שימוש, בועה עם clamp/flip (לא נחתכת במובייל) + כפתור X + סגירה בהקשה בחוץ.
+  - **Bugs:** (a) XP anti-farming — מענק אונבורדינג **חד-פעמי לכל החיים (300) בהשלמה**; migration **026** אינדקס unique חלקי על `xp_events(user_id) WHERE source='onboarding'`; הרצה חוזרת = 0 (+regression test). (b) Routing — guard ב-mount (`/me`→completed→`router.replace('/scan')`), יציאה מ-S11 ב-replace; back לא חוזר לאונבורדינג. (c) Signup flash — הוסר anti-pattern של side-effect ב-state-updater; מעבר יחיד עם `signingUp` guard. (d) "new scan" בסריקה החיה → `setPhase('idle')` (בקרים, לא re-scan מיידי). (e) יתומי שורה — `noOrphan()` + `text-wrap: balance/pretty`.
+  - **Product decisions (נדב 12/07):** BUY/SELL → **LONG/SHORT** (S1/S1a/tooltip `long_short`). **שני ענפי S1a שונים מנרות אמת:** LONG=fade (‎−10%), SHORT=**squeeze** (‎+2.06% נגד השורט ל-65,624 ואז fade). E1 נבחר-מחדש לנר-החלטה 20/06 (surge) — assertion בבנייה מוודאת squeeze≥1.5% + fade≤−5%. **כלל קופי: אין em dashes** — הוסרו מכל copy/JSX; +lint (pytest) שנכשל על U+2014.
+  - **Chart Standard v1** (רכיב אחד, בסיס Package B): כותרת הקשר (symbol/price/range/"Daily candles") · EMA200+EMA7 עם תוויות · swing S/R (`computeRangeLevels` חדש, pivots) · Blueprint levels (S8) · תגי Spike/Entry שפותחים tooltip · הקשה על נר → OHLC (`ohlc`).
+- FILES CREATED: frontend/src/lib/onboarding/{levels,text}.ts, frontend/src/lib/onboarding/concept_tooltips_content.json (עותק bundled), backend/migrations/026_xp_onboarding_once.py, backend/tests/test_content_copy.py.
+- FILES MODIFIED: backend/{api/onboarding,models/onboarding}.py, backend/migrations/{023,seed_data/onboarding_episodes.json}, backend/tests/test_p3_onboarding.py, frontend onboarding {OnboardingFlow,ConceptTooltip,EpisodeChart}.tsx + {concepts,api,types}.ts, scan/page.tsx + 10 placeholder pages (em-dash copy), globals.css, FINARODA_ONBOARDING_SPEC/SAAS_SPEC/EPISODES/ATP/CHANGELOG/VERSIONS/HANDOFF.
+- DB CHANGES: migration 026 (partial unique index, anti-farming). CONFIG ADDED: אין.
+- VALIDATION: **pytest 42/42** (was 39; +content/XP-replay) · **tsc clean** · **eslint clean** · **next build 17/17** (/onboarding 15.1kB).
+- ATP: +TC-P3-ONB-06..12.
+- VERSION: v0.7.0 (MINOR).
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: tooltips חיים עם 46 מונחים; XP חסין-farming; routing נכון; שני ענפי S1a אמיתיים; גרף סטנדרטי אחד לכל המסכים ובסיס ל-Package B.
+- DECISIONS: (1) XP אונבורדינג = מענק בודד בהשלמה (unique user+source) במקום 4 refs — נאמן ל-"חד-פעמי" של XP_ECONOMY §1. (2) E1 נר-החלטה = 20/06 surge (מאפשר גם LONG-fade וגם SHORT-squeeze מאותם נרות אמת). (3) עותק ה-JSON ב-frontend + drift-guard ב-pytest (root = מקור-אמת). (4) em-dash lint על source (strings/JSX, הערות מוחרגות) = מעשי ל-built copy.
+
 ## [F13-ONBOARDING / "First 60 Seconds" — episode engine + 12 screens] — 2026-07-12
 - GOAL: לממש את **F13** (`FINARODA_ONBOARDING_SPEC.md` v1.2) — 12 מסכי אונבורדינג + רכיבים משותפים, עם ליבת אפיזודות אמת, withholding צד-שרת, XP ו-funnel. פיצ'ר חדש (MINOR).
 - SOLUTION (מה עשינו בפועל):

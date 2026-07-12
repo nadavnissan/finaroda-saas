@@ -150,8 +150,8 @@ export default function ScanPage() {
       {phase === "results" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
           <Results passers={passers} scanned={scanned} onOpen={openBlueprint} />
-          <button type="button" onClick={runScan} style={{ color: "#8593A2", background: "none", border: "none", cursor: "pointer" }}>
-            ↻ scan again
+          <button type="button" onClick={() => setPhase("idle")} style={{ color: "#8593A2", background: "none", border: "none", cursor: "pointer" }}>
+            ↻ new scan
           </button>
         </div>
       )}
@@ -159,8 +159,8 @@ export default function ScanPage() {
       {phase === "empty" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
           <EmptyState disciplinedDays={disciplined} />
-          <button type="button" onClick={runScan} style={{ color: "#8593A2", background: "none", border: "none", cursor: "pointer" }}>
-            ↻ scan again
+          <button type="button" onClick={() => setPhase("idle")} style={{ color: "#8593A2", background: "none", border: "none", cursor: "pointer" }}>
+            ↻ new scan
           </button>
         </div>
       )}

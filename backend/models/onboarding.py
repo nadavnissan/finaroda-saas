@@ -30,6 +30,7 @@ class EpisodeSetup(BaseModel):
     direction: Optional[str] = None
     entry_index: int
     entry_price: Optional[float] = None
+    spike_index: Optional[int] = None  # candle with the biggest move in the setup (annotation)
     setup_klines: list[Candle]      # candles 0..entry_index (inclusive)
     reveal_count: int               # how many candles are withheld (for playback UI)
     score: Optional[float] = None   # only for valid_setup (PASS demo)
@@ -42,6 +43,7 @@ class EpisodeOutcome(BaseModel):
     exit_price: Optional[float] = None
     r_multiple: Optional[float] = None
     pct: Optional[float] = None
+    squeeze_pct: Optional[float] = None  # up-move against an impulse short before the fade
     score: Optional[float] = None
     real_stats_ref: Optional[str] = None
 
@@ -53,11 +55,7 @@ class EpisodeReveal(BaseModel):
     outcome: EpisodeOutcome
 
 
-# ── XP (server-authoritative amounts; client sends only a ref) ────────────────
-
-
-class XPAwardRequest(BaseModel):
-    ref: str  # must be a known onboarding ref; amount is looked up server-side
+# ── XP (server-authoritative; granted once at completion) ─────────────────────
 
 
 class XPState(BaseModel):

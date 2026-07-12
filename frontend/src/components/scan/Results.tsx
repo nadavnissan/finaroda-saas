@@ -68,7 +68,7 @@ export function EmptyState({ disciplinedDays }: { disciplinedDays: number }) {
         Disciplined · {disciplinedDays} skip-aware scans
       </div>
       <small style={{ display: "block", color: "#5c6672" }}>
-        The market moves — re-check when it does. Precision, not habit.
+        The market moves, re-check when it does. Precision, not habit.
       </small>
     </div>
   );

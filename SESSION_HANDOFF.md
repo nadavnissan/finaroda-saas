@@ -8,9 +8,19 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** F13 "First 60 Seconds" onboarding (v0.6.0) — first CODE feature since P2 scorer; on top of XP economy docs (v0.5.3), E9 Horizon (v0.5.2), section-E (v0.5.1), D1 trial (v0.5.0).
-- **Validation:** ✅ all green — **pytest 39/39** (was 27; +12 onboarding), shared node --test 12/12, **tsc clean**, **eslint clean**, **next build 17/17** (/onboarding route 7.63kB).
-- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.6.0) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** F13 validation round 1 + tooltip content (v0.7.0) — on top of F13 onboarding (v0.6.0), XP economy docs (v0.5.3).
+- **Validation:** ✅ all green — **pytest 42/42** (was 39; +content/XP-replay), shared node --test 12/12, **tsc clean**, **eslint clean**, **next build 17/17** (/onboarding route 15.1kB).
+- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.7.0) is **dev only** — Nadav merges to main manually.
+
+## Latest — F13 validation round 1 + tooltip content (v0.7.0, code + migration 026)
+- Applied Nadav's click-through notes + wired the Concept Tooltip content + built Chart Standard v1.
+- **Tooltips:** `concept_tooltips_content.json` (root, locked, 46 terms) is now wired. `concepts.ts` loads it + a `now`-template engine (`{key}` and `{cond:'a'|c2:'b'}`, missing placeholder renders empty). Bubble is viewport-clamped/flips (never clipped on mobile), has an X and closes on tap-outside. A pytest drift-guard asserts the bundled frontend copy matches root.
+- **Bug fixes:** (a) **XP anti-farming** — onboarding XP is now a single lifetime grant (300) credited at completion; migration 026 adds a partial unique index on `xp_events(user_id) WHERE source='onboarding'`; replaying grants 0 (regression test). (b) **Routing** — /onboarding guards on `/me` and `router.replace('/scan')` for completed users; S11 exit uses replace; back never re-enters. (c) **Signup flash** — removed a side-effect-in-state-updater anti-pattern + added a `signingUp` guard = one clean S5→S6 transition. (d) Live **"new scan"** returns to the controls (idle), not an immediate re-scan. (e) Line-orphan control via `noOrphan()` + CSS text-balance.
+- **Product decisions (Nadav 12/07):** BUY/SELL → **LONG/SHORT**. **Two different S1a branches, both real candles:** LONG = the fade (−10%), SHORT = the **squeeze** (+2.06% against the short to 65,624, then fade). E1's decision candle was moved to the 20 Jun surge so both branches are empirically true; the seed builder asserts squeeze ≥1.5% and fade ≤−5%. **No-em-dash copy rule** enforced across all copy + a pytest lint that fails on U+2014.
+- **Chart Standard v1** (one component, the Package B base): on-chart context header, EMA200+EMA7 with labels, swing S/R (`computeRangeLevels`, pivots), Blueprint levels (S8), Spike/Entry annotation pills that open tooltips, candle-tap OHLC.
+- **⚠ Carried-over decisions still open for Nadav** (from v0.6.0): EpisodeChart is in-app SVG (not recharts); Google/Apple OAuth SDK is round-2 (magic-link fully wired, closes the loop in dev); E1 = BTC (LINK was a curation error).
+- **⬜ Still pending:** manual mobile click-through (tooltip clipping, chart interactions, the 12-screen flow); visual polish (fonts/animations) = Design round 2.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, calculator terminology, main branch.
 
 ## Latest — F13 onboarding implemented (v0.6.0, code + migrations 023–025)
 - **What shipped:** the full "First 60 Seconds" onboarding — episode engine, 12 screens (S0–S11) + the S1a failure branch, XP, funnel, server-side outcome withholding. Backend **pytest 39/39**; frontend **builds clean**.

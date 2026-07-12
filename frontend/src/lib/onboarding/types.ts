@@ -22,6 +22,7 @@ export interface EpisodeSetup {
   direction: "long" | "short" | null;
   entry_index: number;
   entry_price: number | null;
+  spike_index: number | null;
   setup_klines: Candle[];
   reveal_count: number;
   score: number | null;
@@ -34,6 +35,7 @@ export interface EpisodeOutcome {
   exit_price: number | null;
   r_multiple: number | null;
   pct: number | null;
+  squeeze_pct: number | null;
   score: number | null;
   real_stats_ref: string | null;
 }

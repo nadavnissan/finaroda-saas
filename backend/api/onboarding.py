@@ -28,21 +28,18 @@ from backend.models.onboarding import (
     EpisodeSetup,
     FunnelEventCreate,
     OkResponse,
-    XPAwardRequest,
     XPState,
 )
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 log = structlog.get_logger(__name__)
 
-# Closed, server-authoritative onboarding XP map (XP_ECONOMY.md §1: 50+100+50+100=300).
+# Onboarding XP is a single lifetime grant (XP_ECONOMY.md §1: 50+100+50+100=300),
+# credited ONCE at completion. The per-screen 50/100/50/100 progression is a
+# client-side meter only. Server-authoritative amount; idempotent (mig 026 partial
+# unique index → once per user+source). The client never sends an amount.
 ONBOARDING_SOURCE = "onboarding"
-ONBOARDING_XP: dict[str, int] = {
-    "s2_scan": 50,           # first SCAN
-    "s4_first_decision": 100,  # first strategic (discipline) decision
-    "s8_scan": 50,           # success-arena SCAN
-    "s8_lesson": 100,        # PASS lesson
-}
+ONBOARDING_TOTAL = 300
 
 
 async def get_optional_user_id(
@@ -82,6 +79,9 @@ def _to_setup(ep: dict) -> EpisodeSetup:
     entry_index = ep["entry_index"]
     setup = candles[: entry_index + 1]
     reveal_count = max(0, len(candles) - len(setup))
+    # "Spike day" annotation = the candle with the biggest high across the full
+    # series (a structural index hint, not the withheld outcome value).
+    spike_index = max(range(len(candles)), key=lambda i: candles[i]["h"]) if candles else None
     # score is a setup-time quality signal for the PASS demo (valid_setup only);
     # it is NOT the withheld outcome.
     score = None
@@ -96,6 +96,7 @@ def _to_setup(ep: dict) -> EpisodeSetup:
         direction=ep["direction"],
         entry_index=entry_index,
         entry_price=ep["entry_price"],
+        spike_index=spike_index,
         setup_klines=setup,
         reveal_count=reveal_count,
         score=score,
@@ -150,23 +151,12 @@ async def _xp_state(db: aiosqlite.Connection, user_id: int) -> XPState:
     return XPState(total=total, events=events)
 
 
-@router.post("/xp", response_model=XPState)
-async def award_xp(
-    body: XPAwardRequest,
-    user: CurrentUser = Depends(get_current_user),
-    db: aiosqlite.Connection = Depends(get_db_connection),
-) -> XPState:
-    """Award a known onboarding XP ref. Amount is server-side; award is idempotent."""
-    amount = ONBOARDING_XP.get(body.ref)
-    if amount is None:
-        raise HTTPException(400, {"code": "UNKNOWN_XP_REF", "message": body.ref})
-    # INSERT OR IGNORE → the UNIQUE(user, source, ref) makes a repeat a no-op.
+async def _grant_onboarding_xp(db: aiosqlite.Connection, user_id: int) -> None:
+    """Credit the single lifetime onboarding grant. Idempotent (mig 026)."""
     await db.execute(
-        "INSERT OR IGNORE INTO xp_events (user_id, source, ref, amount) VALUES (?, ?, ?, ?)",
-        (user.internal_id, ONBOARDING_SOURCE, body.ref, amount),
+        "INSERT OR IGNORE INTO xp_events (user_id, source, ref, amount) VALUES (?, ?, 'onboarding', ?)",
+        (user_id, ONBOARDING_SOURCE, ONBOARDING_TOTAL),
     )
-    await db.commit()
-    return await _xp_state(db, user.internal_id)
 
 
 @router.get("/xp", response_model=XPState)
@@ -209,12 +199,13 @@ async def complete_onboarding(
     user: CurrentUser = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db_connection),
 ) -> OkResponse:
-    """Mark onboarding complete (idempotent) + log the completion funnel event."""
+    """Mark onboarding complete (idempotent), grant the one-time XP, log completion."""
     await db.execute(
         """UPDATE users SET onboarding_completed_at = CURRENT_TIMESTAMP
            WHERE internal_id = ? AND onboarding_completed_at IS NULL""",
         (user.internal_id,),
     )
+    await _grant_onboarding_xp(db, user.internal_id)
     await db.execute(
         "INSERT INTO onboarding_funnel_events (user_id, stage) VALUES (?, 'completion')",
         (user.internal_id,),

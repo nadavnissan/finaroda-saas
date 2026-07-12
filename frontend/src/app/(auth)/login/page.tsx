@@ -44,7 +44,7 @@ export default function LoginPage() {
           {status === "error" && <small>{message}</small>}
         </form>
       )}
-      <small>Google sign-in — coming soon.</small>
+      <small>Google sign-in, coming soon.</small>
     </main>
   );
 }

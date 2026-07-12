@@ -1,0 +1,292 @@
+{
+  "_meta": {
+    "name": "FINARODA Concept Tooltip Content",
+    "version": "1.0",
+    "date": "2026-07-12",
+    "source": "FINARODA internal guide (personal tool v25.83), curated by mentor session. Definitions are educational, descriptive, never prescriptive.",
+    "rules": [
+      "No em dashes anywhere, use commas or colons (Nadav copy rule, 12/07).",
+      "Structure per term: what (one plain-language line, max ~160 chars), now (contextual template, placeholders in {braces} filled by the implementation from the current scan/episode), academy (module id).",
+      "Language: simple English, no jargon inside a definition unless that jargon has its own tooltip.",
+      "Never advice: describe what a value means, never what the user should do."
+    ]
+  },
+  "terms": {
+    "ema200": {
+      "term": "200-day average (EMA200)",
+      "what": "The average closing price of the last 200 days, weighted toward recent days. It is the widely watched line between a healthy market and a damaged one.",
+      "now": "Price is {distance_pct}% {above_below} the 200-day average. {above: 'The long-term structure supports strength.' | below: 'The long-term structure is negative, most rallies in this state have failed historically.'}",
+      "academy": "regime_ema200"
+    },
+    "weekly_bias": {
+      "term": "Weekly structure (HTF bias)",
+      "what": "The direction of the weekly chart, one candle per week. It answers: is the big picture rising or falling, regardless of today's noise?",
+      "now": "The weekly structure is {bullish_bearish}. Daily moves against it are swimming upstream.",
+      "academy": "regime_ema200"
+    },
+    "ema7": {
+      "term": "7-day average (EMA7)",
+      "what": "A fast average of the last 7 days. Price hugging it means an orderly trend, price far from it means stretched and likely to snap back.",
+      "now": "Price is {distance_pct}% from the 7-day average. {near: 'Close to the line: orderly.' | far: 'Stretched: entries far from the line have performed worse in our data.'}",
+      "academy": "ema7_timing"
+    },
+    "ema7_slope": {
+      "term": "EMA7 slope",
+      "what": "How steeply the 7-day average is rising or falling. Our single most validated timing signal: it beat random entries in 78.7% of tests, on all 10 coins, across 4 years of data.",
+      "now": "Slope is {slope_pct}% ({direction}). {aligned: 'Slope agrees with the setup direction.' | against: 'Slope disagrees with the setup direction, historically weaker timing.'}",
+      "academy": "ema7_timing"
+    },
+    "ema_general": {
+      "term": "Moving average (EMA)",
+      "what": "A line that smooths price into its recent average, giving more weight to newer days. Fast averages (7 days) track mood, slow ones (200 days) track structure.",
+      "now": "This chart shows {which_emas}.",
+      "academy": "ema7_timing"
+    },
+    "closed_candle": {
+      "term": "Closed candle",
+      "what": "A candle that has finished its full time period. We score only closed daily candles: a candle still forming can change its mind, a closed one cannot.",
+      "now": "The score is computed on the last closed daily candle (00:00 UTC). It stays fixed until the next candle closes, only the live timing layer updates during the day.",
+      "academy": "closed_candle_scoring"
+    },
+    "score": {
+      "term": "Score",
+      "what": "A 0 to 100 grade of how many of the methodology's 11 checks the coin passes right now, weighted by importance. It measures conditions, it does not predict.",
+      "now": "This coin scores {score}. The threshold for PASS is 85, identical on every plan.",
+      "academy": "methodology_overview"
+    },
+    "pass_watch": {
+      "term": "PASS / WATCH",
+      "what": "PASS (85 or higher): the methodology's conditions are met. WATCH (82 to 84): close but not there, shown for observation only.",
+      "now": "{status}: score {score}. {pass: 'Conditions met.' | watch: 'Observation only, not counted as a setup.'}",
+      "academy": "methodology_overview"
+    },
+    "methodology_conditions": {
+      "term": "Methodology conditions",
+      "what": "Eleven independent checks on structure, momentum, volume and positioning. Two are mandatory: the 200-day regime and the weekly structure. Fail those and nothing passes.",
+      "now": "{passed_count} of 11 checks passed. {blocked: 'A mandatory check failed, so no score can produce a PASS today.'}",
+      "academy": "methodology_overview"
+    },
+    "no_setups": {
+      "term": "No setups pass",
+      "what": "Today's honest answer. Most days the market offers nothing that clears the bar, and not acting on those days is where most capital is saved.",
+      "now": "{scanned_count} coins scanned, none cleared 85. This result is recorded in your journal like any other.",
+      "academy": "smart_skip"
+    },
+    "smart_skip": {
+      "term": "Smart skip",
+      "what": "Choosing not to act because conditions were not met. In our recorded data, skipped days repeatedly avoided drawdowns. Skipping is a decision, and it is measured.",
+      "now": "Your journal tracks what skipped setups would have done, so discipline becomes visible instead of invisible.",
+      "academy": "smart_skip"
+    },
+    "rsi": {
+      "term": "RSI",
+      "what": "A 0 to 100 gauge of how hard price has been pushed recently. High readings mean stretched up, low readings mean stretched down.",
+      "now": "RSI is {rsi_value}.",
+      "academy": "momentum_basics"
+    },
+    "rsi_momentum": {
+      "term": "RSI momentum check",
+      "what": "For an upward setup we want RSI 55 or higher, for a downward one 45 or lower: momentum should already lean in the setup's direction.",
+      "now": "RSI {rsi_value}: {agrees_disagrees} with the setup direction.",
+      "academy": "momentum_basics"
+    },
+    "rsi_extreme": {
+      "term": "RSI extreme",
+      "what": "Above 80 or below 20 the move is usually exhausted. The score is penalized at these extremes because entries there chase a move that already happened.",
+      "now": "RSI {rsi_value} is in the extreme zone, the score carries a penalty.",
+      "academy": "momentum_basics"
+    },
+    "atr": {
+      "term": "ATR (Average True Range)",
+      "what": "The coin's typical daily movement in price terms. It calibrates everything to the coin's own volatility: a 2% move is noise for one coin and an event for another.",
+      "now": "ATR is {atr_value} ({atr_pct}% of price). Risk levels are placed using this, not a fixed distance.",
+      "academy": "risk_geometry"
+    },
+    "adx_trend": {
+      "term": "ADX / trend strength",
+      "what": "Measures how strongly price is trending, in any direction. Below 20: drifting sideways. Above 25: a real trend is in motion.",
+      "now": "ADX {adx_value}: {classification}.",
+      "academy": "regime_ema200"
+    },
+    "fvg": {
+      "term": "Fair Value Gap (FVG)",
+      "what": "A price zone the market jumped over so fast that almost no trading happened there. Price often returns to fill these gaps, so an open gap in your direction is a supportive sign.",
+      "now": "{present: 'An open daily gap exists in the setup direction at {fvg_zone}.' | absent: 'No open gap in the setup direction.'}",
+      "academy": "structure_levels"
+    },
+    "wick_rejection": {
+      "term": "Wick rejection",
+      "what": "A long candle wick shows price tried to go somewhere and was pushed back. Repeated long wicks against a setup mean sellers or buyers are actively defending that area.",
+      "now": "{clean: 'Recent candles show no heavy rejection against the setup.' | dirty: 'Recent candles show rejection wicks against the setup.'}",
+      "academy": "structure_levels"
+    },
+    "ltf_cross": {
+      "term": "EMA cross (7 over 14)",
+      "what": "When the 7-day average crosses the 14-day average, the short-term tide has turned. We read it on closed daily candles only.",
+      "now": "{crossed: 'The 7-day average has crossed the 14-day in the setup direction.' | not: 'No supporting cross yet.'}",
+      "academy": "ema7_timing"
+    },
+    "swing_levels": {
+      "term": "Support / Resistance (swing levels)",
+      "what": "Prices where the market previously turned. Buyers defend old lows (support), sellers defend old highs (resistance). Moves often stall there, which is why targets and risk sit near them.",
+      "now": "Nearest levels: support {support_price}, resistance {resistance_price}.",
+      "academy": "structure_levels"
+    },
+    "liquidity_check": {
+      "term": "Liquidity proximity",
+      "what": "How close price is to a swing level. Entering near a level means a natural place to be proven wrong cheaply, far from any level means risk has no anchor.",
+      "now": "Price is {distance_pct}% from the nearest swing level.",
+      "academy": "structure_levels"
+    },
+    "volume": {
+      "term": "Volume",
+      "what": "How much was actually traded. Price says what moved, volume says how many participated. Moves without participation fail more often.",
+      "now": "Volume is {volume_ratio}x the recent average. {high: 'Above average participation.' | low: 'Below average, weak conviction.'}",
+      "academy": "volume_basics"
+    },
+    "funding": {
+      "term": "Funding rate",
+      "what": "A periodic fee between traders in futures markets. Positive means the crowd leans long and pays for it, negative means the crowd leans short. Extreme readings show a crowded side.",
+      "now": "Funding is {funding_pct}% per 8 hours: the crowd leans {crowd_side}.",
+      "academy": "positioning_basics"
+    },
+    "market_isolation": {
+      "term": "Market isolation",
+      "what": "Is this coin moving with the whole market or on its own? A move the entire market shares says less about this specific coin.",
+      "now": "This coin's daily move is {z_score} standard deviations from the market average: {isolated_or_with}.",
+      "academy": "positioning_basics"
+    },
+    "trigger_point": {
+      "term": "Mathematical Trigger Point",
+      "what": "The price level our formulas identify as the setup's activation point, computed from averages and structure. A calculation, not a recommendation.",
+      "now": "Computed at {trigger_price}, derived from {formula_note}.",
+      "academy": "risk_geometry"
+    },
+    "risk_level": {
+      "term": "Calculated Risk Level",
+      "what": "The price at which the setup's logic is invalid, placed beyond structure using the coin's own volatility (ATR). It defines the cost of being wrong before anything else is considered.",
+      "now": "Computed at {risk_price}, {risk_pct}% from the trigger, placed {formula_note}.",
+      "academy": "risk_geometry"
+    },
+    "target_level": {
+      "term": "Calculated Target Level",
+      "what": "The price the setup projects toward, anchored to structure. Together with the risk level it defines the trade's geometry before anyone risks anything.",
+      "now": "Computed at {target_price}: {rr_ratio} reward-to-risk against the calculated risk level.",
+      "academy": "risk_geometry"
+    },
+    "dynamic_risk": {
+      "term": "Dynamic Risk Level (trailing)",
+      "what": "A risk level that follows price as a move progresses, locking in ground gained instead of staying fixed. It converts open progress into protected progress.",
+      "now": "Currently at {trail_price}, moved from the initial {initial_risk_price}.",
+      "academy": "risk_geometry"
+    },
+    "r_multiple": {
+      "term": "R (risk multiple)",
+      "what": "Results measured in units of the risk taken, not in money. Risking 1 and making 3 is +3R. It makes every outcome comparable regardless of position size.",
+      "now": "This scenario resolved at {r_value}R.",
+      "academy": "risk_geometry"
+    },
+    "risk_reward": {
+      "term": "Reward-to-risk ratio",
+      "what": "How much the target offers relative to what the risk level costs. A 3:1 setup can be wrong more often than right and still come out ahead.",
+      "now": "This setup's geometry is {rr_ratio}:1.",
+      "academy": "risk_geometry"
+    },
+    "position_sizing": {
+      "term": "Position sizing (educational)",
+      "what": "Deciding size from risk, not conviction: choose the loss you accept if the risk level is hit, then derive the size. Shown here for learning, never as instruction.",
+      "now": "Illustration on your practice capital: risking {risk_pct_capital}% means a {position_size} position for this geometry.",
+      "academy": "risk_geometry"
+    },
+    "long_short": {
+      "term": "LONG / SHORT",
+      "what": "LONG profits if price rises, SHORT profits if price falls. Every setup has a direction, and every check is evaluated relative to that direction.",
+      "now": "This setup's direction is {direction}.",
+      "academy": "methodology_overview"
+    },
+    "spike": {
+      "term": "Spike",
+      "what": "A sudden sharp move, usually on emotion or news. Spikes attract impulse entries, which is exactly when checking structure matters most.",
+      "now": "This candle moved {spike_pct}% : the kind of move that invites impulse.",
+      "academy": "spike_anatomy"
+    },
+    "fade": {
+      "term": "Fade",
+      "what": "When a spike runs out of buyers and price slides back down. In a negative regime, our recorded episodes faded before reaching 10% in 7 out of 7 cases.",
+      "now": "After the spike, price faded {fade_pct}% over {fade_days} days.",
+      "academy": "spike_anatomy"
+    },
+    "squeeze": {
+      "term": "Squeeze",
+      "what": "When price keeps pushing against traders who bet on a reversal, forcing them out before any turn happens. Shorting a vertical move without confirmation invites this.",
+      "now": "Price continued {squeeze_pct}% against the impulse short before any weakness appeared.",
+      "academy": "spike_anatomy"
+    },
+    "regime": {
+      "term": "Market regime",
+      "what": "The market's overall state, defined by Bitcoin: bullish (above the 200-day average with a positive weekly), bearish (the opposite), or in transition. The regime decides which directions are even considered.",
+      "now": "Current regime: {regime_state}. {bear: 'Upward setups are blocked by the mandatory checks.' | bull: 'Downward setups are blocked by the mandatory checks.' | transition: 'The market is between states, conditions rarely align in either direction.'}",
+      "academy": "regime_transitions"
+    },
+    "regime_transition": {
+      "term": "Regime transition",
+      "what": "The messy period when a market changes state. Signals flip on and off, both directions look tempting, and historically this is where accounts get hurt. Recognizing it is a skill.",
+      "now": "Transition conditions: reversal signals are appearing across multiple coins while the old structure still holds.",
+      "academy": "regime_transitions"
+    },
+    "scan_snapshot": {
+      "term": "Scan snapshot",
+      "what": "Every scan is a photo of the market at one moment, pulled fresh from the exchange over your connection. The timestamp tells you exactly when.",
+      "now": "This scan reflects the market as of {scan_time}. The score updates only when a daily candle closes.",
+      "academy": "closed_candle_scoring"
+    },
+    "analysis_lens": {
+      "term": "Analysis Lens",
+      "what": "Chooses which explanation panel accompanies your results: regime, momentum, volume, or full. It changes what is explained, never what passes or the score.",
+      "now": "Current lens: {lens_name}. Levels and scores are identical under every lens.",
+      "academy": "methodology_overview"
+    },
+    "risk_style": {
+      "term": "Risk Style",
+      "what": "Adjusts the geometry of the calculated levels: conservative places risk tighter, aggressive gives it more room. It never changes the score or which coins pass.",
+      "now": "Current style: {style_name}. Same setups, different level geometry.",
+      "academy": "risk_geometry"
+    },
+    "horizon": {
+      "term": "Horizon",
+      "what": "The intended holding window. SWING covers 1 to 7 days and is fully validated. POSITION (weeks and longer) unlocks only when its engine earns validation across market regimes.",
+      "now": "Active horizon: SWING. POSITION is in validation: we do not ship what we have not proven.",
+      "academy": "methodology_overview"
+    },
+    "journal_reveal": {
+      "term": "Journal reveal",
+      "what": "Every scan is recorded as a scenario, and its outcome is computed later. The result unlocks on your next scan, so learning always closes its loop.",
+      "now": "{pending_count} outcome(s) waiting. Your next scan reveals them.",
+      "academy": "smart_skip"
+    },
+    "capital_save": {
+      "term": "Capital save",
+      "what": "A scenario where conditions failed, you did not act, and the move went on to lose. The loss you did not take, made visible and counted.",
+      "now": "This save avoided a {avoided_pct}% drawdown scenario.",
+      "academy": "smart_skip"
+    },
+    "xp": {
+      "term": "XP",
+      "what": "Your professional capital here. Earned for discipline and learning: the first scan of each day, completed lessons, reviewed outcomes. Never for profits, never for volume of activity.",
+      "now": "You have {xp_total} XP, {xp_to_next} to {next_rank}.",
+      "academy": "methodology_overview"
+    },
+    "rank": {
+      "term": "Rank",
+      "what": "Milestones of accumulated discipline: Strategy Apprentice, Risk Manager (1,000 XP), Regime Reader (3,000), Master Strategist (8,000). Ranks unlock knowledge, never signals.",
+      "now": "Current rank: {rank_name}.",
+      "academy": "methodology_overview"
+    },
+    "ohlc": {
+      "term": "Candle (OHLC)",
+      "what": "One candle summarizes one period: where price opened, the highest and lowest it reached, and where it closed. Green closed higher than it opened, red closed lower.",
+      "now": "{date}: open {open}, high {high}, low {low}, close {close}. Daily candle.",
+      "academy": "closed_candle_scoring"
+    }
+  }
+}

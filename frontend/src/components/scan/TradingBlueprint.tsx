@@ -6,7 +6,7 @@ import type { Blueprint, Lens, Level, RiskStyle } from "@/lib/scan/types";
 import { RiskStyleToggle } from "./Controls";
 
 function fmt(n: number): string {
-  if (!isFinite(n)) return "—";
+  if (!isFinite(n)) return "-";
   const abs = Math.abs(n);
   const digits = abs >= 100 ? 2 : abs >= 1 ? 3 : 6;
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });

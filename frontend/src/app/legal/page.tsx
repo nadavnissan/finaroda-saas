@@ -6,7 +6,7 @@ export default function LegalPage() {
   return (
     <main>
       <h1>Legal</h1>
-      <p>Placeholder — Terms, Privacy &amp; disclaimer (pending lawyer review).</p>
+      <p>Placeholder: Terms, Privacy &amp; disclaimer (pending lawyer review).</p>
       <small>{DISCLAIMER}</small>
     </main>
   );

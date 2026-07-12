@@ -22,7 +22,7 @@ export default function ComingSoonPage() {
 
   return (
     <main>
-      <h1>FINARODA — coming soon</h1>
+      <h1>FINARODA: coming soon</h1>
       {joined ? (
         <p>You&apos;re on the waitlist. We&apos;ll be in touch.</p>
       ) : (

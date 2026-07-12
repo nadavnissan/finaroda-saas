@@ -60,6 +60,8 @@ async def up(db: aiosqlite.Connection) -> None:
                 "pct": derived.get("adverse_pct")
                 if resolved == "loss"
                 else derived.get("favorable_pct"),
+                # squeeze_pct: the up-move against an impulse SHORT before the fade (trap only)
+                "squeeze_pct": derived.get("squeeze_pct"),
                 "score": it.get("score"),
                 "real_stats_ref": it["real_stats_ref"],
             }

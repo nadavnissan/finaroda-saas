@@ -4,7 +4,7 @@ export default function CheckoutPage() {
   return (
     <main>
       <h1>Checkout</h1>
-      <p>Placeholder — Cardcom checkout lands in P4.</p>
+      <p>Placeholder: Cardcom checkout lands in P4.</p>
     </main>
   );
 }

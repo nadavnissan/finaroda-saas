@@ -6,7 +6,7 @@ export default function DashboardPage() {
   return (
     <main>
       <h1>Dashboard</h1>
-      <p>Placeholder — &quot;what would have happened&quot; board lands in P3.</p>
+      <p>Placeholder: &quot;what would have happened&quot; board lands in P3.</p>
       <small>{DISCLAIMER}</small>
     </main>
   );

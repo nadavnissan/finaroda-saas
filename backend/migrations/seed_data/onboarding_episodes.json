@@ -2,23 +2,25 @@
   {
     "ext_id": "E1",
     "coin": "BTCUSDT",
-    "date_range": "2026-06-22 → 2026-07-01",
+    "date_range": "2026-06-20 → 2026-07-01",
     "scenario_type": "trap",
     "lesson_flag": "spike_below_ema200_bear_regime",
     "direction": "long",
-    "entry_index": 7,
-    "entry_price": 61753,
+    "entry_index": 2,
+    "entry_price": 64298,
     "target_price": null,
     "r_multiple": -1,
     "score": null,
     "resolved": "loss",
     "derived": {
+      "squeeze_high": 65624.7,
+      "squeeze_pct": 2.06,
       "adverse_low": 57802.2,
-      "adverse_pct": -6.4,
-      "ema200_at_entry": 79504.07,
-      "price_vs_ema200_pct": -22.33
+      "adverse_pct": -10.1,
+      "ema200_at_entry": 80393.08,
+      "price_vs_ema200_pct": -20.02
     },
-    "real_stats_ref": "EPISODES_AND_VERIFIED_NUMBERS.md §2 (25 Jun anchor wave; BTC 61,753 DIR-FAIL). Re-picked from LINK 30/06–02/07 after kline verification: LINK rose over that window (curation error; fade occurred after 02 Jul). BTC 25 Jun bounce is our own verified E2 material.",
+    "real_stats_ref": "EPISODES_AND_VERIFIED_NUMBERS.md §2 (25 Jun anchor wave; BTC 61,753 DIR-FAIL). Re-picked from LINK 30/06-02/07 after kline verification (LINK rose in that window; curation error). Onboarding decision candle = the 20 Jun surge (real): squeeze to 65,624 then fade to 57,802.",
     "kline_data": [
       {
         "t": 1781740800000,

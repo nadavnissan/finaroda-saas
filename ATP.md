@@ -282,6 +282,37 @@
 - Expected: תווית "Analysis, not financial advice." על **כל** מסך; גרפים מרונדרים in-app מנרות אמת (SVG, לא צילומים); `navigator.vibrate` על SCAN עם fallback שקט (iOS); Concept Tooltip (קו מקווקו) על מונחים; מד XP בכותרת; S11 מציג טבלת Free-vs-paid (TC-J-002).
 - Status: ✅ build/tsc/eslint verified (next build 17/17, /onboarding 7.63kB) · ⬜ manual runtime click-through pending (Design סבב 2 לליטוש חזותי)
 
+## TC — P3 onboarding validation round 1 (fixes + content, 12/07)
+
+### TC-P3-ONB-06 — Concept Tooltip content wiring (46 terms)
+- Feature: `concept_tooltips_content.json` (root, locked) · ConceptTooltip · concepts.ts renderer
+- Expected: כל 46 המונחים נטענים (term/what/now/academy); עותק ה-frontend זהה למקור (drift-guard); `now` מרונדר עם placeholders מההקשר, placeholder חסר → ריק בחן; Learn more → `/academy#{academy}`. בועה: לא נחתכת במובייל (clamp/flip), כפתור X + סגירה בהקשה בחוץ.
+- Status: ✅ automated (test_tooltip_content_loads_46_terms, test_frontend_tooltip_copy_matches_root) · bubble UX build-verified · ⬜ manual mobile check
+
+### TC-P3-ONB-07 — XP once per user ever (anti-farming) [REGRESSION]
+- Expected: השלמה מזכה 300 פעם אחת; השלמה חוזרת מזכה 0 (event יחיד); אינדקס `ux_xp_onboarding_once` חוסם שורת onboarding שנייה; pre-signup לא מטבע XP; `/xp` דורש auth.
+- Status: ✅ automated (test_onboarding_xp_granted_once_at_completion, test_onboarding_xp_replay_grants_zero, test_xp_partial_unique_blocks_second_onboarding_row, test_xp_onboarding_once_per_user_index, test_xp_requires_auth)
+
+### TC-P3-ONB-08 — No em dashes in product copy (lint)
+- Expected: אין U+2014 במחרוזות/JSX ב-frontend/src (הערות מוחרגות). המסמך הנעול נקי גם הוא.
+- Status: ✅ automated (test_no_em_dash_in_product_copy)
+
+### TC-P3-ONB-09 — Returning-user routing
+- Expected: משתמש מאומת שהשלים אונבורדינג → `/scan` (router.replace); back מהמוצר לא חוזר לאונבורדינג; יציאה מ-S11 = replace ל-`/paywall`(trial)/`/scan`(free).
+- Status: ✅ implemented (mount guard on /me + replace navigation) · ⬜ manual click-through
+
+### TC-P3-ONB-10 — LONG/SHORT + שני ענפי S1a (נתוני אמת)
+- Expected: כפתורי S1 = LONG/SHORT; ענף LONG = fade (‎−10% ל-57,802); ענף SHORT = squeeze (‎+2.06% ל-65,624 נגד השורט) ואז fade — **שניהם מנרות אמת** (assertion בזמן build של ה-seed). tooltips `long_short`/`fade`/`squeeze`.
+- Status: ✅ seed assertion automated (builder throws אם אין squeeze≥1.5% ו-fade≤−5%) · UI build-verified
+
+### TC-P3-ONB-11 — Chart Standard v1 (רכיב בסיס Package B)
+- Expected: כותרת הקשר (symbol/price/range/"Daily candles"); EMA200+EMA7 עם תוויות; swing S/R (computeRangeLevels); Blueprint levels (S8); תגי Spike/Entry שפותחים tooltip; הקשה על נר → OHLC (ohlc). מרונדר in-app מנרות אמת.
+- Status: ✅ build/tsc/eslint verified · ⬜ manual interaction check
+
+### TC-P3-ONB-12 — Bug fixes (scan-again, signup flash, orphans)
+- Expected: "new scan" בתוצאת הסריקה החיה חוזר למסך הבקרים (idle), לא סורק מיד; אין מסך מהבהב בין S5→S6 (מעבר יחיד עם guard); אין יתומי שורה (noOrphan + text-wrap balance).
+- Status: ✅ scan-again fixed (setPhase idle) · signup single guarded transition · noOrphan applied · ⬜ manual visual
+
 ---
 
 ## ATR (Acceptance Test Reports)

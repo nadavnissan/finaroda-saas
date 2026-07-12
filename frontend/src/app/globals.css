@@ -27,3 +27,14 @@ main {
   padding: 2rem;
   text-align: center;
 }
+
+/* Reduce single-word line orphans in headings/copy (paired with noOrphan()). */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
