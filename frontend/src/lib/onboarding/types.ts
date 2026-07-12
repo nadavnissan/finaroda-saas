@@ -28,14 +28,21 @@ export interface EpisodeSetup {
   score: number | null;
 }
 
+export interface PassCheck {
+  id: string;
+  pass: boolean;
+}
+
 export interface EpisodeOutcome {
   resolved: "win" | "loss";
   direction: string;
   entry_price: number | null;
   exit_price: number | null;
+  risk_price: number | null;
   r_multiple: number | null;
   pct: number | null;
   squeeze_pct: number | null;
+  checks: PassCheck[] | null;
   score: number | null;
   real_stats_ref: string | null;
 }

@@ -41,9 +41,11 @@ class EpisodeOutcome(BaseModel):
     direction: str
     entry_price: Optional[float] = None
     exit_price: Optional[float] = None
+    risk_price: Optional[float] = None   # Calculated Risk Level (drawn on the Blueprint)
     r_multiple: Optional[float] = None
     pct: Optional[float] = None
     squeeze_pct: Optional[float] = None  # up-move against an impulse short before the fade
+    checks: Optional[list[dict]] = None  # top passed checks for the PASS demo (Why PASS)
     score: Optional[float] = None
     real_stats_ref: Optional[str] = None
 

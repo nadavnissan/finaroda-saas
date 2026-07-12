@@ -9,6 +9,8 @@
     "entry_index": 2,
     "entry_price": 64298,
     "target_price": null,
+    "risk_price": null,
+    "checks": null,
     "r_multiple": -1,
     "score": null,
     "resolved": "loss",
@@ -187,6 +189,25 @@
     "entry_index": 9,
     "entry_price": 0.1481,
     "target_price": 0.1391,
+    "risk_price": 0.1511,
+    "checks": [
+      {
+        "id": "regime",
+        "pass": true
+      },
+      {
+        "id": "weekly_bias",
+        "pass": true
+      },
+      {
+        "id": "ema7_slope",
+        "pass": true
+      },
+      {
+        "id": "volume",
+        "pass": true
+      }
+    ],
     "r_multiple": 3,
     "score": 86,
     "resolved": "win",
@@ -196,7 +217,7 @@
       "ema200_at_entry": 0.32446,
       "price_vs_ema200_pct": -54.35
     },
-    "real_stats_ref": "EPISODES_AND_VERIFIED_NUMBERS.md §2 (ADA short 25/06, Score 86, +3.00R).",
+    "real_stats_ref": "EPISODES_AND_VERIFIED_NUMBERS.md §2 (ADA short 25/06, Score 86, +3.00R, risk 0.1511).",
     "kline_data": [
       {
         "t": 1781568000000,
@@ -343,6 +364,8 @@
     "entry_index": 7,
     "entry_price": 1609.64,
     "target_price": 1770.6,
+    "risk_price": null,
+    "checks": null,
     "r_multiple": 3.33,
     "score": null,
     "resolved": "win",

@@ -9,27 +9,34 @@ import { C, type Candle } from "@/lib/onboarding/types";
 import { ConceptTooltip } from "./ConceptTooltip";
 
 // CHART STANDARD v1 (Package B base component). In-app SVG from real klines, never
-// external captures. Context header + EMA7/EMA200 with labels + swing S/R + optional
-// Blueprint levels + event annotations (each opens its Concept Tooltip) + candle tap
-// showing OHLC. Staged reveal is driven by the parent appending candles to `data`.
+// external captures. Prominent symbol badge separated from price/range/resolution,
+// EMA7/EMA200 + swing S/R + optional Blueprint levels with DECLUTTERED side labels,
+// event annotations (each opens its Concept Tooltip), and candle-tap OHLC.
 
 const W = 360;
 const H = 210;
-const PADL = 48;
-const PADR = 44; // room for on-line EMA/level labels
+const PADL = 46;
+const PADR = 62; // room for decluttered right-side labels
 const PADT = 10;
 const PADB = 16;
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
 export interface ChartAnnotation {
-  index: number; // index within the full series
-  label: string; // e.g. "Spike day", "Entry"
-  tooltipId: string; // Concept Tooltip term id
+  index: number;
+  label: string;
+  tooltipId: string;
   ctx?: Record<string, unknown>;
 }
 export interface BlueprintLevels {
   trigger?: number | null;
   risk?: number | null;
   target?: number | null;
+}
+
+interface SideLabel {
+  y: number;
+  text: string;
+  color: string;
 }
 
 function fmt(n: number): string {
@@ -39,6 +46,18 @@ function fmt(n: number): string {
 }
 function isoDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
+}
+
+// Push overlapping side labels apart so Trigger/Risk/Target/EMA never collide.
+function declutter(labels: SideLabel[], minGap: number, top: number, bottom: number): SideLabel[] {
+  const out = labels.map((l) => ({ ...l })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < out.length; i++) {
+    if (out[i].y - out[i - 1].y < minGap) out[i].y = out[i - 1].y + minGap;
+  }
+  const overflow = out.length ? out[out.length - 1].y - bottom : 0;
+  if (overflow > 0) for (const l of out) l.y -= overflow;
+  for (const l of out) l.y = Math.max(top, l.y);
+  return out;
 }
 
 export function EpisodeChart({
@@ -102,33 +121,42 @@ export function EpisodeChart({
       .join(" ")
       .trim();
 
+  // collect right-side labels, then declutter so they never overlap
+  const rawLabels: SideLabel[] = [];
+  if (emaMode !== "none" && ema7s.length) rawLabels.push({ y: y(ema7s[ema7s.length - 1]), text: "EMA7", color: C.green });
+  if (emaMode === "both" && ema200s.length) rawLabels.push({ y: y(ema200s[ema200s.length - 1]), text: "EMA200", color: C.amber });
+  if (levels.resistance != null) rawLabels.push({ y: y(levels.resistance), text: "Resistance", color: C.muted });
+  if (levels.support != null) rawLabels.push({ y: y(levels.support), text: "Support", color: C.muted });
+  if (blueprint?.trigger != null) rawLabels.push({ y: y(blueprint.trigger), text: "Trigger", color: C.fg });
+  if (blueprint?.risk != null) rawLabels.push({ y: y(blueprint.risk), text: "Risk", color: C.red });
+  if (blueprint?.target != null) rawLabels.push({ y: y(blueprint.target), text: "Target", color: C.green });
+  const sideLabels = declutter(rawLabels, 9, PADT + 4, H - PADB);
+
   const lastClose = data[data.length - 1].c;
   const range = dateRange ?? `${isoDate(data[0].t)} to ${isoDate(data[data.length - 1].t)}`;
 
-  function LineLabel({ p, text, color }: { p: number; text: string; color: string }) {
-    return (
-      <text x={W - PADR + 3} y={y(p) + 3} fill={color} fontSize={8} fontFamily="monospace">
-        {text}
-      </text>
-    );
-  }
-
   return (
     <div style={{ width: "100%", maxWidth: 460, margin: "0 auto" }}>
-      {/* Context header ON the chart */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          fontFamily: "monospace",
-          padding: "0 2px 4px",
-        }}
-      >
-        <span style={{ fontSize: 16, fontWeight: 700, color: C.fg }}>{symbol ?? data.length + " candles"}</span>
-        <span style={{ fontSize: 12, color: C.green }}>{fmt(lastClose)}</span>
-        <span style={{ fontSize: 10, color: C.subtle }}>
-          {range} · Daily candles
+      {/* Context header: symbol prominent on its own line, separated from the rest */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 5px" }}>
+        <span
+          style={{
+            fontFamily: MONO,
+            fontSize: 13,
+            fontWeight: 700,
+            color: C.fg,
+            background: C.bg,
+            border: `1px solid ${C.border}`,
+            borderRadius: 5,
+            padding: "2px 8px",
+            letterSpacing: 1,
+          }}
+        >
+          {symbol ?? `${data.length} candles`}
+        </span>
+        <span style={{ fontFamily: MONO, fontSize: 12, color: C.green, fontWeight: 600 }}>{fmt(lastClose)}</span>
+        <span style={{ fontFamily: MONO, fontSize: 9.5, color: C.muted, marginLeft: "auto" }}>
+          {range} · Daily
         </span>
       </div>
 
@@ -138,45 +166,18 @@ export function EpisodeChart({
           {[max - padY, (max + min) / 2, min + padY].map((p, i) => (
             <g key={i}>
               <line x1={PADL} y1={y(p)} x2={W - PADR} y2={y(p)} stroke={C.border} strokeWidth={0.5} />
-              <text x={PADL - 4} y={y(p) + 3} textAnchor="end" fill={C.subtle} fontSize={8} fontFamily="monospace">
+              <text x={PADL - 4} y={y(p) + 3} textAnchor="end" fill={C.subtle} fontSize={8} fontFamily={MONO}>
                 {fmt(p)}
               </text>
             </g>
           ))}
 
-          {/* swing S/R */}
-          {levels.resistance != null && (
-            <>
-              <line x1={PADL} y1={y(levels.resistance)} x2={W - PADR} y2={y(levels.resistance)} stroke={C.muted} strokeWidth={0.7} strokeDasharray="1 3" />
-              <LineLabel p={levels.resistance} text="R" color={C.muted} />
-            </>
-          )}
-          {levels.support != null && (
-            <>
-              <line x1={PADL} y1={y(levels.support)} x2={W - PADR} y2={y(levels.support)} stroke={C.muted} strokeWidth={0.7} strokeDasharray="1 3" />
-              <LineLabel p={levels.support} text="S" color={C.muted} />
-            </>
-          )}
-
-          {/* Blueprint levels (when a setup exists) */}
-          {blueprint?.trigger != null && (
-            <>
-              <line x1={PADL} y1={y(blueprint.trigger)} x2={W - PADR} y2={y(blueprint.trigger)} stroke={C.fg} strokeWidth={0.7} strokeDasharray="4 2" />
-              <LineLabel p={blueprint.trigger} text="trigger" color={C.fg} />
-            </>
-          )}
-          {blueprint?.risk != null && (
-            <>
-              <line x1={PADL} y1={y(blueprint.risk)} x2={W - PADR} y2={y(blueprint.risk)} stroke={C.red} strokeWidth={0.7} strokeDasharray="4 2" />
-              <LineLabel p={blueprint.risk} text="risk" color={C.red} />
-            </>
-          )}
-          {blueprint?.target != null && (
-            <>
-              <line x1={PADL} y1={y(blueprint.target)} x2={W - PADR} y2={y(blueprint.target)} stroke={C.green} strokeWidth={0.7} strokeDasharray="4 2" />
-              <LineLabel p={blueprint.target} text="target" color={C.green} />
-            </>
-          )}
+          {/* swing S/R + blueprint level LINES (labels drawn decluttered on the right) */}
+          {levels.resistance != null && <line x1={PADL} y1={y(levels.resistance)} x2={W - PADR} y2={y(levels.resistance)} stroke={C.muted} strokeWidth={0.7} strokeDasharray="1 3" />}
+          {levels.support != null && <line x1={PADL} y1={y(levels.support)} x2={W - PADR} y2={y(levels.support)} stroke={C.muted} strokeWidth={0.7} strokeDasharray="1 3" />}
+          {blueprint?.trigger != null && <line x1={PADL} y1={y(blueprint.trigger)} x2={W - PADR} y2={y(blueprint.trigger)} stroke={C.fg} strokeWidth={0.7} strokeDasharray="4 2" />}
+          {blueprint?.risk != null && <line x1={PADL} y1={y(blueprint.risk)} x2={W - PADR} y2={y(blueprint.risk)} stroke={C.red} strokeWidth={0.7} strokeDasharray="4 2" />}
+          {blueprint?.target != null && <line x1={PADL} y1={y(blueprint.target)} x2={W - PADR} y2={y(blueprint.target)} stroke={C.green} strokeWidth={0.7} strokeDasharray="4 2" />}
 
           {/* candles */}
           {data.map((c, i) => {
@@ -192,19 +193,9 @@ export function EpisodeChart({
             );
           })}
 
-          {/* EMA overlays with on-line labels */}
-          {emaMode === "both" && emaPath("ema200") && (
-            <>
-              <path d={emaPath("ema200")} fill="none" stroke={C.amber} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.9} />
-              {ema200s.length > 0 && <LineLabel p={ema200s[ema200s.length - 1]} text="EMA200" color={C.amber} />}
-            </>
-          )}
-          {emaMode !== "none" && emaPath("ema7") && (
-            <>
-              <path d={emaPath("ema7")} fill="none" stroke={C.green} strokeWidth={1.2} opacity={0.9} />
-              {ema7s.length > 0 && <LineLabel p={ema7s[ema7s.length - 1]} text="EMA7" color={C.green} />}
-            </>
-          )}
+          {/* EMA overlays */}
+          {emaMode === "both" && emaPath("ema200") && <path d={emaPath("ema200")} fill="none" stroke={C.amber} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.9} />}
+          {emaMode !== "none" && emaPath("ema7") && <path d={emaPath("ema7")} fill="none" stroke={C.green} strokeWidth={1.2} opacity={0.9} />}
 
           {/* entry marker */}
           {entryPrice != null && (
@@ -213,45 +204,33 @@ export function EpisodeChart({
               <line x1={PADL} y1={y(entryPrice)} x2={W - PADR} y2={y(entryPrice)} stroke={C.muted} strokeWidth={0.6} strokeDasharray="2 2" />
             </>
           )}
+
+          {/* decluttered right-side labels with short leader ticks */}
+          {sideLabels.map((l) => (
+            <g key={l.text}>
+              <line x1={W - PADR} y1={l.y} x2={W - PADR + 3} y2={l.y} stroke={l.color} strokeWidth={0.6} />
+              <text x={W - PADR + 5} y={l.y + 2.5} fill={l.color} fontSize={7.5} fontFamily={MONO}>
+                {l.text}
+              </text>
+            </g>
+          ))}
         </svg>
 
         {/* interaction + annotation overlay (percentage coords over the scaled SVG) */}
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          {/* candle tap targets */}
           {data.map((c, i) => (
             <button
               key={c.t}
               type="button"
               aria-label={`Candle ${isoDate(c.t)}`}
               onClick={(e) => setTap({ candle: c, x: e.clientX, y: e.clientY })}
-              style={{
-                position: "absolute",
-                left: `${((x(i) - step / 2) / W) * 100}%`,
-                top: 0,
-                width: `${(step / W) * 100}%`,
-                height: "100%",
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                pointerEvents: "auto",
-              }}
+              style={{ position: "absolute", left: `${((x(i) - step / 2) / W) * 100}%`, top: 0, width: `${(step / W) * 100}%`, height: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", pointerEvents: "auto" }}
             />
           ))}
-          {/* event annotations (each opens its Concept Tooltip) */}
           {annotations
             .filter((a) => a.index < data.length)
             .map((a) => (
-              <span
-                key={a.label}
-                style={{
-                  position: "absolute",
-                  left: `${(x(a.index) / W) * 100}%`,
-                  top: `${(y(data[a.index].h) / H) * 100}%`,
-                  transform: "translate(-50%, -120%)",
-                  pointerEvents: "auto",
-                }}
-              >
+              <span key={a.label} style={{ position: "absolute", left: `${(x(a.index) / W) * 100}%`, top: `${(y(data[a.index].h) / H) * 100}%`, transform: "translate(-50%, -120%)", pointerEvents: "auto" }}>
                 <ConceptTooltip id={a.tooltipId} label={a.label} ctx={a.ctx} pill />
               </span>
             ))}
@@ -272,7 +251,7 @@ export function EpisodeChart({
                 border: `1px solid ${C.green}`,
                 borderRadius: 8,
                 padding: 10,
-                fontFamily: "monospace",
+                fontFamily: MONO,
                 fontSize: 11,
                 color: C.fg,
                 boxShadow: "0 8px 24px rgba(0,0,0,0.55)",

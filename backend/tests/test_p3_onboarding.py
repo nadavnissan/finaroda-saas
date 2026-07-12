@@ -68,6 +68,19 @@ def test_reveal_returns_withheld_outcome():
     assert oc["pct"] == 10.0  # empirically derived from the real klines
 
 
+def test_valid_setup_reveal_has_risk_and_checks():
+    """S8 PASS demo: E3 reveal carries the Calculated Risk Level + top passed checks."""
+    with TestClient(app) as client:
+        r = client.post("/api/onboarding/episodes/E3/reveal")
+    oc = r.json()["outcome"]
+    assert oc["risk_price"] == 0.1511  # verified ADA Calculated Risk Level (drawn on S8)
+    assert oc["exit_price"] == 0.1391  # Calculated Target Level
+    checks = oc["checks"]
+    ids = {c["id"] for c in checks}
+    assert {"regime", "weekly_bias", "ema7_slope", "volume"} <= ids
+    assert all(c["pass"] for c in checks)
+
+
 def test_trap_outcome_is_a_real_loss():
     """E1 trap resolves to a real (kline-derived) loss — no fabricated drop."""
     with TestClient(app) as client:

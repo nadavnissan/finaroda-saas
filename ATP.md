@@ -313,6 +313,32 @@
 - Expected: "new scan" בתוצאת הסריקה החיה חוזר למסך הבקרים (idle), לא סורק מיד; אין מסך מהבהב בין S5→S6 (מעבר יחיד עם guard); אין יתומי שורה (noOrphan + text-wrap balance).
 - Status: ✅ scan-again fixed (setPhase idle) · signup single guarded transition · noOrphan applied · ⬜ manual visual
 
+## TC — P3 onboarding validation round 2 (polish, 13/07) — unit tests: frontend/tests (node --test)
+
+### TC-P3-ONB-13 — S0 LET'S START (no auto-advance)
+- Expected: מסך 0 מציג כפתור **LET'S START** (terminal, primary); אין היעלמות מתוזמנת; מעבר ל-S1 רק בלחיצה.
+- Status: ✅ implemented (auto-advance effect הוסר) · ⬜ manual
+
+### TC-P3-ONB-14 — Signup transition guard (no flash) [REGRESSION]
+- Expected: מעבר S5→S6 יחיד; render-gate פותר routing לפני שהזרימה מרונדרת (redirect מאוחר לא חוטף מסך); `createOnce` מריץ את המעבר פעם אחת.
+- Status: ✅ automated unit (createOnce runs once) · render-gate + guard implemented · ⬜ manual click-through
+
+### TC-P3-ONB-15 — Tooltip context suppression + wording
+- Expected: `renderNow` מחזיר "" כשחסר placeholder פשוט (long_short לפני בחירה → אין שורת now); עם direction → "This setup's direction is LONG."; conditional נבחר לפי דגל truthy.
+- Status: ✅ automated unit (renderNow suppression + conditional)
+
+### TC-P3-ONB-16 — LEVEL framing math (300/1,000) + celebration gating
+- Expected: `levelFor(300)` = LVL 01 Strategy Apprentice, 300/1,000 → 02 Risk Manager, progress 30%; ספי 1,000/3,000/8,000; `crossedLevel` true רק בחציית סף (‏0→300 = false); חגיגה נורית רק בחצייה, רטט עדין על צבירה.
+- Status: ✅ automated unit (levelFor, crossedLevel) · LevelMeter + LevelUp implemented
+
+### TC-P3-ONB-17 — S8 risk level drawn + Why PASS
+- Expected: E3 reveal מחזיר `risk_price=0.1511` + `checks` (regime/weekly/ema7/volume); הגרף מצייר trigger/**risk**/target עם תוויות ללא חפיפה; "Why PASS" מציג שורה לכל check מתוך תוכן ה-concepts.
+- Status: ✅ automated backend (test_valid_setup_reveal_has_risk_and_checks) · UI build-verified
+
+### TC-P3-ONB-18 — Header redesign + chart header + S10 copy + S11 table
+- Expected: כותרת = מד LEVEL קומפקטי mono (ללא caption אפור נמוך-ניגודיות); כותרת גרף עם סימבול בולט נפרד (כולל S10); קופי S10 חד-משמעי ("revealed on your NEXT scan"); טבלת S11 עם overflow-x מסונכרן למסגרת.
+- Status: ✅ build/tsc/eslint verified · ⬜ manual mobile visual
+
 ---
 
 ## ATR (Acceptance Test Reports)

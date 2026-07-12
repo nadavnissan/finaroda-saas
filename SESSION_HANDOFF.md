@@ -8,9 +8,22 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** F13 validation round 1 + tooltip content (v0.7.0) — on top of F13 onboarding (v0.6.0), XP economy docs (v0.5.3).
-- **Validation:** ✅ all green — **pytest 42/42** (was 39; +content/XP-replay), shared node --test 12/12, **tsc clean**, **eslint clean**, **next build 17/17** (/onboarding route 15.1kB).
-- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.7.0) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** F13 validation round 2 polish (v0.7.1) — on top of round 1 (v0.7.0), F13 onboarding (v0.6.0).
+- **Validation:** ✅ all green — **pytest 43/43** (+risk/checks), **frontend unit 7/7** (node --test type-strip), shared node --test 12/12, **tsc clean**, **eslint clean**, **next build 17/17** (/onboarding route 16.8kB), em-dash lint 0.
+- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.7.1) is **dev only** — Nadav merges to main manually.
+
+## Latest — F13 validation round 2 polish (v0.7.1, frontend-focused)
+- Applied Nadav's 10 click-through polish items.
+- **S0** now has a **LET'S START** button (no auto-advance). **Header** redesigned: the XP bar + gray caption became a compact terminal **LevelMeter** (hexagon rank badge + rank + XP + progress toward the next rank, XP_ECONOMY ladder 1000/3000/8000).
+- **Signup flash (reopened):** fixed with a **render-gate** — the flow does not render until the `/me` routing check resolves, so a late async redirect can't yank a mid-flow screen (the concrete cause for a returning/completed user during repeated testing). S5→S6 also consolidated to a single `createOnce` transition. Unit-tested.
+- **Tooltip context guard:** `renderNow` now suppresses the whole `now` line when a simple placeholder is missing (long_short shows nothing before a choice is made; fixes the premature-direction glitch). Unit-tested.
+- **Chart:** symbol is a prominent separate badge (all charts incl. S10); Trigger/Risk/Target + EMA/S-R labels are decluttered (no overlap). **S8:** pre-scan framing line ("Real case: ADA, 25 Jun 2026. Press SCAN..."), the verified **Calculated Risk Level 0.1511** is seeded + drawn, and a **Why PASS** popover lists the stored passed checks (regime/weekly/timing/volume) using the locked concept labels.
+- **XP = LEVEL framing** with a **level-up celebration** (distinct vibration + terminal animation) that fires ONLY on rank crossings; ordinary XP gains get the subtle E6 buzz. Onboarding tops out at 300 (Level 1) so the celebration is dormant here but implemented + unit-tested.
+- **S10 copy** made unambiguous ("revealed on your NEXT scan"). **S11 table** wrapped in overflow-x synced to the frame.
+- **New frontend unit-test harness:** `frontend/tests/*.test.ts` via `node --test --experimental-strip-types` (`npm run test:unit`), covering level math, tooltip suppression, and the transition guard. `allowImportingTsExtensions` added to tsconfig for the `.ts` test imports.
+- **⚠ Carried-over, still open for Nadav:** EpisodeChart is in-app SVG (not recharts); Google/Apple OAuth SDK is round-2 (magic-link fully wired, closes the loop in dev); E1 = BTC (LINK was a curation error). Fonts (IBM Plex Mono / Space Grotesk) are referenced via CSS font-family but not yet self-hosted/imported — they fall back to system mono; loading them is a Design-round-2 item.
+- **⬜ Still pending:** manual mobile click-through (header, tooltip clipping, chart interactions, level-up visual). 
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, calculator terminology, main branch.
 
 ## Latest — F13 validation round 1 + tooltip content (v0.7.0, code + migration 026)
 - Applied Nadav's click-through notes + wired the Concept Tooltip content + built Chart Standard v1.

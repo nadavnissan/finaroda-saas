@@ -4,6 +4,30 @@
 
 ---
 
+## [F13-ONBOARDING-V2 / validation round 2 (polish)] — 2026-07-13
+- GOAL: 10 פריטי ליטוש מ-click-through של נדב (frontend-focused). PATCH.
+- SOLUTION (מה עשינו בפועל):
+  1. **S0:** auto-advance הוחלף בכפתור **LET'S START** (terminal, primary); אין היעלמות מתוזמנת.
+  2. **Signup flash (reopened):** התווסף **render-gate** — routing (‏`/me` → completed?) נפתר לפני שהזרימה מרונדרת, כך ש-redirect אסינכרוני מאוחר לא חוטף מסך באמצע (הגורם ל-flash אצל משתמש שהשלים אונבורדינג בבדיקות חוזרות). המעבר S5→S6 אוחד ל-`createOnce` (מעבר יחיד). +unit test.
+  3. **Header redesign:** מד XP + caption אפור → רכיב **LevelMeter** קומפקטי (תג משושה + דרגה + XP + התקדמות), mono, ניגודיות גבוהה, ללא caption אפור.
+  4. **Tooltip context guard:** `renderNow` מושתק לגמרי כשחסר placeholder פשוט (long_short לפני בחירה → אין שורת now, תוקן ה-glitch של direction מוקדם). +unit test.
+  5. **Chart header:** סימבול בולט בשורה/badge נפרד ממחיר/טווח/רזולוציה — בכל הגרפים כולל S10.
+  6. **S8 pre-scan framing:** "Real case: ADA, 25 Jun 2026. Press SCAN to see what the engine found." מעל הגרף.
+  7. **S8 post-scan:** (a) `risk_price` נוסף לסכמת האפיזודה + seed 0.1511 (Calculated Risk Level) ומצויר; (b) תוויות Trigger/Risk/Target ללא חפיפה (declutter של תוויות צד); (c) "Why PASS" על ה-chip — שורה לכל check מאוחסן (regime/weekly/timing/volume) מלשון תוכן ה-concepts.
+  8. **XP = LEVEL framing:** "LVL 01 · Strategy Apprentice" + התקדמות 300/1,000 → "LVL 02 · Risk Manager" (סולם `XP_ECONOMY.md`). **חגיגת level-up** (רטט ייעודי + אנימציה) רק בחציית סף דרגה, לעולם לא על צבירת XP; צבירה = רטט עדין (E6). +unit test (math + gating).
+  9. **S10 copy:** נוסח חד-משמעי — "revealed on your NEXT scan. That is how the journal closes the loop" (לא ניתן לקריאה כ-"won't reveal").
+  10. **S11 table:** נעטף ב-`overflow-x:auto` + `min-width`, מסונכרן למסגרת ברוחבי מובייל.
+- FILES CREATED: frontend/src/lib/onboarding/{xp,tooltipTemplate,once}.ts, frontend/src/components/onboarding/{LevelMeter,LevelUp,WhyPass}.tsx, frontend/tests/onboarding.unit.test.ts.
+- FILES MODIFIED: backend/{migrations/023_episodes,models/onboarding,migrations/seed_data/onboarding_episodes.json}, backend/tests/test_p3_onboarding.py, frontend onboarding {OnboardingFlow,OnboardingShell,EpisodeChart,ConceptTooltip,concepts,haptics,types}.* , frontend/{tsconfig,package.json}, globals.css, FINARODA_ONBOARDING_SPEC/SAAS_SPEC/ATP/CHANGELOG/VERSIONS/HANDOFF. DELETED: XPMeter.tsx.
+- DB CHANGES: אין (risk_price/checks ב-outcome JSON של episodes; seed re-run). CONFIG ADDED: אין.
+- VALIDATION: **pytest 43/43** (+risk/checks) · **frontend unit 7/7** (node --test, type-strip) · **tsc clean** · **eslint clean** · **next build 17/17** (/onboarding 16.8kB) · em-dash lint 0.
+- ATP: +TC-P3-ONB-13..18.
+- VERSION: v0.7.1 (PATCH).
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: אונבורדינג מלוטש — כניסה מפורשת, header טרמינלי עם LEVEL, tooltips נקיים ומושתקים בהקשר, גרף עם risk+Why PASS, קופי יומן חד-משמעי, טבלה תואמת-מסגרת. תשתית unit-tests ל-frontend (node --test).
+- DECISIONS: (1) flash זוהה כ-yank אסינכרוני של redirect מ-`/me` (משתמש שהשלים, בבדיקות חוזרות) → נפתר ב-render-gate + guard; (2) unit-tests ב-`frontend/tests` דרך node `--experimental-strip-types` (Node 22) — פונקציות טהורות (xp/tooltipTemplate/once); `allowImportingTsExtensions` ל-tsc; (3) risk/checks ב-outcome (נחשפים post-scan עם ה-Blueprint), לא setup; (4) חגיגת level-up רדומה באונבורדינג (300<1,000) אך מנגנון קיים ונבדק.
+
 ## [F13-ONBOARDING-V1 / validation round 1 + tooltip content] — 2026-07-12
 - GOAL: יישום הערות ה-click-through של נדב + חיווט תוכן ה-Concept Tooltips + Chart Standard v1. פיצ'ר/תיקונים (MINOR).
 - SOLUTION (מה עשינו בפועל):

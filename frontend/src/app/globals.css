@@ -38,3 +38,23 @@ h3 {
 p {
   text-wrap: pretty;
 }
+
+/* Rank-up celebration (fires only on threshold crossings). */
+@keyframes onb-levelup-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.onb-levelup {
+  animation: onb-levelup-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}

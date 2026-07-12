@@ -1,19 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { anonId } from "@/lib/onboarding/anon";
 import { onboardingApi } from "@/lib/onboarding/api";
 import { vibrateScan } from "@/lib/onboarding/haptics";
+import { createOnce } from "@/lib/onboarding/once";
 import { noOrphan } from "@/lib/onboarding/text";
 import { C, XP_AMOUNTS, type Candle, type EpisodeReveal, type EpisodeSetup } from "@/lib/onboarding/types";
+import { crossedLevel, levelFor } from "@/lib/onboarding/xp";
 import { SCAN_STEPS, ScanningLog } from "@/components/scan/ScanningLog";
 
 import { ConceptTooltip } from "./ConceptTooltip";
 import { EpisodeChart, type ChartAnnotation } from "./EpisodeChart";
+import { LevelUp } from "./LevelUp";
 import { OnboardingShell } from "./OnboardingShell";
+import { WhyPass } from "./WhyPass";
 
 type Step =
   | "S0" | "S1" | "S1a" | "S2" | "S3" | "S4" | "S5"
@@ -39,7 +43,9 @@ const COPY = {
   s7: "Practicing on a realistic amount builds real discipline. The system uses this to illustrate risk management, not to make recommendations.",
   s8lesson:
     "The difference from the trap is market structure (EMA200 and weekly) plus verified EMA7 timing, without exposing weights or formulas.",
-  s10gate: "Had you scanned that day, the system would have logged it, and your next scan would reveal the outcome.",
+  // S10: unambiguous, the outcome IS revealed on the next scan.
+  s10gate1: "Every scan is logged as a scenario the moment you run it.",
+  s10gate2: "Its outcome is revealed on your NEXT scan. That is how the journal closes the loop.",
   s10turning:
     "The whole market was turning. The same setup that died seven times in June completed when the structure aligned. Context is everything.",
   s11title: "Yesterday's market is history. Tomorrow waits for the prepared.",
@@ -51,8 +57,9 @@ const btn = (bg: string, fg = "#0b0d12"): React.CSSProperties => ({
   border: "none",
   borderRadius: 8,
   padding: "12px 18px",
-  fontFamily: "monospace",
+  fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
   fontSize: 14,
+  fontWeight: 600,
   cursor: "pointer",
 });
 const glow = (): React.CSSProperties => ({ ...btn(C.bg, C.green), border: `2px solid ${C.green}`, boxShadow: `0 0 18px ${C.green}` });
@@ -62,14 +69,25 @@ const ghostBtn: React.CSSProperties = {
   border: `1px solid ${C.border}`,
   borderRadius: 8,
   padding: "10px 16px",
-  fontFamily: "monospace",
+  fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
   cursor: "pointer",
 };
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function prettyDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+}
+function coinName(coin: string): string {
+  return coin.replace(/USDT$/, "");
+}
 
 export function OnboardingFlow() {
   const router = useRouter();
   const anon = useRef<string>("ssr");
-  const signingUp = useRef(false);
+  const signupGuard = useRef(createOnce());
+  const [checking, setChecking] = useState(true); // render gate: resolve routing before the flow
   const [step, setStep] = useState<Step>("S0");
   const [earned, setEarned] = useState<string[]>([]);
   const [scanUnlocked, setScanUnlocked] = useState(false);
@@ -77,6 +95,7 @@ export function OnboardingFlow() {
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [revealCount, setRevealCount] = useState(0);
+  const [levelUp, setLevelUp] = useState<{ level: number; name: string } | null>(null);
 
   const [e1, setE1] = useState<EpisodeSetup | null>(null);
   const [e1r, setE1r] = useState<EpisodeReveal | null>(null);
@@ -90,14 +109,19 @@ export function OnboardingFlow() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
 
-  const xp = earned.reduce((s, r) => s + (XP_AMOUNTS[r] ?? 0), 0);
+  const xp = useMemo(() => earned.reduce((s, r) => s + (XP_AMOUNTS[r] ?? 0), 0), [earned]);
 
-  // mount: anon id, returning-user routing guard, prefetch trap setup
+  // mount: resolve returning-user routing BEFORE rendering the flow (no mid-flow
+  // yank / flash), set anon id, prefetch the trap setup.
   useEffect(() => {
     anon.current = anonId();
     void api.me().then((r) => {
       const done = (r.data as { data?: { onboarding_completed?: boolean } } | null)?.data?.onboarding_completed;
-      if (done) router.replace("/scan"); // once per lifetime; back never re-enters
+      if (done) {
+        router.replace("/scan"); // once per lifetime; never re-enters
+        return; // stays in the checking gate until navigation completes
+      }
+      setChecking(false);
     });
     void onboardingApi.getEpisode("E1").then((r) => r.data && setE1(r.data));
   }, [router]);
@@ -107,9 +131,21 @@ export function OnboardingFlow() {
     void onboardingApi.funnel("screen_view", { screen: next }, anon.current);
   }, []);
 
+  // client-side meter; the server grants the single onboarding total at completion.
+  // XP-gain moments get the subtle buzz (E6); a rank crossing triggers the celebration.
   const earn = useCallback((ref: string) => {
-    // client-side meter only; the server grants the single onboarding total at completion
-    setEarned((prev) => (prev.includes(ref) ? prev : [...prev, ref]));
+    setEarned((prev) => {
+      if (prev.includes(ref)) return prev;
+      const next = [...prev, ref];
+      const prevXp = prev.reduce((s, r) => s + (XP_AMOUNTS[r] ?? 0), 0);
+      const newXp = next.reduce((s, r) => s + (XP_AMOUNTS[r] ?? 0), 0);
+      vibrateScan();
+      if (crossedLevel(prevXp, newXp)) {
+        const s = levelFor(newXp);
+        setLevelUp({ level: s.level, name: s.name });
+      }
+      return next;
+    });
   }, []);
 
   const playReveal = useCallback((len: number) => {
@@ -140,13 +176,6 @@ export function OnboardingFlow() {
     }, 350);
   }, []);
 
-  // S0 auto-advance
-  useEffect(() => {
-    if (step !== "S0") return;
-    const t = window.setTimeout(() => go("S1"), 2600);
-    return () => window.clearTimeout(t);
-  }, [step, go]);
-
   // S2 scan illusion: animate, award the scan, reveal the trap, advance
   useEffect(() => {
     if (step !== "S2") return;
@@ -168,7 +197,6 @@ export function OnboardingFlow() {
     return [...setup.setup_klines, ...revealed];
   }
 
-  // trap annotations (spike day + entry), each opens a Concept Tooltip
   function trapAnnotations(setup: EpisodeSetup | null): ChartAnnotation[] {
     if (!setup) return [];
     const anns: ChartAnnotation[] = [];
@@ -177,12 +205,7 @@ export function OnboardingFlow() {
       const spikePct = sc ? (((sc.h - sc.o) / sc.o) * 100).toFixed(1) : undefined;
       anns.push({ index: setup.spike_index, label: "Spike day", tooltipId: "spike", ctx: { spike_pct: spikePct } });
     }
-    anns.push({
-      index: setup.entry_index,
-      label: "Entry",
-      tooltipId: "long_short",
-      ctx: { direction: (s1Choice ?? setup.direction ?? "long").toUpperCase() },
-    });
+    anns.push({ index: setup.entry_index, label: "Entry", tooltipId: "long_short", ctx: { direction: (s1Choice ?? setup.direction ?? "long").toUpperCase() } });
     return anns;
   }
 
@@ -193,11 +216,18 @@ export function OnboardingFlow() {
     return { distance_pct: Math.abs(pct).toFixed(0), above_below: pct >= 0 ? "above" : "below", below: pct < 0, above: pct >= 0 };
   };
 
-  const finishSignup = useCallback(() => {
-    if (signingUp.current) return; // guard: single clean transition (no flash)
-    signingUp.current = true;
-    void onboardingApi.funnel("signup", undefined, anon.current);
-    go("S6");
+  function fadeDays(reveal: EpisodeReveal | null): number | undefined {
+    if (!reveal?.reveal_klines.length) return undefined;
+    const low = Math.min(...reveal.reveal_klines.map((k) => k.l));
+    const idx = reveal.reveal_klines.findIndex((k) => k.l === low);
+    return idx >= 0 ? idx + 1 : undefined;
+  }
+
+  const completeSignup = useCallback(() => {
+    signupGuard.current.run(() => {
+      void onboardingApi.funnel("signup", undefined, anon.current);
+      go("S6");
+    });
   }, [go]);
 
   async function submitEmail() {
@@ -207,7 +237,7 @@ export function OnboardingFlow() {
     if (devLink) {
       const token = new URL(devLink).searchParams.get("token");
       if (token) await api.verify(token);
-      finishSignup();
+      completeSignup();
     } else {
       setSent(true);
     }
@@ -219,39 +249,41 @@ export function OnboardingFlow() {
     router.replace(choice === "trial" ? "/paywall" : "/scan"); // back never re-enters
   }
 
+  if (checking) {
+    return (
+      <div style={{ color: C.muted, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 12 }}>Loading…</div>
+    );
+  }
+
   if (scanning) {
     return (
-      <OnboardingShell xp={xp} contextLine="Scanning, same engine as the live product">
+      <OnboardingShell xp={xp}>
         <ScanningLog step={scanStep} />
       </OnboardingShell>
     );
   }
 
-  const e1ctx = e1 ? `Educational simulation, real data, ${e1.coin} ${e1.date_range}` : undefined;
+  const celebration = levelUp && <LevelUp level={levelUp.level} name={levelUp.name} onDone={() => setLevelUp(null)} />;
 
   switch (step) {
     case "S0":
       return (
-        <OnboardingShell xp={xp} contextLine={e1ctx}>
+        <OnboardingShell xp={xp}>
+          {celebration}
           <h1 style={{ margin: 0, fontSize: 28 }}>{noOrphan(COPY.s0)}</h1>
           <p style={{ color: C.muted, marginTop: 8 }}>A 60 second, data true simulation.</p>
+          <button type="button" style={{ ...glow(), marginTop: 8, letterSpacing: 2 }} onClick={() => go("S1")}>
+            LET&apos;S START ▸
+          </button>
         </OnboardingShell>
       );
 
     case "S1":
       return (
-        <OnboardingShell xp={xp} contextLine={e1ctx}>
+        <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>{noOrphan(COPY.s1)}</h2>
-          {e1 && (
-            <EpisodeChart
-              data={e1.setup_klines}
-              entryIndex={e1.entry_index}
-              entryPrice={e1.entry_price}
-              emaMode="none"
-              symbol={e1.coin}
-              dateRange={e1.date_range}
-            />
-          )}
+          {e1 && <EpisodeChart data={e1.setup_klines} entryIndex={e1.entry_index} entryPrice={e1.entry_price} emaMode="none" symbol={e1.coin} dateRange={e1.date_range} />}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
             <button type="button" style={btn(C.green)} onClick={() => { setS1Choice("long"); go("S1a"); }}>
               LONG
@@ -273,7 +305,8 @@ export function OnboardingFlow() {
             )}
           </div>
           <p style={{ color: C.muted, marginTop: 10, fontSize: 12 }}>
-            <ConceptTooltip id="long_short" ctx={{ direction: (s1Choice ?? "long").toUpperCase() }} />
+            {/* long_short tooltip: `now` line is suppressed until a direction is chosen */}
+            <ConceptTooltip id="long_short" ctx={s1Choice ? { direction: s1Choice.toUpperCase() } : undefined} />
           </p>
           {scanUnlocked && <p style={{ color: C.green, marginTop: 6 }}>There was another option all along.</p>}
         </OnboardingShell>
@@ -282,27 +315,16 @@ export function OnboardingFlow() {
     case "S1a": {
       const short = s1Choice === "short";
       return (
-        <OnboardingShell xp={xp} contextLine={e1ctx}>
-          <h2 style={{ marginTop: 0, color: short ? C.amber : C.red }}>
-            {short ? "Squeezed against you" : "Position eroding"}
-          </h2>
-          {e1 && (
-            <EpisodeChart
-              data={chartData(e1, e1r)}
-              entryIndex={e1.entry_index}
-              entryPrice={e1.entry_price}
-              emaMode="ema7"
-              symbol={e1.coin}
-              dateRange={e1.date_range}
-              annotations={trapAnnotations(e1)}
-            />
-          )}
+        <OnboardingShell xp={xp}>
+          {celebration}
+          <h2 style={{ marginTop: 0, color: short ? C.amber : C.red }}>{short ? "Squeezed against you" : "Position eroding"}</h2>
+          {e1 && <EpisodeChart data={chartData(e1, e1r)} entryIndex={e1.entry_index} entryPrice={e1.entry_price} emaMode="ema7" symbol={e1.coin} dateRange={e1.date_range} annotations={trapAnnotations(e1)} />}
           <p style={{ color: C.fg, marginTop: 12, fontSize: 14 }}>{noOrphan(short ? COPY.s1aShort : COPY.s1aLong)}</p>
           <p style={{ color: C.muted, fontSize: 12 }}>
             {short ? (
               <ConceptTooltip id="squeeze" ctx={{ squeeze_pct: e1r?.outcome.squeeze_pct }} />
             ) : (
-              <ConceptTooltip id="fade" ctx={{ fade_pct: e1r ? Math.abs(e1r.outcome.pct ?? 0).toFixed(1) : undefined }} />
+              <ConceptTooltip id="fade" ctx={{ fade_pct: e1r ? Math.abs(e1r.outcome.pct ?? 0).toFixed(1) : undefined, fade_days: fadeDays(e1r) }} />
             )}
           </p>
           <button
@@ -327,22 +349,12 @@ export function OnboardingFlow() {
 
     case "S3":
       return (
-        <OnboardingShell xp={xp} contextLine={e1ctx}>
+        <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0, color: C.amber }}>{noOrphan(COPY.s3empty)}</h2>
-          {e1 && (
-            <EpisodeChart
-              data={chartData(e1, e1r)}
-              entryIndex={e1.entry_index}
-              entryPrice={e1.entry_price}
-              emaMode="both"
-              symbol={e1.coin}
-              dateRange={e1.date_range}
-              annotations={trapAnnotations(e1)}
-            />
-          )}
+          {e1 && <EpisodeChart data={chartData(e1, e1r)} entryIndex={e1.entry_index} entryPrice={e1.entry_price} emaMode="both" symbol={e1.coin} dateRange={e1.date_range} annotations={trapAnnotations(e1)} />}
           <p style={{ color: C.fg, marginTop: 12, textAlign: "left", fontSize: 14 }}>
-            Price is jumping, but it sits deep below the{" "}
-            <ConceptTooltip id="ema200" ctx={ema200Ctx(e1)} /> and the{" "}
+            Price is jumping, but it sits deep below the <ConceptTooltip id="ema200" ctx={ema200Ctx(e1)} /> and the{" "}
             <ConceptTooltip id="weekly_bias" ctx={{ bullish_bearish: "bearish", bearish: true }} /> is negative. The vast
             majority of spikes in conditions like these faded before 10%. No confirmation. In the full bear regime: 7 of 7.
           </p>
@@ -355,7 +367,8 @@ export function OnboardingFlow() {
     case "S4": {
       const drop = e1r ? Math.abs(e1r.outcome.pct ?? 0).toFixed(1) : null;
       return (
-        <OnboardingShell xp={xp} contextLine={e1ctx}>
+        <OnboardingShell xp={xp}>
+          {celebration}
           <div style={{ fontSize: 40 }}>🛡️</div>
           <p style={{ color: C.fg, fontSize: 15 }}>
             {noOrphan(
@@ -367,15 +380,8 @@ export function OnboardingFlow() {
           <p style={{ color: C.muted, fontSize: 12 }}>
             <ConceptTooltip id="capital_save" ctx={{ avoided_pct: drop }} />
           </p>
-          <p style={{ color: C.green, fontFamily: "monospace" }}>+100 XP, first strategic decision</p>
-          <button
-            type="button"
-            style={btn(C.green)}
-            onClick={() => {
-              earn("s4_first_decision");
-              go("S5");
-            }}
-          >
+          <p style={{ color: C.green, fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}>+100 XP, first strategic decision</p>
+          <button type="button" style={btn(C.green)} onClick={() => { earn("s4_first_decision"); go("S5"); }}>
             Save your achievement
           </button>
         </OnboardingShell>
@@ -385,29 +391,24 @@ export function OnboardingFlow() {
     case "S5":
       return (
         <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0, color: C.green }}>{xp} XP earned</h2>
           <p style={{ color: C.muted, fontSize: 13 }}>{noOrphan(COPY.s5xp)}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-            <button type="button" style={btn(C.fg)} onClick={finishSignup}>
+            <button type="button" style={btn(C.fg)} onClick={completeSignup}>
               Continue with Google
             </button>
-            <button type="button" style={btn(C.fg)} onClick={finishSignup}>
+            <button type="button" style={btn(C.fg)} onClick={completeSignup}>
               Continue with Apple
             </button>
             <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@email.com"
-                style={{ flex: 1, padding: 10, background: C.bg, border: `1px solid ${C.border}`, color: C.fg, borderRadius: 8 }}
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" style={{ flex: 1, padding: 10, background: C.bg, border: `1px solid ${C.border}`, color: C.fg, borderRadius: 8 }} />
               <button type="button" style={ghostBtn} onClick={() => void submitEmail()}>
                 Email me a link
               </button>
             </div>
             {sent && (
-              <button type="button" style={btn(C.green)} onClick={finishSignup}>
+              <button type="button" style={btn(C.green)} onClick={completeSignup}>
                 I have confirmed, continue
               </button>
             )}
@@ -419,6 +420,7 @@ export function OnboardingFlow() {
     case "S6":
       return (
         <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>The training arena is open</h2>
           <p style={{ color: C.fg }}>{noOrphan(COPY.s6)}</p>
           <button type="button" style={btn(C.green)} onClick={() => go("S7")}>
@@ -430,22 +432,11 @@ export function OnboardingFlow() {
     case "S7":
       return (
         <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>Set your practice capital</h2>
-          <input
-            type="number"
-            value={portfolio}
-            onChange={(e) => setPortfolio(Math.max(0, Number(e.target.value)))}
-            style={{ padding: 12, fontSize: 20, width: 160, textAlign: "center", background: C.bg, border: `1px solid ${C.border}`, color: C.fg, borderRadius: 8, fontFamily: "monospace" }}
-          />
+          <input type="number" value={portfolio} onChange={(e) => setPortfolio(Math.max(0, Number(e.target.value)))} style={{ padding: 12, fontSize: 20, width: 160, textAlign: "center", background: C.bg, border: `1px solid ${C.border}`, color: C.fg, borderRadius: 8, fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }} />
           <p style={{ color: C.muted, fontSize: 13, marginTop: 10 }}>{noOrphan(COPY.s7)}</p>
-          <button
-            type="button"
-            style={btn(C.green)}
-            onClick={() => {
-              void onboardingApi.getEpisode("E3").then((r) => r.data && setE3(r.data));
-              go("S8");
-            }}
-          >
+          <button type="button" style={btn(C.green)} onClick={() => { void onboardingApi.getEpisode("E3").then((r) => r.data && setE3(r.data)); go("S8"); }}>
             Continue
           </button>
         </OnboardingShell>
@@ -453,20 +444,17 @@ export function OnboardingFlow() {
 
     case "S8":
       return (
-        <OnboardingShell xp={xp} contextLine={e3 ? `Real case: ${e3.coin} ${e3.date_range}` : undefined}>
+        <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>This is what PASS looks like</h2>
           {!e3r ? (
             <>
               {e3 && (
-                <EpisodeChart
-                  data={e3.setup_klines}
-                  entryIndex={e3.entry_index}
-                  entryPrice={e3.entry_price}
-                  emaMode="ema7"
-                  symbol={e3.coin}
-                  dateRange={e3.date_range}
-                />
+                <p style={{ color: C.fg, fontSize: 13, margin: "0 0 10px" }}>
+                  Real case: {coinName(e3.coin)}, {prettyDate(e3.date_range)}. Press SCAN to see what the engine found.
+                </p>
               )}
+              {e3 && <EpisodeChart data={e3.setup_klines} entryIndex={e3.entry_index} entryPrice={e3.entry_price} emaMode="ema7" symbol={e3.coin} dateRange={e3.date_range} />}
               <button
                 type="button"
                 style={{ ...glow(), marginTop: 14 }}
@@ -487,29 +475,11 @@ export function OnboardingFlow() {
             </>
           ) : (
             <>
-              <div style={{ color: C.green, fontFamily: "monospace", marginBottom: 8 }}>1 PASS · 10 SCANNED</div>
-              {e3 && (
-                <EpisodeChart
-                  data={chartData(e3, e3r)}
-                  entryIndex={e3.entry_index}
-                  entryPrice={e3.entry_price}
-                  emaMode="ema7"
-                  symbol={e3.coin}
-                  dateRange={e3.date_range}
-                  blueprint={{ trigger: e3.entry_price, target: e3r.outcome.exit_price }}
-                  annotations={[{ index: e3.entry_index, label: "Entry", tooltipId: "long_short", ctx: { direction: (e3.direction ?? "short").toUpperCase() } }]}
-                />
-              )}
+              <div style={{ color: C.green, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", marginBottom: 8 }}>1 PASS · 10 SCANNED</div>
+              {e3 && <EpisodeChart data={chartData(e3, e3r)} entryIndex={e3.entry_index} entryPrice={e3.entry_price} emaMode="ema7" symbol={e3.coin} dateRange={e3.date_range} blueprint={{ trigger: e3.entry_price, risk: e3r.outcome.risk_price, target: e3r.outcome.exit_price }} annotations={[{ index: e3.entry_index, label: "Entry", tooltipId: "long_short", ctx: { direction: (e3.direction ?? "short").toUpperCase() } }]} />}
               <EpisodeBlueprint setup={e3} reveal={e3r} />
               <p style={{ color: C.fg, fontSize: 13, textAlign: "left", marginTop: 10 }}>{noOrphan(COPY.s8lesson)}</p>
-              <button
-                type="button"
-                style={btn(C.green)}
-                onClick={() => {
-                  earn("s8_lesson");
-                  go("S9");
-                }}
-              >
+              <button type="button" style={btn(C.green)} onClick={() => { earn("s8_lesson"); go("S9"); }}>
                 Continue
               </button>
             </>
@@ -520,26 +490,14 @@ export function OnboardingFlow() {
     case "S9":
       return (
         <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>What should the system call you?</h2>
-          <input
-            type="text"
-            value={callsign}
-            onChange={(e) => setCallsign(e.target.value)}
-            placeholder="call-sign"
-            style={{ padding: 12, fontSize: 16, textAlign: "center", background: C.bg, border: `1px solid ${C.border}`, color: C.fg, borderRadius: 8 }}
-          />
+          <input type="text" value={callsign} onChange={(e) => setCallsign(e.target.value)} placeholder="call-sign" style={{ padding: 12, fontSize: 16, textAlign: "center", background: C.bg, border: `1px solid ${C.border}`, color: C.fg, borderRadius: 8 }} />
           <div style={{ marginTop: 14, padding: 12, border: `1px solid ${C.green}`, borderRadius: 10, display: "inline-block" }}>
-            <span style={{ color: C.green, fontFamily: "monospace" }}>◈ {callsign || "trader"}: Strategy Apprentice</span>
+            <span style={{ color: C.green, fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}>◈ {callsign || "trader"}: Strategy Apprentice</span>
           </div>
           <div>
-            <button
-              type="button"
-              style={btn(C.green)}
-              onClick={() => {
-                void onboardingApi.getEpisode("E4").then((r) => r.data && setE4(r.data));
-                go("S10");
-              }}
-            >
+            <button type="button" style={btn(C.green)} onClick={() => { void onboardingApi.getEpisode("E4").then((r) => r.data && setE4(r.data)); go("S10"); }}>
               Continue
             </button>
           </div>
@@ -548,45 +506,25 @@ export function OnboardingFlow() {
 
     case "S10":
       return (
-        <OnboardingShell xp={xp} contextLine={e4 ? `Time machine, ${e4.coin} ${e4.date_range}` : undefined}>
+        <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>The time machine</h2>
-          {e4 && (
-            <EpisodeChart
-              data={chartData(e4, e4r)}
-              entryIndex={e4.entry_index}
-              entryPrice={e4.entry_price}
-              emaMode="ema7"
-              symbol={e4.coin}
-              dateRange={e4.date_range}
-              annotations={[{ index: e4.entry_index, label: "Entry", tooltipId: "long_short", ctx: { direction: (e4.direction ?? "long").toUpperCase() } }]}
-            />
-          )}
+          {e4 && <EpisodeChart data={chartData(e4, e4r)} entryIndex={e4.entry_index} entryPrice={e4.entry_price} emaMode="ema7" symbol={e4.coin} dateRange={e4.date_range} annotations={[{ index: e4.entry_index, label: "Entry", tooltipId: "long_short", ctx: { direction: (e4.direction ?? "long").toUpperCase() } }]} />}
           {!e4r ? (
             <>
-              <p style={{ color: C.muted, fontSize: 13 }}>{noOrphan(COPY.s10gate)}</p>
-              <button
-                type="button"
-                style={glow()}
-                onClick={() =>
-                  runScan(() =>
-                    void onboardingApi.revealEpisode("E4").then((r) => {
-                      if (r.data) {
-                        setE4r(r.data);
-                        playReveal(r.data.reveal_klines.length);
-                      }
-                    }),
-                  )
-                }
-              >
+              <p style={{ color: C.fg, fontSize: 14, marginBottom: 2 }}>{noOrphan(COPY.s10gate1)}</p>
+              <p style={{ color: C.green, fontSize: 14, marginTop: 2 }}>
+                {noOrphan(COPY.s10gate2)} <ConceptTooltip id="journal_reveal" ctx={{ pending_count: 1 }} />
+              </p>
+              <button type="button" style={glow()} onClick={() => runScan(() => void onboardingApi.revealEpisode("E4").then((r) => { if (r.data) { setE4r(r.data); playReveal(r.data.reveal_klines.length); } }))}>
                 SCAN
               </button>
             </>
           ) : (
             <>
               <p style={{ color: C.fg, fontSize: 14 }}>{noOrphan(COPY.s10turning)}</p>
-              <p style={{ color: C.green, fontFamily: "monospace" }}>
-                <ConceptTooltip id="r_multiple" ctx={{ r_value: e4r.outcome.r_multiple }} /> revealed. A loss avoided is
-                as real as a gain captured.
+              <p style={{ color: C.green, fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}>
+                <ConceptTooltip id="r_multiple" ctx={{ r_value: e4r.outcome.r_multiple }} /> revealed. A loss avoided is as real as a gain captured.
               </p>
               <button type="button" style={btn(C.green)} onClick={() => go("S11")}>
                 Continue
@@ -599,6 +537,7 @@ export function OnboardingFlow() {
     case "S11":
       return (
         <OnboardingShell xp={xp}>
+          {celebration}
           <h2 style={{ marginTop: 0 }}>{noOrphan(COPY.s11title)}</h2>
           <button type="button" style={{ ...btn(C.green), width: "100%" }} onClick={() => void chooseFork("trial")}>
             Start 14 days of Pro, no credit card
@@ -608,7 +547,9 @@ export function OnboardingFlow() {
             <li>🔓 You decide at the end.</li>
             <li>📊 Every scan is checked against 4 years of empirical data.</li>
           </ul>
-          <ForkTable />
+          <div style={{ width: "100%", overflowX: "auto" }}>
+            <ForkTable />
+          </div>
           <button type="button" style={{ ...ghostBtn, width: "100%", marginTop: 10 }} onClick={() => void chooseFork("free")}>
             Continue on Free
           </button>
@@ -624,24 +565,26 @@ export function OnboardingFlow() {
 function EpisodeBlueprint({ setup, reveal }: { setup: EpisodeSetup | null; reveal: EpisodeReveal | null }) {
   if (!setup) return null;
   const row = (label: React.ReactNode, value: string) => (
-    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'IBM Plex Mono', ui-monospace, monospace", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
       <span style={{ color: C.muted }}>{label}</span>
       <span>{value}</span>
     </div>
   );
   return (
     <div style={{ textAlign: "left", marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace", marginBottom: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'IBM Plex Mono', ui-monospace, monospace", marginBottom: 6 }}>
         <span>
           {setup.coin} <span style={{ color: C.amber }}>{setup.direction?.toUpperCase()}</span>
         </span>
         {setup.score != null && (
-          <span style={{ color: C.green }}>
-            <ConceptTooltip id="score" ctx={{ score: setup.score }} /> {setup.score}, PASS
+          <span style={{ color: C.green, display: "inline-flex", alignItems: "center" }}>
+            Score {setup.score} · PASS
+            {reveal?.outcome.checks && <WhyPass checks={reveal.outcome.checks} />}
           </span>
         )}
       </div>
       {row(<ConceptTooltip id="trigger_point" />, fmtNum(setup.entry_price))}
+      {row(<ConceptTooltip id="risk_level" />, fmtNum(reveal?.outcome.risk_price ?? null))}
       {row(<ConceptTooltip id="target_level" />, fmtNum(reveal?.outcome.exit_price ?? null))}
       {row(<ConceptTooltip id="r_multiple" ctx={{ r_value: reveal?.outcome.r_multiple }} />, reveal?.outcome.r_multiple != null ? `+${reveal.outcome.r_multiple}R` : "-")}
       <small style={{ color: C.subtle }}>Levels are calculated from market structure. No weights or formulas exposed.</small>
@@ -650,9 +593,9 @@ function EpisodeBlueprint({ setup, reveal }: { setup: EpisodeSetup | null; revea
 }
 
 function ForkTable() {
-  const cell: React.CSSProperties = { padding: "6px 8px", borderBottom: `1px solid ${C.border}`, fontSize: 11, fontFamily: "monospace" };
+  const cell: React.CSSProperties = { padding: "6px 8px", borderBottom: `1px solid ${C.border}`, fontSize: 11, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", whiteSpace: "nowrap" };
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", color: C.fg }}>
+    <table style={{ width: "100%", minWidth: 320, borderCollapse: "collapse", color: C.fg }}>
       <thead>
         <tr>
           <th style={{ ...cell, textAlign: "left", color: C.muted }} />
