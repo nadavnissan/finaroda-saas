@@ -21,7 +21,7 @@
 - ATP: TC-RESP-01 (ידני, no-overflow 360–430px + admin), TC-RESP-02 (אוטומטי, structural-lint 6/6), TC-RESP-03 (copy Free vs paid).
 - VERSION: v0.10.1
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: 3c58c38
 - IMPACT: כל route שמיש בטלפון; קונסולת האדמין (offender ידוע) עוברת לטאבים עליונים + master/detail + טבלאות נגללות בטלפון, ונשארת רוחב-מלא ב-desktop; אין גלילה אופקית לעמוד; רגרסיה שומרת על זה. copy: Free רואה שה-reveal מגיע "מחר".
 - DECISIONS: (1) לפי בחירת נדב — structural-lint ב-`node --test` במקום Playwright (gate שנכשל מסביבה מתעלמים ממנו; ה-validations הידניים = מדידת דפדפן-אמת). Playwright E2E מועמד ל-CI עתידי כשה-pipeline ירוץ במכונה שבה builds מסתיימים. (2) admin נשאר desktop-first אך שמיש בטלפון (master/detail swap במקום להצטופף). (3) לא נגעתי במסכי מוצר שכבר responsive — אין שינוי מיותר.
 
