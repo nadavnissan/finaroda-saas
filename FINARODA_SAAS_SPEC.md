@@ -173,13 +173,13 @@ CREATE INDEX idx_ticket_status ON support_tickets(status, created_at DESC);
 ```
 
 ### 5.5 `episodes` — ספריית אפיזודות לאונבורדינג (Episode Library)
-משמש את סימולציית האונבורדינג (F13, ראו `FINARODA_ONBOARDING_SPEC.md`). כל אפיזודה = **טווח kline אמיתי ומתוארך** מקובץ הטריידים/בקטסטים + התוצאה בפועל. הגרפים **מרונדרים אצלנו** מ-kline דרך `recharts` הקיים ב-frontend — **לעולם לא צילומי מסך מ-TradingView/Bybit** (רישוי במוצר מסחרי + עקביות ויזואלית).
+משמש את סימולציית האונבורדינג (F13, ראו `FINARODA_ONBOARDING_SPEC.md`). כל אפיזודה = **טווח kline אמיתי ומתוארך** מקובץ הטריידים/בקטסטים + התוצאה בפועל. הגרפים **מרונדרים אצלנו** מ-kline — **לעולם לא צילומי מסך מ-TradingView/Bybit** (רישוי במוצר מסחרי + עקביות ויזואלית). **מומש (§5.8): in-app SVG candlestick, לא recharts** — כדי להימנע מ-peer-dep של React 19 (החלטה פתוחה, revert אם נדב מעדיף); recharts נשאר dependency רשום.
 ```sql
 CREATE TABLE episodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     coin TEXT NOT NULL,
     date_range TEXT NOT NULL,        -- טווח מתוארך (מקור אמת: trades CSV / AnchorLog)
-    kline_data TEXT NOT NULL,        -- נרות גולמיים לרינדור מקומי (recharts)
+    kline_data TEXT NOT NULL,        -- נרות גולמיים לרינדור מקומי (in-app SVG, §5.8)
     scenario_type TEXT NOT NULL,     -- trap | valid_setup | discipline_save | patience
     lesson_flag TEXT,                -- הדגל החינוכי שהאפיזודה מדגימה
     outcome TEXT NOT NULL,           -- תוצאת האמת של האפיזודה (למשל דעיכה ב-X%)
@@ -225,12 +225,73 @@ CREATE TABLE onboarding_funnel_events (
 - **XP (12/07):** מענק **חד-פעמי לכל החיים (300), מזוכה ב-`POST /api/onboarding/complete`**. אנטי-farming: אינדקס unique חלקי `ux_xp_onboarding_once` על `xp_events(user_id) WHERE source='onboarding'` (migration **026**) → הרצה חוזרת מזכה 0. המונה 50/100/50/100 = תצוגת-לקוח בלבד. **Funnel:** `POST /api/onboarding/funnel` (optional-auth). **Routing:** משתמש שהשלים אונבורדינג ננותב ל-`/scan` (once-per-lifetime; back לא חוזר).
 - **Charts:** מרונדרים in-app (SVG candlestick, הרפרנס של מנוע ה-SVG v25.67) מנרות אמיתיים — **לעולם לא צילומים חיצוניים**. `navigator.vibrate` על SCAN עם fallback שקט (iOS).
 
+### 5.9 מימוש Package B — journal (F3), entitlements, admin (migrations 027–028)
+
+**`journal_scenarios` (mig 028) — לב ה-retention (B4/F3).** רשומת תרחיש דרגה-ראשונה מכל סריקה, מחליפה גזירה ישירה מ-`score_log`. מקור-אמת של הלוגיקה: `backend/core/journal.py`.
+```sql
+CREATE TABLE journal_scenarios (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER NOT NULL REFERENCES users(internal_id),
+    scan_event_id  INTEGER REFERENCES scan_events(id),
+    score_log_id   INTEGER REFERENCES score_log(id),
+    scenario_type  TEXT NOT NULL CHECK (scenario_type IN ('pass','no_setups_day')),
+    scan_date      TEXT NOT NULL,                 -- YYYY-MM-DD (UTC scan day)
+    coin TEXT, direction TEXT CHECK (direction IS NULL OR direction IN ('long','short')),
+    score REAL, entry REAL, sl REAL, tp REAL, trailing_pct REAL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- server-side resolution (NEVER serialized to the client until revealed):
+    status         TEXT NOT NULL DEFAULT 'open'
+                   CHECK (status IN ('open','win','loss','save','expired','skip')),
+    r_result       REAL,                          -- hypothetical R, never money (F3 AC4)
+    resolved_at    DATETIME,
+    -- reveal-gating: outcome withheld until the user's NEXT scan reveals it:
+    revealed_at    DATETIME,
+    viewed_at      DATETIME                        -- set on open of revealed row (+25 XP)
+);
+-- one PASS scenario per momentum score_log row; one no_setups_day per user/day:
+CREATE UNIQUE INDEX ux_journal_pass  ON journal_scenarios(score_log_id) WHERE scenario_type='pass';
+CREATE UNIQUE INDEX ux_journal_noset ON journal_scenarios(user_id, scan_date) WHERE scenario_type='no_setups_day';
+```
+- **יצירה (בסריקה):** כל PASS (‏`momentum` + `passed_threshold=1`) → תרחיש `pass`; יום ללא PASS → `no_setups_day` (‏`status='skip'`, נחשף מיד). **WATCH לעולם לא תרחיש** (PRD F3 AC2). idempotent דרך שני ה-partial unique indexes (backfill = no-op).
+- **Resolution (cron צד-שרת, `app/tasks/journal_tasks.py` דרך `scripts/run_resolve_scenarios.py`):** מריץ תרחישי `pass` פתוחים מול נרות Bybit יומיים (trigger→target/risk/7-day). `evaluate_outcome` = פונקציה טהורה. **`status`:** `win` (target ראשון, r=+reward/risk) · `loss` (risk ראשון, r=−1) · **`save`** (CAPITAL SAVES — trigger לא נורה בחלון, r=0, הון נשמר) · `expired` (נורה ללא target/risk, r=signed-at-close) · `open` (טרם ניתן להכריע).
+- **Reveal-gating (PRD F3 AC5):** התוצאה מחושבת בשרת אך **מוחזקת מכל payload עד הסריקה הבאה** — `core/journal.on_scan` חושף קודם resolutions קודמות ואז יוצר תרחישים חדשים; שורות לא-חשופות נטולות דאטת תוצאה ב-payload וב-DOM (regression). Nav badge = ספירת לא-חשופים (‏`GET /api/journal/badge`). +25 XP צפייה (‏`journal_reveal_viewed`, §5.6, idempotent per scenario).
+
+**`ticket_replies` (mig 028) — thread אדמין↔משתמש (B7c/F10):** `ticket_id`→`support_tickets` (ON DELETE CASCADE), `author_id`, `is_admin`, `body`, `email_sent` (fan-out מייל = stub לוגי).
+
+**`notifications_log` (mig 028) — שני ה-system sends המוחלטים בלבד (B7f/F11):** `notif_type IN ('trial_reminder_day11','journal_reveal_teaser','broadcast')`, `channel IN ('in_app','email','email_in_app')`, `UNIQUE (notif_type, ref)` (idempotency). ברודקאסטים נשמרים ב-`admin_broadcasts` (הורחב ב-mig 028: `audience IN ('all','plan','trial_ending')` + `channel_in_app`/`channel_email`).
+
+**`user_settings` (mig 028) — הגדרות סריקה נשמרות (B5/F5):** `user_id` PK, `call_sign` (זהות מ-onboarding S9), `analysis_lens IN ('ema200','rsi','volume','full')`, `risk_style IN ('conservative','balanced','aggressive')`, `coin_prefs` (JSON), `palette`. **display & geometry בלבד — לעולם לא מה שנחשב הזדמנות** (RED LINE §3.5.5).
+
+**`admin_events` (mig 006, קיים מראש) — audit trail של B7:** כל mutation של האדמין (plan override / extend-trial / grant-XP / suspend) נכתבת ל-`admin_events(admin_id, event_type, target_user_id, details_json, created_at)`. XP source `admin_grant` audited דרך זה (‏`XP_ECONOMY.md` §1, לא user-earnable).
+
+**Endpoints שנוספו (Package B):**
+| endpoint | תיאור |
+|---|---|
+| `GET /api/scan/entitlements` | binding gating config לפי tier → `{tier, coins_per_scan, chart_layers, scans_per_day}` (‏`core/entitlements.py`). |
+| `POST /api/scan/events` | דוחה סריקה מעל מכסת המטבעות (403 `PLAN_COIN_LIMIT`); מזכה first-scan-of-day XP (+50, idempotent per day, `daily_first_scan`). |
+| `GET /api/plans` | public — 4 המסלולים (Free+Basic/Advanced/Pro) עם price/coins/scans/chart_layers מ-`system_settings`. |
+| `GET /api/journal/badge` | ספירת תוצאות לא-חשופות בלבד (reveal badge). |
+| `GET /api/profile` · `PUT /api/profile/settings` | פרופיל + call-sign + סולם דרגות; שמירת Lens/Risk Style. |
+| `POST /api/support/tickets` | פתיחת טיקט (Report a problem). |
+| `POST /api/cardcom/trial` | D1 no-card trial. |
+| `GET /api/broadcasts/active` | banner in-app פעיל (לעולם לא מכסה SCAN/disclaimer). |
+
+**מפתחות `system_settings` חדשים (migrations 027–028, admin-editable בלי קוד):**
+- **coins/scan:** `scan_coins_free` (=2; basic/advanced/pro נזרעו ב-mig 008).
+- **chart layers (E7/F15):** `chart_layers_{free,basic,advanced,pro}` — `'ema200_only'` (Free = chart+EMA200) / `'full'` (בתשלום = כל השכבות).
+- **scans/day:** `scans_per_day_{free,basic,advanced,pro}` — Free=1, בתשלום=0 (unlimited). מוצג ב-UI; רק coins/scan + chart_layers hard-gated בשרת בשלב זה.
+- **admin (B7e):** `trial_reminder_day` (=11), `journal_history_days_free` (=7).
+
+> **RED LINE נשמר:** ה-entitlements קונים **רוחב** (מטבעות) ו-**עומק** (שכבות גרף) — לעולם לא verdict שונה. הציון והסף זהים בכל פלאן.
+
 ---
 
 ## 6. מנוע הסריקה (client-side) + המנוע המשותף
 
 ### 6.1 המנוע המשותף — `scoring-engine.js`
 לוגיקת החישוב הטהורה (אפס UI): EMA7 slope signed, volume ratio, price-vs-EMA7, מרחק SL, ציון, גאומטריית SL/עוגן. **קובץ JS אחד** שהכלי האישי וה-SaaS מייבאים שניהם.
+
+> **Swing S/R canon (v0.8.0):** `findRecentSwingLevels(highs, lows, lookback, scanRange)` → `{swingHigh, swingLow}` הועבר מהכלי האישי (`engine.mjs`) אל `@finaroda/scoring-engine` **byte-faithfully** — זהו **מקור ה-S/R היחיד** שהמנוע מודד מולו (liquidity-proximity check + כל הטריידים המתועדים), כך שהגרף מצייר בדיוק מה שהמנוע מנקד. הגרפים ניגשים אליו דרך adapter דק `frontend/src/lib/chart/swings.ts` (`swingLevels`). **`computeRangeLevels` (קירוב ה-pivot בן-השבוע של ה-SaaS) הוסר** יחד עם `lib/onboarding/levels.ts` (נמחק 2026-07-13). **Equivalence test** (`shared/scoring-engine.test.js`) מאמת swings זהים מול העתק verbatim של המימוש האישי על עשרות וקטורים דטרמיניסטיים.
 
 ```
               scoring-engine.js  (JS טהור, מנוע משותף)

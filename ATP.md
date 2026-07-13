@@ -251,6 +251,13 @@
 - Expected: (a) שלב "מדייק"/Precise = **סף XP בלבד**, אין קריטריון מבוסס what-if באף מסמך; איכות what-if = סטטיסטיקת דשבורד בלבד. (b) F6 מפנה ל-`XP_ECONOMY.md` ומתאר דרגות פותחות מודולי בונוס אורתוגונלית לפלאן. (c) Onboarding §8 מסומן ✅ נסגר → `XP_ECONOMY.md`; §4 מפנה למקורות הסגורים. (d) SPEC §5.6 `xp_events` עם `UNIQUE (user_id, source, ref)`, כתיבה **צד-שרת בלבד**, מקורות מרשימה סגורה, אין תגמול על רווח/תדירות/רצף.
 - Status: ✅ doc-check (docs-only; מימוש xp_events ⬜ pending — P3/P4)
 
+### TC-DOCS-SYNC01 — יישור מסמכי מקור-אמת למצב Package B הממומש (v0.8.x–v0.9.0)
+- Feature: PRD F1/F1c/F2/F3/F5–F7/F9–F15 · SPEC §5.9/§6.1/§12 · UX §3/§5/§6/§8 · `journal_scenarios` (mig 028)
+- Precondition: PRD/SPEC/UX אחרי DOCS-SYNC (docs-only)
+- Steps: 1) PRD F3 — מודל journal_scenarios + CAPITAL SAVES 2) SPEC §5.9 — data model + endpoints + system_settings keys 3) SPEC §6.1 — swing canon 4) סימוני SHIPPED 5) open items 6) stale-claim sweep
+- Expected: (a) PRD F3 מתאר `journal_scenarios` (‏`pass`/`no_setups_day`, **WATCH לעולם לא תרחיש**), resolution צד-שרת, status enum, reveal-gating; **CAPITAL SAVES = trigger-never-filled (r=0)** מוגדר, ושורת ה-SAVE הפר-מטבע-לא-עובר מסומנת **הרחבה עתידית ⬜**. (b) SPEC §5.9 כולל DDL של `journal_scenarios` + `ticket_replies`/`notifications_log`/`user_settings`, `admin_events` כ-audit, ו-endpoints `GET /api/scan/entitlements` + `GET /api/plans` + מפתחות `chart_layers_*`/`scan_coins_free`/`scans_per_day_*`. (c) SPEC §6.1: `findRecentSwingLevels` = S/R קנוני equivalence-tested, `computeRangeLevels` **הוסר**. (d) F13/F14/F15/E7b/E9 (+F1/F2/F3/F5–F11) מסומנים ✅ SHIPPED עם version refs; charts=in-app SVG (לא recharts) עקבי ב-3 המסמכים. (e) open items = follow-ups מ-HANDOFF (resolve cron · call-sign · email stubs · fonts). (f) אין הפניית recharts שסותרת את המימוש; "מסך P2" מסומן מוחלף.
+- Status: ✅ doc-check (docs-only; אפס שינוי קוד/DB — pytest 66/66 ללא רגרסיה)
+
 ## TC — P3 (F13 "First 60 Seconds" onboarding) — automated (backend/tests/test_p3_onboarding.py) + build-verified (frontend)
 
 ### TC-P3-ONB-01 — Episode seed + אמת אמפירית (E1 BTC / E3 ADA / E4 ETH)

@@ -8,9 +8,19 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** Package B phase 2 — B4 dashboard + B5 profile + B6 academy + B7 admin (v0.9.0) — closes Package B, on top of phase 1 (v0.8.0).
-- **Validation:** ✅ all green — **pytest 66/66**, **frontend unit 18/18** (node --test type-strip), **shared node --test 14/14**, **tsc clean**, **eslint clean**, **next build clean (20/20)**, em-dash lint 0.
-- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.9.0) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** DOCS-SYNC (v0.9.1) — reconciled PRD/SPEC/UX with Package B implemented state, on top of Package B phase 2 (v0.9.0) + phase 1 (v0.8.0).
+- **Validation:** ✅ all green — **pytest 66/66**, tsc/eslint clean (DOCS-SYNC is docs-only, no code change). Package B baseline: frontend unit 18/18, shared node --test 14/14, next build 20/20, em-dash lint 0.
+- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.9.1) is **dev only** — Nadav merges to main manually.
+
+## Latest — DOCS-SYNC: source-of-truth docs reconciled with Package B (v0.9.1, docs only, no code)
+- Aligned **PRD/SPEC/UX** to the implemented state after Package B phases 1+2 (v0.8.x–v0.9.0). **No app/engine/scorer/DB change.**
+- **PRD F3 = the shipped `journal_scenarios` model:** documented the `pass` / `no_setups_day` records (WATCH is never a scenario), server-side resolution + status enum, and reveal-gating. **CAPITAL SAVES defined** = a PASS whose trigger never filled in the window (capital preserved, r=0); a **note** marks the per-coin non-passer SAVE row as a **future F3 extension** (not v0.9.0, needs Nadav's call).
+- **SPEC data model += §5.9 (new):** full `journal_scenarios` DDL (mig 028) + `ticket_replies` / `notifications_log` / `user_settings`; `admin_events` (mig 006) documented as B7's audit trail; endpoints table (`GET /api/scan/entitlements`, `GET /api/plans`, journal/profile/support/broadcasts); `system_settings` keys (`scan_coins_free`, `chart_layers_*`, `scans_per_day_*`, trial/journal admin keys). **SPEC §6.1:** `findRecentSwingLevels` is the canonical S/R (equivalence-tested); `computeRangeLevels` marked removed.
+- **SHIPPED markers with version refs:** F1/F1c(E9)/F2/F3/F5/F6/F7/F9/F10/F11/F13/F14/F15/E7b — each tagged with the version it landed in. Charts documented as **in-app SVG** (not recharts) across PRD/SPEC/UX; recharts stays a listed dep (revert-if-preferred decision noted).
+- **Open items** rewritten to the HANDOFF follow-ups: resolve-scenarios cron (not auto-run), call-sign persistence from S9, email stubs, fonts, Free 1-scan/day enforcement, admin mobile, POSITION honesty guardrail.
+- **Stale-claim sweep:** recharts claims that contradicted the shipped SVG charts fixed; the old P2 scan page marked superseded. The "trial with card" mention in SPEC decision #3 is an intentional change-order record (left as-is).
+- **⚠ For Nadav:** two open product calls surfaced (not decided here): (1) CAPITAL SAVES non-passer variant vs the current trigger-never-filled definition; (2) charts as in-app SVG vs recharts. Both documented as open.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, calculator terminology, main branch.
 
 ## Latest — Package B phase 2: B4 dashboard + B5 profile + B6 academy + B7 admin (v0.9.0, code + migration 028)
 - **What shipped:** the whole post-scan shell. **B4** "What Would Have Happened" (F3, the retention core) with real reveal-gating; **B5** profile + rank ladder; **B6** academy shell (12 modules); **B7** admin console (6 sections). Backend pytest **66/66**; frontend builds clean (20 routes).

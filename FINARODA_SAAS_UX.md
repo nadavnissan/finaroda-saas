@@ -35,6 +35,8 @@
 
 ## 3. מסך הסריקה — הלב
 
+> **✅ מומש v0.8.0 (Package B B1):** מסך הסריקה המלא — שורת בקרים pre-scan (Horizon SWING/POSITION-locked · Lens display-only · Risk Style geometry-only), אנימציית 4-צעדים נעולה, תוצאות ring/list, Chart Standard v1 עם E7 layer gating, E7b why-not לכל מטבע, first-scan XP chip, empty-state F1b. הניווט (header אחיד + hamburger drawer) והיומן (F3/B4) מומשו ב-v0.8.0/v0.9.0.
+
 ### זרימה
 Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–7 days = active · POSITION weeks+ = **locked**, "In validation. Unlocks when it earns it." — PRD F1c), **Analysis Lens** (EMA200/RSI/Volume/Full — display only) and **Risk Style** (Conservative/Balanced/Aggressive — output geometry only). None changes the score or which coins pass within the active horizon (RED LINE, PRD §3.5.5). Then: כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **Trading Blueprint**.
 
@@ -58,7 +60,7 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 - **Risk Style** shifts the calculated levels via `computeSlTp` `opt` — the score is unchanged.
 - **מודיעין מתקפל:** volume (נאסף).
 - **Concept Tooltip ("What's this?", PRD F14):** כל מונח מקצועי בכרטיס (EMA7 slope, PASS/WATCH, Mathematical Trigger Point וכו') נושא בועת-לימוד אחידה — תמצית בשפה פשוטה מהאקדמיה + קישור לשיעור. חינוכי בלבד, לא נוגע בציון/סף. מהאונבורדינג ואילך על כל surface.
-- **Live Chart + Explanation Overlays (PRD F15):** גרף חי לכל מטבע נסרק (מרונדר מ-kline דרך recharts — לא צילום TradingView/Bybit), עם שכבות הסבר. **Gating:** Free = גרף + EMA200 · בתשלום = כל השכבות (EMA7, רמות ה-Blueprint על הגרף). השכבות הצגה בלבד — לא משנות ציון (RED LINE). **Design סבב 2.**
+- **Live Chart + Explanation Overlays (PRD F15) — ✅ מומש v0.8.0 כ-Chart Standard v1:** גרף לכל מטבע נסרק (מרונדר מ-kline **in-app כ-SVG** — לא recharts, לא צילום TradingView/Bybit), עם שכבות הסבר. **Gating (נשלט-אדמין):** Free = גרף + EMA200 · בתשלום = כל השכבות (EMA7, רמות ה-Blueprint על הגרף). **E7b:** כל מטבע נסרק (כולל non-passers) לחיץ → אותו גרף + שורת "why not". השכבות הצגה בלבד — לא משנות ציון (RED LINE).
 - **תיוג קבוע:** "Analysis, not financial advice."
 - **(V2)** כפתור "Copy to LLM" — בלוק טקסט מובנה לחיזוק שיקול דעת חיצוני.
 
@@ -74,6 +76,8 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 ---
 
 ## 5. פרופיל ושלבי יוקרה
+
+> **✅ מומש v0.9.0 (Package B B5):** `/api/profile` — call-sign, כרטיס דרגה + סולם (‏`XP_ECONOMY.md` 1000/3000/8000), "HOW XP IS EARNED", הגדרות Lens/Risk Style נשמרות (display+geometry בלבד), sign-out. call-sign בבעלות הפרופיל עם fallback מ-email; התמדה מ-onboarding S9 = follow-up.
 
 ### פרופיל
 שם, תוכנית, ותק במערכת, הגדרות (**Analysis Lens** display-only, **Risk Style** output-only, מטבעות מועדפים בגבולות הפלאן — **אין סף-ציון אישי**, RED LINE PRD §3.5.5), היסטוריית סריקות, מדדי משמעת. Lens + Risk Style are remembered per user.
@@ -130,8 +134,8 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 - **Horizon / Analysis Lens / Risk Style toggles:** light, minimal segmented controls in one pre-scan row near the scan button. Remembered per user; applied on the next single scan press. **Horizon** = SWING (active) / POSITION (locked — a *separate* validated universe, not a cosmetic toggle; PRD F1c); **Lens** = display only; **Risk Style** = output geometry only. None touches the score within the active horizon (RED LINE). ⚠ **Minimalism note:** three pre-scan controls is the ceiling — keep the row light so it doesn't crowd the "one button, one decision" core (§1.5).
 - **עיגולי מטבע:** קטנים, מסביב לכפתור, צבע לפי כיוון/ציון. לחיצה → Trading Blueprint.
 - **כפתורי כרטיס:** משניים, נקיים. (V2: "Copy to LLM".)
-- **Concept Tooltip (PRD F14):** אינדיקטור עדין (מקווקו / אייקון "?") על מונחים; לחיצה/ריחוף → בועה קצרה מהאקדמיה. קומפוננטה אחת משותפת בכל המסכים. **Design סבב 2.**
-- **תפריט המבורגר אחרי תשלום (E5, נדב 2026-07-11):** אחרי המרה לתשלום — ניווט המבורגר עם **Dashboard / Profile / Academy / Settings**. נכנס להיקף **Design סבב 2 (ROADMAP X1)**.
+- **Concept Tooltip (PRD F14) — ✅ מומש v0.7.0:** אינדיקטור עדין (מקווקו / אייקון "?") על מונחים; לחיצה/ריחוף → בועה קצרה מהאקדמיה (46 מונחים, מנוע `now`-template). קומפוננטה אחת משותפת בכל המסכים; deep-link "Learn more" → `/academy#<id>`.
+- **תפריט המבורגר (E5, נדב 2026-07-11) — ✅ מומש v0.8.0 (B3):** ניווט המבורגר עם **Dashboard / Profile / Academy / Settings** + identity block עם LevelMeter, header אחיד (‏≡ / FINARODA / LevelMeter chip), "Report a problem" → טיקט אמיתי. (נכנס פעיל לכל המשתמשים המאומתים, לא רק אחרי תשלום.)
 - **CTA שדרוג:** נוכח אך לא אגרסיבי (trust-not-engagement).
 - מצבי ריק: "No setups pass right now" מעוצב כהישג, לא כשגיאה.
 

@@ -4,6 +4,27 @@
 
 ---
 
+## [DOCS-SYNC / reconcile source-of-truth docs with Package B implemented state] — 2026-07-13
+- GOAL: ליישר את מסמכי המקור-אמת (PRD/SPEC/UX) עם המצב הממומש אחרי Package B phases 1+2 (v0.8.x–v0.9.0). docs only, dev, PATCH.
+- SOLUTION (מה עשינו בפועל):
+  1. **PRD F3 = מודל `journal_scenarios` הממומש:** תואר המודל (‏`pass` / `no_setups_day`, WATCH לעולם לא תרחיש), resolution צד-שרת, מצבי status, ו-reveal-gating. **CAPITAL SAVES הוגדר** = PASS שה-trigger לא נורה בחלון (הון נשמר, r=0), עם **הערה** ששורת ה-SAVE הפר-מטבע-לא-עובר היא **הרחבה עתידית** ל-F3 (לא v0.9.0).
+  2. **SPEC data model הורחב (§5.9 חדש):** `journal_scenarios` (mig 028, DDL מלא) + `ticket_replies`/`notifications_log`/`user_settings`; `admin_events` (mig 006) כ-audit trail של B7; endpoints (`GET /api/scan/entitlements`, `GET /api/plans`, journal/profile/support/broadcasts); מפתחות `system_settings` (`scan_coins_free`, `chart_layers_*`, `scans_per_day_*`, trial/journal admin keys).
+  3. **Shared engine (SPEC §6.1):** `findRecentSwingLevels` תועד כ-S/R הקנוני היחיד (equivalence-tested מול המימוש האישי); **`computeRangeLevels` סומן כהוסר** (יחד עם `lib/onboarding/levels.ts`).
+  4. **סימון SHIPPED עם version refs:** F1/F1c(E9)/F2/F3/F5/F6/F7/F9/F10/F11/F13/F14/F15/E7b — כל אחד עם הגרסה בה נחת. גרפים = in-app SVG (לא recharts) תואם ב-PRD/SPEC/UX.
+  5. **Open items = follow-ups מ-HANDOFF:** resolve-scenarios cron, call-sign persistence, email stubs, fonts, Free 1-scan/day enforcement, admin mobile, POSITION honesty guardrail, CAPITAL SAVES non-passer variant.
+  6. **Stale-claim sweep:** תוקנו הפניות recharts שסתרו את המימוש (‏PRD F15/AC1, SPEC §5.5, UX §3); "מסך P2 הישן" מסומן כמוחלף.
+- FILES CREATED: אין.
+- FILES MODIFIED: FINARODA_SAAS_PRD.md, FINARODA_SAAS_SPEC.md, FINARODA_SAAS_UX.md, CHANGELOG.md, VERSIONS.md, ATP.md, SESSION_HANDOFF.md.
+- DB CHANGES: אין (docs only).
+- CONFIG ADDED: אין.
+- VALIDATION: pytest 66/66, tsc clean, eslint clean (docs-only, ללא שינוי קוד).
+- ATP: +TC-DOCS-SYNC01 (doc-check — journal_scenarios/CAPITAL SAVES, SPEC data model, swing canon, SHIPPED refs, open items).
+- VERSION: v0.9.1
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: מסמכי המקור-אמת משקפים כעת את המצב הממומש; אין שינוי קוד/מנוע/DB. main/production לא נגעו.
+- DECISIONS: (1) גרפים in-app SVG מתועדים כמצב הממומש עם recharts כ-dependency רשום + החלטה פתוחה (revert אם נדב מעדיף). (2) CAPITAL SAVES = trigger-never-filled מתועד כהגדרה הנעולה, non-passer variant כהרחבה עתידית מסומנת ⬜. (3) הורחב סימון SHIPPED גם ל-F1/F2/F5/F6/F7/F9/F10/F11 (מעבר לחמישה שנוקבו) כדי שה-PRD ישקף במלואו את Package B.
+
 ## [PKG-B-P2 / Package B phase 2: B4 dashboard + B5 profile + B6 academy + B7 admin] — 2026-07-13
 - GOAL: לסגור את חבילת Design B — היומן "What Would Have Happened" עם reveal-gating (B4, לב ה-retention), הפרופיל + סולם הדרגות (B5), מעטפת האקדמיה (B6), וקונסולת האדמין (B7). MINOR.
 - SOLUTION (מה עשינו בפועל):
