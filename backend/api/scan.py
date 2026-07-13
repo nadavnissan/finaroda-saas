@@ -18,8 +18,12 @@ from backend.models.scan import (
     EntitlementsResponse,
     ScanEventCreate,
     ScanEventResponse,
+    ScanHistoryItem,
+    ScanHistoryResponse,
     SnapshotCreate,
     SnapshotResponse,
+    StoredScanResponse,
+    StoredScanRow,
 )
 
 router = APIRouter(prefix="/api/scan", tags=["scan"])
@@ -68,6 +72,32 @@ async def record_scan(
                 "tier": ent["tier"],
             },
         )
+
+    # Daily scan cap (Bug 3 / F7): Free = 1 scan/day, paid = unlimited (scans_per_day=0).
+    # Server-authoritative like the coin gate — the logged journal cannot exceed the
+    # plan's daily breadth. Admin-tunable per plan via system_settings (scans_per_day_*).
+    daily_limit = ent["scans_per_day"]
+    if daily_limit > 0:
+        used_rows = await db.execute_fetchall(
+            "SELECT COUNT(*) FROM scan_events WHERE user_id = ? AND date(scanned_at) = date('now')",
+            (user.internal_id,),
+        )
+        used_today = used_rows[0][0] if used_rows else 0
+        if used_today >= daily_limit:
+            raise HTTPException(
+                429,
+                {
+                    "code": "DAILY_SCAN_LIMIT",
+                    "message": (
+                        f"Your plan includes {daily_limit} scan"
+                        f"{'s' if daily_limit != 1 else ''} per day. "
+                        "Your journal resets tomorrow."
+                    ),
+                    "scans_per_day": daily_limit,
+                    "used_today": used_today,
+                    "tier": ent["tier"],
+                },
+            )
 
     cursor = await db.execute(
         """INSERT INTO scan_events (user_id, coins_scanned, coins_passed, threshold, client_ip_region)
@@ -119,6 +149,67 @@ async def record_scan(
         score_logs=score_logs,
         first_scan_of_day=first_scan_of_day,
         xp_awarded=DAILY_FIRST_SCAN_XP if first_scan_of_day else 0,
+    )
+
+
+@router.get("/history", response_model=ScanHistoryResponse)
+async def scan_history(
+    user: CurrentUser = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> ScanHistoryResponse:
+    """Read-only list of the user's recent scans (Decision B): time, coins, passes.
+    History is display-only — it never re-runs a scan or reveals a withheld outcome."""
+    rows = await db.execute_fetchall(
+        """SELECT id, scanned_at, coins_scanned, coins_passed
+             FROM scan_events WHERE user_id = ?
+            ORDER BY scanned_at DESC LIMIT 50""",
+        (user.internal_id,),
+    )
+    return ScanHistoryResponse(
+        scans=[
+            ScanHistoryItem(
+                scan_event_id=r[0], scanned_at=r[1],
+                coins_scanned=r[2] or 0, coins_passed=r[3] or 0,
+            )
+            for r in rows
+        ]
+    )
+
+
+@router.get("/history/{scan_event_id}", response_model=StoredScanResponse)
+async def stored_scan(
+    scan_event_id: int,
+    user: CurrentUser = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> StoredScanResponse:
+    """The stored result of one past scan (Decision B) — the displayed (momentum) rows
+    exactly as logged. Owner-scoped; no outcome data (that stays reveal-gated in F3)."""
+    head = await db.execute_fetchall(
+        """SELECT scanned_at, coins_scanned, coins_passed
+             FROM scan_events WHERE id = ? AND user_id = ?""",
+        (scan_event_id, user.internal_id),
+    )
+    if not head:
+        raise HTTPException(404, "scan not found for this user")
+    rows = await db.execute_fetchall(
+        """SELECT coin, direction, score, passed_threshold, price, entry, sl, tp, trailing_pct
+             FROM score_log
+            WHERE scan_event_id = ? AND user_id = ? AND profile = 'momentum'
+            ORDER BY passed_threshold DESC, score DESC""",
+        (scan_event_id, user.internal_id),
+    )
+    return StoredScanResponse(
+        scan_event_id=scan_event_id,
+        scanned_at=head[0][0],
+        coins_scanned=head[0][1] or 0,
+        coins_passed=head[0][2] or 0,
+        rows=[
+            StoredScanRow(
+                coin=r[0], direction=r[1], score=r[2], passed_threshold=r[3],
+                price=r[4], entry=r[5], sl=r[6], tp=r[7], trailing_pct=r[8],
+            )
+            for r in rows
+        ],
     )
 
 

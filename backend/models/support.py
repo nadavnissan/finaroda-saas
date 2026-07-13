@@ -10,6 +10,7 @@ class TicketCreate(BaseModel):
     subject: str = Field(min_length=1, max_length=200)
     body: str = Field(min_length=1, max_length=5000)
     category: TicketCategory = "bug"
+    app_version: str | None = Field(default=None, max_length=40)  # captured for debugging
 
 
 class TicketResponse(BaseModel):

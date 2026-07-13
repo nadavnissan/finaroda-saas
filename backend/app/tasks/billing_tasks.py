@@ -45,16 +45,31 @@ async def trial_ending_soon_task() -> dict:
     now = datetime.now(timezone.utc)
     window_start = (now + timedelta(days=lead)).isoformat()
     window_end = (now + timedelta(days=lead + 1)).isoformat()
+    notified = 0
     async with aiosqlite.connect(_db_path()) as db:
         db.row_factory = aiosqlite.Row
         rows = await db.execute_fetchall(
-            """SELECT email, first_name FROM users
+            """SELECT internal_id, email, first_name, trial_ends_at FROM users
                WHERE subscription_status='trial'
                  AND trial_ends_at BETWEEN ? AND ?""",
             (window_start, window_end),
         )
-    for row in rows:
-        # Reminder email is a no-op without RESEND_API_KEY (dev). Kept best-effort.
-        await send_welcome_email(row["email"], row["first_name"])
-    log.info("trial_ending_soon_task: notified=%d", len(rows))
-    return {"notified": len(rows)}
+        for row in rows:
+            # Idempotent notification record (B7f notifications_log): one day-11 reminder
+            # per user per trial-end date. UNIQUE(notif_type, ref) makes a re-run a no-op,
+            # so the day+1 window overlap never double-notifies. This is the durable record
+            # (in-app + email); the email itself is a best-effort stub in dev.
+            ref = f"trial:{row['internal_id']}:{(row['trial_ends_at'] or '')[:10]}"
+            cur = await db.execute(
+                """INSERT OR IGNORE INTO notifications_log
+                   (user_id, notif_type, channel, ref, status, detail)
+                   VALUES (?, 'trial_reminder_day11', 'email_in_app', ?, 'sent', ?)""",
+                (row["internal_id"], ref, f"Trial ends in ~{lead} days — choose a plan or continue on Free."),
+            )
+            if cur.rowcount == 1:
+                notified += 1
+                # Reminder email is a no-op without RESEND_API_KEY (dev). Best-effort.
+                await send_welcome_email(row["email"], row["first_name"])
+        await db.commit()
+    log.info("trial_ending_soon_task: notified=%d", notified)
+    return {"notified": notified}

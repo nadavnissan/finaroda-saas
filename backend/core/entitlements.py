@@ -10,10 +10,15 @@ a different verdict.
 """
 import aiosqlite
 
+# Three live plans (Decision A, 2026-07-13): Free / Basic / Pro. 'advanced' is retired
+# but still tolerated as a legacy tier value (migrated to 'basic' by mig 029) so a stray
+# row never crashes resolution — it just resolves to the Basic breadth.
 VALID_TIERS = ("free", "basic", "advanced", "pro")
 
-# Fallback defaults (used only if a setting row is missing). Mirror the E3 table.
-_DEFAULT_COINS = {"free": 2, "basic": 2, "advanced": 5, "pro": 10}
+# Fallback defaults (used only if a setting row is missing). Mirror the F7 table.
+# Basic inherits the old Advanced breadth (5 coins / full layers). 'advanced' kept as a
+# legacy alias of Basic for safety.
+_DEFAULT_COINS = {"free": 2, "basic": 5, "advanced": 5, "pro": 10}
 _DEFAULT_LAYERS = {"free": "ema200_only", "basic": "full", "advanced": "full", "pro": "full"}
 _DEFAULT_SCANS = {"free": 1, "basic": 0, "advanced": 0, "pro": 0}
 

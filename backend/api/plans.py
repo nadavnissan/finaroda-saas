@@ -12,7 +12,8 @@ from backend.core.entitlements import resolve_entitlements
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
 
-TIERS = ("free", "basic", "advanced", "pro")
+# Three live plans (Decision A, 2026-07-13). Advanced retired (mig 029).
+TIERS = ("free", "basic", "pro")
 
 
 class Plan(BaseModel):

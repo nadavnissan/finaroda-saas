@@ -25,13 +25,16 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 log = structlog.get_logger(__name__)
 
 # Editable settings surfaced in the B7e Settings frame (keys in system_settings).
+# Three live plans (Decision A, mig 029): Advanced retired. scans_per_day_* are
+# admin-editable so per-plan daily limits can be retuned without a deploy.
 _EDITABLE_SETTINGS = [
-    "plan_price_basic", "plan_price_advanced", "plan_price_pro",
-    "scan_coins_free", "scan_coins_basic", "scan_coins_advanced", "scan_coins_pro",
-    "scans_per_day_free", "chart_layers_free",
+    "plan_price_basic", "plan_price_pro",
+    "scan_coins_free", "scan_coins_basic", "scan_coins_pro",
+    "scans_per_day_free", "scans_per_day_basic", "scans_per_day_pro",
+    "chart_layers_free",
     "trial_days", "trial_reminder_day", "journal_history_days_free",
 ]
-_PLAN_PRICE_KEYS = {"basic": "plan_price_basic", "advanced": "plan_price_advanced", "pro": "plan_price_pro"}
+_PLAN_PRICE_KEYS = {"basic": "plan_price_basic", "pro": "plan_price_pro"}
 
 
 async def _audit(db, admin_id: int, event_type: str, target_user_id, details: dict) -> None:
@@ -64,7 +67,7 @@ async def overview(
 
     # MRR: sum of active subscriptions' plan prices (agorot in settings → ₪).
     price_rows = await db.execute_fetchall(
-        "SELECT key, value FROM system_settings WHERE key IN ('plan_price_basic','plan_price_advanced','plan_price_pro')"
+        "SELECT key, value FROM system_settings WHERE key IN ('plan_price_basic','plan_price_pro')"
     )
     prices = {r[0]: int(r[1]) for r in price_rows} if price_rows else {}
     mrr_agorot = 0
@@ -117,7 +120,7 @@ async def list_users(
     if search:
         where.append("(u.email LIKE ? OR IFNULL(s.call_sign,'') LIKE ?)")
         params += [f"%{search}%", f"%{search}%"]
-    if plan in ("free", "basic", "advanced", "pro"):
+    if plan in ("free", "basic", "pro"):
         where.append("u.tier = ?")
         params.append(plan)
     if trial == "active":
@@ -197,7 +200,7 @@ async def user_override(
         raise HTTPException(404, "user not found")
 
     if body.action == "plan_override":
-        if body.value not in ("free", "basic", "advanced", "pro"):
+        if body.value not in ("free", "basic", "pro"):
             raise HTTPException(400, "invalid tier")
         await db.execute("UPDATE users SET tier=? WHERE internal_id=?", (body.value, user_id))
     elif body.action == "extend_trial":
@@ -270,7 +273,7 @@ async def ticket_detail(
 ) -> dict:
     rows = await db.execute_fetchall(
         """SELECT t.id, t.subject, t.body, t.category, t.status, t.created_at, t.user_id,
-                  u.email, u.tier, u.subscription_status, s.call_sign
+                  t.app_version, u.email, u.tier, u.subscription_status, s.call_sign
              FROM support_tickets t
              JOIN users u ON u.internal_id=t.user_id
              LEFT JOIN user_settings s ON s.user_id=t.user_id
@@ -279,11 +282,32 @@ async def ticket_detail(
     )
     if not rows:
         raise HTTPException(404, "ticket not found")
+    ticket = dict(rows[0])
     replies = await db.execute_fetchall(
         "SELECT id, author_id, is_admin, body, created_at FROM ticket_replies WHERE ticket_id=? ORDER BY created_at",
         (ticket_id,),
     )
-    return {"ticket": dict(rows[0]), "replies": [dict(r) for r in replies]}
+    # Diagnostic context (Nadav 2026-07-13): the reporter's last 20 logged actions,
+    # unioned from the existing xp / scan / funnel logs — so we can debug blind.
+    recent = await db.execute_fetchall(
+        """SELECT ts, kind, detail FROM (
+               SELECT ts            AS ts, 'xp'     AS kind, source || ' +' || amount AS detail
+                 FROM xp_events WHERE user_id = ?
+               UNION ALL
+               SELECT scanned_at    AS ts, 'scan'   AS kind,
+                      coins_scanned || ' scanned / ' || coins_passed || ' passed' AS detail
+                 FROM scan_events WHERE user_id = ?
+               UNION ALL
+               SELECT ts            AS ts, 'funnel' AS kind, stage AS detail
+                 FROM onboarding_funnel_events WHERE user_id = ?
+           ) ORDER BY ts DESC LIMIT 20""",
+        (ticket["user_id"], ticket["user_id"], ticket["user_id"]),
+    )
+    return {
+        "ticket": ticket,
+        "replies": [dict(r) for r in replies],
+        "recent_events": [dict(r) for r in recent],
+    }
 
 
 @router.post("/tickets/{ticket_id}/reply")

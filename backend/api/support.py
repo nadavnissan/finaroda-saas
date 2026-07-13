@@ -25,9 +25,9 @@ async def create_ticket(
 ) -> TicketResponse:
     """File a support ticket (status 'open') for the current user."""
     cursor = await db.execute(
-        """INSERT INTO support_tickets (user_id, subject, body, category, status)
-           VALUES (?, ?, ?, ?, 'open')""",
-        (user.internal_id, body.subject, body.body, body.category),
+        """INSERT INTO support_tickets (user_id, subject, body, category, status, app_version)
+           VALUES (?, ?, ?, ?, 'open', ?)""",
+        (user.internal_id, body.subject, body.body, body.category, body.app_version),
     )
     await db.commit()
     log.info("support_ticket_created", ticket_id=cursor.lastrowid, category=body.category)

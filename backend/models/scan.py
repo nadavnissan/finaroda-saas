@@ -42,6 +42,39 @@ class EntitlementsResponse(BaseModel):
     scans_per_day: int  # 0 = unlimited
 
 
+class ScanHistoryItem(BaseModel):
+    """One row in the read-only Recent Scans list (Decision B)."""
+    scan_event_id: int
+    scanned_at: str
+    coins_scanned: int
+    coins_passed: int
+
+
+class ScanHistoryResponse(BaseModel):
+    scans: list[ScanHistoryItem]
+
+
+class StoredScanRow(BaseModel):
+    """One coin from a stored scan result (momentum rows only)."""
+    coin: str
+    direction: Optional[str] = None
+    score: Optional[float] = None
+    passed_threshold: int
+    price: Optional[float] = None
+    entry: Optional[float] = None
+    sl: Optional[float] = None
+    tp: Optional[float] = None
+    trailing_pct: Optional[float] = None
+
+
+class StoredScanResponse(BaseModel):
+    scan_event_id: int
+    scanned_at: str
+    coins_scanned: int
+    coins_passed: int
+    rows: list[StoredScanRow]
+
+
 class SnapshotCreate(BaseModel):
     score_log_id: int
     card_json: str

@@ -99,6 +99,7 @@ async def test_next_scan_reveals_outcome():
     email = "reveal_next@example.com"
     with TestClient(app) as client:
         _login(client, email)
+        await _set_user(email, tier="pro")  # unlimited scans/day so the reveal 2nd scan lands same day
         client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
         sid = await _resolve_latest_pass(email, "win", 2.60)
 
@@ -118,6 +119,7 @@ async def test_journal_view_awards_25_xp_once():
     email = "reveal_xp@example.com"
     with TestClient(app) as client:
         _login(client, email)
+        await _set_user(email, tier="pro")  # unlimited scans/day so the reveal 2nd scan lands same day
         client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
         sid = await _resolve_latest_pass(email, "win", 3.0)
         client.post("/api/scan/events", json=_pass_scan("ETHUSDT"))  # reveal

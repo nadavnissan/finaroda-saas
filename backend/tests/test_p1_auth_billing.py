@@ -249,9 +249,8 @@ async def test_renewal_batch_never_charges_trials(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_plan_prices_seeded():
-    """Migration 019 seeded the 3 FINARODA plan prices (agorot)."""
+    """The two paid plan prices after the three-plan retune (mig 029, agorot)."""
     async with aiosqlite.connect(cfg.DATABASE_URL) as db:
         db.row_factory = aiosqlite.Row
-        assert await cardcom_service.get_plan_price_agorot(db, "basic") == 5000
-        assert await cardcom_service.get_plan_price_agorot(db, "advanced") == 10000
-        assert await cardcom_service.get_plan_price_agorot(db, "pro") == 15000
+        assert await cardcom_service.get_plan_price_agorot(db, "basic") == 5900
+        assert await cardcom_service.get_plan_price_agorot(db, "pro") == 14900

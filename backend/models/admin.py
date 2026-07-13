@@ -23,7 +23,7 @@ class BroadcastCreate(BaseModel):
     title: str
     body: str
     audience: Literal["all", "plan", "trial_ending"] = "all"
-    target_tier: Optional[Literal["free", "basic", "advanced", "pro"]] = None
+    target_tier: Optional[Literal["free", "basic", "pro"]] = None
     channel_in_app: bool = True
     channel_email: bool = False
 

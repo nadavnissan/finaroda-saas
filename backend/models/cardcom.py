@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class CardcomInitiateRequest(BaseModel):
     """Initiate a Cardcom checkout for a FINARODA plan."""
-    plan: Literal["basic", "advanced", "pro"]
+    plan: Literal["basic", "pro"]
     is_upgrade: bool = False
 
 

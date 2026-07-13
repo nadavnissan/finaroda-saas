@@ -81,10 +81,13 @@ async def test_gating_allows_more_coins_for_pro():
         assert r.status_code == 200
 
 
-def test_first_scan_of_day_awards_xp_once():
-    """+50 on the first scan of the day; 0 on later scans the same day (D3)."""
+@pytest.mark.asyncio
+async def test_first_scan_of_day_awards_xp_once():
+    """+50 on the first scan of the day; 0 on later scans the same day (D3).
+    Pro tier so the daily-scan cap (Bug 3) does not block the second same-day scan."""
     with TestClient(app) as client:
         _login(client, "xp_scan@example.com")
+        await _set_tier("xp_scan@example.com", "pro")
         first = client.post("/api/scan/events", json=_scan_payload(1)).json()
         assert first["first_scan_of_day"] is True
         assert first["xp_awarded"] == 50
@@ -117,21 +120,22 @@ def test_support_ticket_requires_auth():
 
 
 def test_plans_public_comparison_table():
-    """B2 — /api/plans returns all four tiers with prices/coins from system_settings."""
+    """B2 — /api/plans returns the three live tiers (Decision A) with prices/coins."""
     with TestClient(app) as client:
         r = client.get("/api/plans")
         assert r.status_code == 200
         body = r.json()
         assert body["currency"] == "₪"
         by = {p["tier"]: p for p in body["plans"]}
-        assert set(by) == {"free", "basic", "advanced", "pro"}
+        assert set(by) == {"free", "basic", "pro"}    # Advanced retired (mig 029)
         assert by["free"]["price_ils"] == 0
-        assert by["basic"]["price_ils"] == 50
-        assert by["advanced"]["price_ils"] == 100
-        assert by["pro"]["price_ils"] == 150
+        assert by["basic"]["price_ils"] == 59          # PENDING-ACCOUNTANT
+        assert by["pro"]["price_ils"] == 149           # PENDING-ACCOUNTANT
         assert by["free"]["coins_per_scan"] == 2
+        assert by["basic"]["coins_per_scan"] == 5      # Basic inherits old Advanced breadth
         assert by["pro"]["coins_per_scan"] == 10
         assert by["free"]["chart_layers"] == "ema200_only"
+        assert by["basic"]["chart_layers"] == "full"
         assert by["pro"]["chart_layers"] == "full"
 
 
@@ -145,3 +149,76 @@ def test_trial_start_no_card():
         assert r.json()["tier"] == "pro"
         again = client.post("/api/cardcom/trial")
         assert again.status_code == 409
+
+
+# ── Bug 3: daily scan cap enforcement ────────────────────────────────────────
+def test_daily_scan_cap_free_blocks_second(monkeypatch):
+    """Free = 1 scan/day: the second same-day scan is rejected (429, DAILY_SCAN_LIMIT)."""
+    with TestClient(app) as client:
+        _login(client, "daily_free@example.com")
+        first = client.post("/api/scan/events", json=_scan_payload(1))
+        assert first.status_code == 200
+        second = client.post("/api/scan/events", json=_scan_payload(1))
+        assert second.status_code == 429
+        detail = second.json()["detail"]
+        assert detail["code"] == "DAILY_SCAN_LIMIT"
+        assert detail["scans_per_day"] == 1
+
+
+@pytest.mark.asyncio
+async def test_daily_scan_cap_unlimited_for_paid():
+    """Paid (pro) = unlimited (scans_per_day=0): repeated same-day scans all pass."""
+    with TestClient(app) as client:
+        _login(client, "daily_pro@example.com")
+        await _set_tier("daily_pro@example.com", "pro")
+        for _ in range(3):
+            assert client.post("/api/scan/events", json=_scan_payload(1)).status_code == 200
+
+
+# ── Bug 4: trial activation → Free on expiry ─────────────────────────────────
+@pytest.mark.asyncio
+async def test_trial_expires_to_free():
+    """An elapsed trial is moved to Free (never charged, never blocked)."""
+    from datetime import datetime, timedelta, timezone
+
+    from backend.core import cardcom_service
+
+    with TestClient(app) as client:
+        _login(client, "trial_expire@example.com")
+        assert client.post("/api/cardcom/trial").status_code == 200
+        # Force the trial end into the past, then run the expiry job.
+        past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        async with aiosqlite.connect(cfg.DATABASE_URL) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute(
+                "UPDATE users SET trial_ends_at=? WHERE email=?", (past, "trial_expire@example.com")
+            )
+            await db.commit()
+            result = await cardcom_service.expire_trials(db)
+        assert result["moved_to_free"] >= 1
+        status = client.get("/api/cardcom/status").json()
+        assert status["tier"] == "free"
+        assert status["subscription_status"] == "none"
+
+
+# ── Decision B: recent scans history (read-only) ─────────────────────────────
+def test_scan_history_lists_and_stores():
+    with TestClient(app) as client:
+        _login(client, "history@example.com")
+        client.post("/api/scan/events", json=_scan_payload(2))
+        hist = client.get("/api/scan/history").json()
+        assert len(hist["scans"]) == 1
+        sid = hist["scans"][0]["scan_event_id"]
+        assert hist["scans"][0]["coins_scanned"] == 2
+        stored = client.get(f"/api/scan/history/{sid}").json()
+        assert stored["scan_event_id"] == sid
+        assert len(stored["rows"]) == 2
+
+
+def test_scan_history_owner_scoped():
+    with TestClient(app) as client:
+        _login(client, "history_a@example.com")
+        client.post("/api/scan/events", json=_scan_payload(1))
+        sid = client.get("/api/scan/history").json()["scans"][0]["scan_event_id"]
+        _login(client, "history_b@example.com")
+        assert client.get(f"/api/scan/history/{sid}").status_code == 404

@@ -50,8 +50,9 @@ def _has_lesson(m: dict) -> bool:
 
 
 def _is_pro_access(user: CurrentUser) -> bool:
-    """Advanced/Pro plans, or an active Pro trial (trial = full library, B6b)."""
-    return user.tier in ("advanced", "pro") or user.subscription_status == "trial"
+    """Paid plans (Basic/Pro), or an active Pro trial (trial = full library, B6b).
+    Basic inherits the old Advanced full-library access (Decision A, mig 029)."""
+    return user.tier in ("basic", "pro") or user.subscription_status == "trial"
 
 
 def _is_unlocked(m: dict, user: CurrentUser, xp_total: int) -> bool:

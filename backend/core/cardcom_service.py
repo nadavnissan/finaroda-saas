@@ -9,7 +9,8 @@ webhook verification with constant-time compare. Credentials only from config.
 .env.example. Going live is a manual step by Nadav.
 
 v11 endpoints: LowProfile/Create, LowProfile/GetLpResult, Token/ChargeToken.
-Plans (tier == plan name): basic / advanced / pro. Prices from system_settings.
+Plans (tier == plan name): basic / pro (Advanced retired, mig 029). Prices from
+system_settings.
 """
 import hashlib
 import hmac
@@ -27,7 +28,7 @@ from backend.models.cardcom import CardcomCancelResponse, CardcomInitiateRespons
 
 logger = logging.getLogger(__name__)
 
-VALID_PLANS = ("basic", "advanced", "pro")
+VALID_PLANS = ("basic", "pro")  # Advanced retired (Decision A, mig 029)
 _TIMEOUT = 30.0
 
 
