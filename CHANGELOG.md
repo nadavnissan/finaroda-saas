@@ -22,7 +22,7 @@
 - ATP: TC-N5-01..TC-N5-12 (feed/read, prefs, inapp-gate, day-11 boundary, cron idempotency, reveal-teaser no-outcome+dedup, broadcast 403/filtering/preview, unsubscribe valid/tampered/repeat, cron auth, bell badge 9+/toggle/vibration no-op).
 - VERSION: v0.11.0
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: b714ca8
 - IMPACT: משתמש רואה פעמון עם ספירת unread שורדת refresh, מסמן נקרא בפתיחה; שולט ב-sound/vibration/in-app + opt-in לאימיילים; מקבל תזכורת יום-11 ו-reveal-teaser (ללא ערכי תוצאה); אדמין שולח broadcast עם preview + confirm + unsubscribe חובה. אין שליחה חיה עד אימות דומיין.
 - DECISIONS: (1) `notifications` (פיד) ≠ `notifications_log` (ledger) — קיום-משותף נקי. (2) reveal-teaser עם sent-flag על שורת ה-reveal + אימייל אחד למשתמש per-sweep (מכבד "one teaser per pending reveal" + לא ספאם). (3) `log_trial_reminders_task` deprecated — `trial_ending_soon_task` דרך endpoint הוא הנתיב הסמכותי היחיד ל-day-11.
 - DRIFT FOUND (מדווח, לא תוקן בשקט): (a) טבלת `notifications` מתה מ-mig 005 (שונתה בצד, לא נמחקה); (b) em-dashes ב-copy קיים של welcome/beta emails (email.py:106,121,127) — לא נגעתי; (c) שני נתיבי day-11 עם ref שונה (billing vs journal task) — אוחדו.
