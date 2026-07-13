@@ -38,7 +38,7 @@
 > **✅ מומש v0.8.0 (Package B B1):** מסך הסריקה המלא — שורת בקרים pre-scan (Horizon SWING/POSITION-locked · Lens display-only · Risk Style geometry-only), אנימציית 4-צעדים נעולה, תוצאות ring/list, Chart Standard v1 עם E7 layer gating, E7b why-not לכל מטבע, first-scan XP chip, empty-state F1b. הניווט (header אחיד + hamburger drawer) והיומן (F3/B4) מומשו ב-v0.8.0/v0.9.0.
 
 ### זרימה
-Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–7 days = active · POSITION weeks+ = **locked**, "In validation. Unlocks when it earns it." — PRD F1c), **Analysis Lens** (EMA200/RSI/Volume/Full — display only) and **Risk Style** (Conservative/Balanced/Aggressive — output geometry only). None changes the score or which coins pass within the active horizon (RED LINE, PRD §3.5.5). Then: כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **Trading Blueprint**.
+Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–7 days = active · POSITION weeks+ = **locked**, "In validation. Unlocks when it earns it." — PRD F1c), **Analysis Lens** (EMA200/RSI/Volume/Full — display only, **Full = recommended default**) and **Risk Style** (Conservative/Balanced/Aggressive — output geometry only, **Balanced = recommended default**). The controls mark the recommended defaults (Decision E, v0.10.0 shipped 2026-07-13). **Coin selection (Decision C, v0.10.0):** the user also picks WHICH coins to scan, within the plan's coin count (all plans), a remembered pre-scan control. None of these changes the score or which coins pass within the active horizon (RED LINE, PRD §3.5.5). Then: כפתור עגול גדול במרכז → לחיצה → **אנימציית סריקה במילים** (Downloading tickers… / Analyzing candles… / Computing volume… / Scoring…) → **טבעת עיגולים** מסביב לכפתור, כל עיגול = מטבע שעבר סף → לחיצה על עיגול → **Trading Blueprint**.
 
 ### כללי עיצוב
 - **פריסה (נעול):** ring עד 5 מטבעות, list מעבר ל-5.
@@ -60,7 +60,7 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 - **Risk Style** shifts the calculated levels via `computeSlTp` `opt` — the score is unchanged.
 - **מודיעין מתקפל:** volume (נאסף).
 - **Concept Tooltip ("What's this?", PRD F14):** כל מונח מקצועי בכרטיס (EMA7 slope, PASS/WATCH, Mathematical Trigger Point וכו') נושא בועת-לימוד אחידה — תמצית בשפה פשוטה מהאקדמיה + קישור לשיעור. חינוכי בלבד, לא נוגע בציון/סף. מהאונבורדינג ואילך על כל surface.
-- **Live Chart + Explanation Overlays (PRD F15) — ✅ מומש v0.8.0 כ-Chart Standard v1:** גרף לכל מטבע נסרק (מרונדר מ-kline **in-app כ-SVG** — לא recharts, לא צילום TradingView/Bybit), עם שכבות הסבר. **Gating (נשלט-אדמין):** Free = גרף + EMA200 · בתשלום = כל השכבות (EMA7, רמות ה-Blueprint על הגרף). **E7b:** כל מטבע נסרק (כולל non-passers) לחיץ → אותו גרף + שורת "why not". השכבות הצגה בלבד — לא משנות ציון (RED LINE).
+- **Live Chart + Explanation Overlays (PRD F15) — ✅ מומש v0.8.0 כ-Chart Standard v1:** גרף לכל מטבע נסרק (מרונדר מ-kline **in-app כ-SVG** — לא recharts, לא צילום TradingView/Bybit), עם שכבות הסבר. **Gating (נשלט-אדמין):** Free = גרף + EMA200 · בתשלום = כל השכבות (EMA7, רמות ה-Blueprint על הגרף). **E7b:** כל מטבע נסרק (כולל non-passers) לחיץ → אותו גרף + שורת "why not". **Decision D (v0.10.0 shipped 2026-07-13), paid "why not" enrichment:** בפלאנים בתשלום, הקשה על מטבע שלא עבר חושפת את **המספרים בפועל** מאחורי ה-check החוסם (למשל price מול EMA200 ב-%, שיפוע EMA7, יחס volume); Free רואה את ה-why-not הפשוט בלבד. **אין משקלים/נוסחאות.** השכבות הצגה בלבד — לא משנות ציון (RED LINE).
 - **תיוג קבוע:** "Analysis, not financial advice."
 - **(V2)** כפתור "Copy to LLM" — בלוק טקסט מובנה לחיזוק שיקול דעת חיצוני.
 
@@ -77,7 +77,8 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 
 ## 5. פרופיל ושלבי יוקרה
 
-> **✅ מומש v0.9.0 (Package B B5):** `/api/profile` — call-sign, כרטיס דרגה + סולם (‏`XP_ECONOMY.md` 1000/3000/8000), "HOW XP IS EARNED", הגדרות Lens/Risk Style נשמרות (display+geometry בלבד), sign-out. call-sign בבעלות הפרופיל עם fallback מ-email; התמדה מ-onboarding S9 = follow-up.
+> **✅ מומש v0.9.0 (Package B B5):** `/api/profile` — call-sign, כרטיס דרגה + סולם (‏`XP_ECONOMY.md` 1000/3000/8000), "HOW XP IS EARNED", הגדרות Lens/Risk Style נשמרות (display+geometry בלבד), sign-out.
+> **✅ v0.10.0 (shipped 2026-07-13):** ה-call-sign שנבחר באונבורדינג S9 **מתמיד** לפרופיל ומשמש בברכות (fallback ל-email כשאין call-sign). **Profile ו-Settings הם מסכים נפרדים:** Profile = זהות (call-sign/דרגה/ותק); Settings = הגדרות הסריקה הנזכרות (Lens/Risk Style/מטבעות מועדפים).
 
 ### פרופיל
 שם, תוכנית, ותק במערכת, הגדרות (**Analysis Lens** display-only, **Risk Style** output-only, מטבעות מועדפים בגבולות הפלאן — **אין סף-ציון אישי**, RED LINE PRD §3.5.5), היסטוריית סריקות, מדדי משמעת. Lens + Risk Style are remembered per user.
@@ -100,19 +101,21 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 
 ## 6. פלאנים — מסך תמחור (3, לא 1)
 
-| | Free 0₪ | בסיס 50₪ | מתקדם 100₪ | פרו 150₪ |
-|---|---|---|---|---|
-| מטבעות בסריקה | 2 (סריקה 1/יום) | 2 | 5 | 10 |
-| Trading Blueprint מלא | ✓ | ✓ | ✓ | ✓ |
-| דאשבורד "מה היה קורה" | 7 ימים אחרונים | ✓ | ✓ | ✓ |
-| ייצוא תוצאות | — | — | ✓ | ✓ |
-| Academy (וידאו) | בסיסי | בסיסי | מלא | מלא |
-| (V2) Copy-to-LLM | — | — | — | ✓ |
+> **Decision A (נדב 2026-07-13, v0.10.0):** Advanced הוסר; הקטלוג הוא Free/Basic/Pro. Basic ירש את רוחב ה-Advanced (5 מטבעות, ייצוא, academy מלא, יומן מלא). המחירים ₪59/₪149 מסומנים **PENDING-ACCOUNTANT**.
+
+| | Free 0₪ | בסיס 59₪ (PENDING-ACCOUNTANT) | פרו 149₪ (PENDING-ACCOUNTANT) |
+|---|---|---|---|
+| מטבעות בסריקה | 2 (סריקה 1/יום) | 5 | 10 |
+| Trading Blueprint מלא | ✓ | ✓ | ✓ |
+| דאשבורד "מה היה קורה" | 7 ימים אחרונים | ✓ | ✓ |
+| ייצוא תוצאות | — | ✓ | ✓ |
+| Academy (וידאו) | בסיסי | מלא | מלא |
+| (V2) Copy-to-LLM | — | — | ✓ |
 
 > כל המספרים נשלטים מהאדמין בלי קוד. הטבלה היא ברירת מחדל מוצעת — לאישור נדב.
 > **Free tier (D2, נדב 2026-07-09):** מסלול חינמי קבוע — סריקה 1/יום, 2 מטבעות, Blueprint מלא, F3 מוגבל ל-7 ימים, ללא ייצוא, academy בסיסי. במסך paywall/פיצול — אפשרות משנית **"Continue on Free"**.
 > **טבלת ההשוואה — חובה בעמוד ה-Subscribe (E3, נדב 2026-07-11):** טבלת ה-Free-מול-בתשלום שלמעלה **חייבת להיות מוצגת ללקוח בעמוד ה-Subscribe/paywall עצמו** — כדי שהמשתמש רואה בדיוק מה כלול בכל מסלול לפני החלטה. שורת ה-Free מתויגת "Free forever" (1 סריקה/יום · 2 מטבעות · Blueprint מלא · יומן 7 ימים · ללא ייצוא). ראו PRD F7 (AC paywall) + copy-guard ATP TC-J-002.
-> **שליטה ובחירה** = ארבעה מסלולים (Free + 3 בתשלום) נותנים ללקוח תחושת בקרה. **trial 14 יום ללא כרטיס** בכל הפלאנים בתשלום; אין חיוב אוטומטי — בסוף התקופה בחירה אקטיבית.
+> **שליטה ובחירה** = שלושה מסלולים (Free + 2 בתשלום, אחרי Decision A) נותנים ללקוח תחושת בקרה. **trial 14 יום ללא כרטיס** בכל הפלאנים בתשלום; אין חיוב אוטומטי — בסוף התקופה בחירה אקטיבית. **BUG 4 (v0.10.0):** ה-CTA של ה-trial קורא ישירות ל-`POST /api/cardcom/trial` (ללא מסך checkout/כרטיס) ומנחית ל-`/scan` עם TRIAL chip.
 
 ---
 
@@ -135,9 +138,15 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 - **עיגולי מטבע:** קטנים, מסביב לכפתור, צבע לפי כיוון/ציון. לחיצה → Trading Blueprint.
 - **כפתורי כרטיס:** משניים, נקיים. (V2: "Copy to LLM".)
 - **Concept Tooltip (PRD F14) — ✅ מומש v0.7.0:** אינדיקטור עדין (מקווקו / אייקון "?") על מונחים; לחיצה/ריחוף → בועה קצרה מהאקדמיה (46 מונחים, מנוע `now`-template). קומפוננטה אחת משותפת בכל המסכים; deep-link "Learn more" → `/academy#<id>`.
-- **תפריט המבורגר (E5, נדב 2026-07-11) — ✅ מומש v0.8.0 (B3):** ניווט המבורגר עם **Dashboard / Profile / Academy / Settings** + identity block עם LevelMeter, header אחיד (‏≡ / FINARODA / LevelMeter chip), "Report a problem" → טיקט אמיתי. (נכנס פעיל לכל המשתמשים המאומתים, לא רק אחרי תשלום.)
+- **תפריט המבורגר (E5, נדב 2026-07-11) — ✅ מומש v0.8.0 (B3):** ניווט המבורגר עם **Dashboard / Recent scans / Profile / Academy / Settings** + identity block עם LevelMeter, header אחיד (‏≡ / FINARODA / LevelMeter chip), "Report a problem" → טיקט אמיתי. (נכנס פעיל לכל המשתמשים המאומתים, לא רק אחרי תשלום.)
+  - **Recent scans (Decision B, v0.10.0 shipped 2026-07-13):** עמוד היסטוריה **קריא-בלבד**: זמן, מטבעות שנסרקו, כמה עברו, הקשה לתוך תצוגת תוצאה שמורה (מ-`GET /api/scan/history` + `/history/{id}`). **אין** דאטת reveal/outcome (זו נשארת ביומן F3). זו אפורדנס היסטוריה, לא יומן.
+  - **Profile ו-Settings הם כעת מסכים נפרדים (v0.10.0):** Profile = זהות (call-sign, דרגה, ותק); Settings = הגדרות הסריקה הנשמרות (Analysis Lens, Risk Style, מטבעות מועדפים).
+  - **לוגו FINARODA לחיץ (v0.10.0):** הקשה על הלוגו ב-header מנווטת ל-`/scan` למשתמשים מאומתים.
 - **CTA שדרוג:** נוכח אך לא אגרסיבי (trust-not-engagement).
 - מצבי ריק: "No setups pass right now" מעוצב כהישג, לא כשגיאה.
+- **Dashboard "How is R measured?" explainer (v0.10.0 shipped 2026-07-13):** מסביר את מודל ה-what-if: trigger fill → target / risk, פקיעה אחרי 7 ימים, ה-trailing אינו מסומלץ. חינוכי בלבד, לא נוגע בציון/סף.
+- **DEV SIGN-IN button (v0.10.0):** מסך ה-login מרנדר כפתור DEV SIGN-IN כשה-backend מחזיר `dev_magic_link` (‏`DEV_RETURN_MAGIC_LINK`, **prod-guarded**, לעולם לא בפרודקשן). כלי פיתוח בלבד.
+- **Admin back-to-app nav (v0.10.0):** קונסולת האדמין כוללת ניווט קבוע חזרה לאפליקציה.
 
 ---
 

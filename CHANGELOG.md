@@ -4,6 +4,35 @@
 
 ---
 
+## [FIX-R3R4 / validations 3+4 fix round] — 2026-07-13
+- GOAL: לתקן 11 באגים + ליישם 5 החלטות מאושרות (A–E) + תוספות UX מהוולידציות 3+4 של נדב. dev בלבד, MINOR.
+- SOLUTION (מה עשינו בפועל):
+  1. **Decision A — 3 פלאנים (Advanced הוסר):** Free/Basic/Pro, coins 2/5/10, prices basic ₪59 / pro ₪149 (**PENDING-ACCOUNTANT**). mig 029 ממגר משתמשי advanced→basic ומכייל system_settings (scan_coins_basic=5, plan_price_basic=5900, plan_price_pro=14900 agorot; מפתחות advanced_* נמחקו). `/api/plans` + entitlements defaults + cardcom VALID_PLANS + models Literals + admin editable/plan-override + academy full-access = basic+pro. ה-CHECK של users.tier לא נבנה מחדש ('advanced' נסבל כ-legacy).
+  2. **Bug 3 — אכיפת scans/day:** `POST /api/scan/events` דוחה סריקה מעל המכסה היומית (429 `DAILY_SCAN_LIMIT`, ספירת `scan_events` של היום); Free=1/יום, בתשלום=unlimited; admin-editable (scans_per_day_*). קליינט: phase "limit" ידידותי (SEE PLANS / VIEW JOURNAL).
+  3. **Bug 4 — trial ללא כרטיס:** "Start 14 days" (onboarding S11 + Subscribe) קורא ישירות `POST /api/cardcom/trial` ונוחת `/scan` עם **TRIAL chip** (אין מסך tokenizing). day-11 reminder נרשם ב-`notifications_log` (idempotent, email_in_app); expiry→Free (קיים).
+  4. **Bug 2 — XP:** המענק (300) + call-sign persist + completion עברו ל-**S9** (call-sign submit); S11 chooseFork מפעיל complete() כ-idempotent safety-net → exit שבור לא עולה במענק.
+  5. **Bug 1 — flash:** `runScan` מחזיק את ה-scanning overlay עד ש-reveal חוזר (onDone async, S2/S8/S10) — אין frame pre-scan ביניים. S5→S6: אין scan/redirect בקוד; מומלץ אימות דפדפן.
+  6. **Bug 5 — SEE PLANS→חזור:** מצב הסריקה נשמר ב-sessionStorage (passers/nonPassers/md/ids) ומשוחזר ב-mount → חוזרים ל-RESULTS, המטבעות עדיין ניתנים ללחיצה.
+  7. **Bugs 6/7/8:** S1 כותרת פיצול-2-שורות מכוון; S8 placeholders עקביים (E3 risk 0.1511 קיים); כפתור SCAN = "N COINS".
+  8. **Decision B — Recent scans:** `GET /api/scan/history` + `/history/{id}` (read-only מ-scan_events/score_log), דף `/history` + פריט "Recent scans" ב-drawer.
+  9. **Decision C — בחירת מטבעות:** picker במסך ה-idle, בחירה בתוך `coins_per_scan`, נשמר ב-localStorage, נאכף בסריקה.
+  10. **Decision D — why-not בתשלום:** NonPasser מציג "THE ACTUAL NUMBERS" (price vs EMA200 %, EMA7 slope, volume ratio) ל-full-layers; Free רואה הפניה לתשלום. ללא weights/formulas.
+  11. **Decision E — ברירות מחדל:** Lens=Full, Style=Balanced מסומנות (hint + outline).
+  12. **UX:** לוגו→/scan (authed), greeting לפי call-sign (email fallback), dashboard "How is R measured?" (r_multiple tooltip + caption), Profile≠Settings (settings = remembered scan settings), login B6a + **DEV SIGN-IN** (dev_magic_link), admin back-to-app + notifications explainer, tickets מצרפים app_version (mig 030) + 20 אירועים אחרונים בתצוגת אדמין. `.env.example`: DEV_RETURN_MAGIC_LINK=true + production-guard note.
+- FILES CREATED: backend/migrations/029_three_plan_model.py, backend/migrations/030_ticket_app_version.py, frontend/src/app/(scan)/history/page.tsx, frontend/src/lib/version.ts.
+- FILES MODIFIED: backend (api/scan,plans,cardcom,admin,support,academy · core/entitlements,cardcom_service · app/tasks/billing_tasks · models/scan,cardcom,admin,support · tests · .env.example), frontend (scan/page, subscribe, login, profile, settings, admin, dashboard, OnboardingFlow, AppHeader/Controls/NavDrawer/NonPasser, lib api/store/persist), PRD/SPEC/UX, ATP, CHANGELOG, VERSIONS, SESSION_HANDOFF.
+- DB CHANGES: mig 029 (retire Advanced: migrate advanced→basic, retune/prune system_settings), mig 030 (support_tickets.app_version).
+- CONFIG ADDED: אין env חדש (DEV_RETURN_MAGIC_LINK כבר קיים; עודכן note+ברירת-מחדל dev).
+- VALIDATION: pytest 71/71, tsc clean, eslint clean, frontend unit 18/18, shared 14/14. (next build: Windows .next lock timeout — לאימות ידני.)
+- ATP: +TC-A-101 (3-plan gating), TC-A-102 (daily scan cap), TC-A-103 (trial→Free expiry), TC-A-104 (scan history + owner-scope), TC-A-105..A-110 (manual: flash, XP@S9, coin-pick, why-not enrich, defaults, login dev).
+- VERSION: v0.10.0
+- BRANCH: dev
+- COMMIT: e2e49b8 (backend) + b852dd7 (frontend) + docs commit
+- IMPACT: תוכנית 3-מסלולים אחת, אכיפת מכסה יומית אמיתית, trial חלק ל-/scan, XP שלא הולך לאיבוד, בחירת מטבעות, היסטוריית סריקות, ומסכי login/profile/settings/admin מתוקנים.
+- DECISIONS: (1) לא בונים מחדש את CHECK של users.tier — 'advanced' נסבל כ-legacy וממוגר ל-basic (הפיך, לא-הרסני). (2) Basic יורש academy מלא של Advanced. (3) אכיפת scans/day דוחה סריקה 2 באותו יום — עודכנו 3 טסטים קיימים (journal reveal) לטיר unlimited. (4) גרנט ה-XP הוקדם ל-S9 לפי כוונת נדב.
+
+---
+
 ## [DOCS-SYNC / reconcile source-of-truth docs with Package B implemented state] — 2026-07-13
 - GOAL: ליישר את מסמכי המקור-אמת (PRD/SPEC/UX) עם המצב הממומש אחרי Package B phases 1+2 (v0.8.x–v0.9.0). docs only, dev, PATCH.
 - SOLUTION (מה עשינו בפועל):

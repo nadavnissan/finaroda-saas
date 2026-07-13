@@ -171,6 +171,7 @@ CREATE TABLE support_tickets (
 );
 CREATE INDEX idx_ticket_status ON support_tickets(status, created_at DESC);
 ```
+> **mig 030 (v0.10.0):** `support_tickets` קיבל עמודת `app_version` (גרסת האפליקציה בזמן פתיחת הטיקט). בנוסף, תצוגת הטיקט באדמין מחזירה את **20 האירועים האחרונים שנרשמו למדווח** (xp/scan/funnel) לצורך הקשר דיבאג.
 
 ### 5.5 `episodes` — ספריית אפיזודות לאונבורדינג (Episode Library)
 משמש את סימולציית האונבורדינג (F13, ראו `FINARODA_ONBOARDING_SPEC.md`). כל אפיזודה = **טווח kline אמיתי ומתוארך** מקובץ הטריידים/בקטסטים + התוצאה בפועל. הגרפים **מרונדרים אצלנו** מ-kline — **לעולם לא צילומי מסך מ-TradingView/Bybit** (רישוי במוצר מסחרי + עקביות ויזואלית). **מומש (§5.8): in-app SVG candlestick, לא recharts** — כדי להימנע מ-peer-dep של React 19 (החלטה פתוחה, revert אם נדב מעדיף); recharts נשאר dependency רשום.
@@ -268,8 +269,9 @@ CREATE UNIQUE INDEX ux_journal_noset ON journal_scenarios(user_id, scan_date) WH
 | endpoint | תיאור |
 |---|---|
 | `GET /api/scan/entitlements` | binding gating config לפי tier → `{tier, coins_per_scan, chart_layers, scans_per_day}` (‏`core/entitlements.py`). |
-| `POST /api/scan/events` | דוחה סריקה מעל מכסת המטבעות (403 `PLAN_COIN_LIMIT`); מזכה first-scan-of-day XP (+50, idempotent per day, `daily_first_scan`). |
-| `GET /api/plans` | public — 4 המסלולים (Free+Basic/Advanced/Pro) עם price/coins/scans/chart_layers מ-`system_settings`. |
+| `POST /api/scan/events` | דוחה סריקה מעל מכסת המטבעות (403 `PLAN_COIN_LIMIT`); **אוכף מגבלת סריקות/יום (BUG 3, v0.10.0): 429 `DAILY_SCAN_LIMIT`** (Free=1/יום, בתשלום=unlimited, admin-editable דרך `scans_per_day_*`); מזכה first-scan-of-day XP (+50, idempotent per day, `daily_first_scan`). |
+| `GET /api/scan/history` · `GET /api/scan/history/{id}` | **read-only (Decision B, v0.10.0):** רשימת סריקות אחרונות (זמן/מטבעות/passes) + תצוגת תוצאה שמורה, נגזר מ-`score_log`/`scan_events`. **אין** דאטת reveal/outcome. |
+| `GET /api/plans` | public: שלושת המסלולים (Free/Basic/Pro, אחרי Decision A) עם price/coins/scans/chart_layers מ-`system_settings`. |
 | `GET /api/journal/badge` | ספירת תוצאות לא-חשופות בלבד (reveal badge). |
 | `GET /api/profile` · `PUT /api/profile/settings` | פרופיל + call-sign + סולם דרגות; שמירת Lens/Risk Style. |
 | `POST /api/support/tickets` | פתיחת טיקט (Report a problem). |
@@ -277,10 +279,13 @@ CREATE UNIQUE INDEX ux_journal_noset ON journal_scenarios(user_id, scan_date) WH
 | `GET /api/broadcasts/active` | banner in-app פעיל (לעולם לא מכסה SCAN/disclaimer). |
 
 **מפתחות `system_settings` חדשים (migrations 027–028, admin-editable בלי קוד):**
-- **coins/scan:** `scan_coins_free` (=2; basic/advanced/pro נזרעו ב-mig 008).
-- **chart layers (E7/F15):** `chart_layers_{free,basic,advanced,pro}` — `'ema200_only'` (Free = chart+EMA200) / `'full'` (בתשלום = כל השכבות).
-- **scans/day:** `scans_per_day_{free,basic,advanced,pro}` — Free=1, בתשלום=0 (unlimited). מוצג ב-UI; רק coins/scan + chart_layers hard-gated בשרת בשלב זה.
+- **coins/scan:** `scan_coins_free` (=2; basic/advanced/pro נזרעו ב-mig 008). **Decision A (mig 029, v0.10.0):** `scan_coins_basic=5` (Basic ירש את רוחב ה-Advanced); מפתחות `*_advanced` הוסרו.
+- **prices (mig 029, אגורות):** `plan_price_basic=5900` (₪59), `plan_price_pro=14900` (₪149), **PENDING-ACCOUNTANT**. מפתחות `plan_price_advanced` הוסרו.
+- **chart layers (E7/F15):** `chart_layers_{free,basic,pro}`: `'ema200_only'` (Free = chart+EMA200) / `'full'` (בתשלום = כל השכבות). `chart_layers_advanced` הוסר (mig 029).
+- **scans/day (BUG 3, v0.10.0, נאכף בשרת):** `scans_per_day_{free,basic,pro}`: Free=1, בתשלום=0 (unlimited). **`POST /api/scan/events` דוחה מעל המכסה עם 429 `DAILY_SCAN_LIMIT`** (הלקוח מציג מצב מגבלה ידידותי). `scans_per_day_advanced` הוסר (mig 029).
 - **admin (B7e):** `trial_reminder_day` (=11), `journal_history_days_free` (=7).
+
+> **tier enum (Decision A, mig 029, v0.10.0):** הקטלוג הוא `free`/`basic`/`pro`. `'advanced'` הוא **ערך legacy retired-but-tolerated**: ה-CHECK constraint לא נבנה מחדש, ומשתמשי `advanced` קיימים מוגרו ל-`basic` ע"י mig 029. אין להנפיק `advanced` חדש.
 
 > **RED LINE נשמר:** ה-entitlements קונים **רוחב** (מטבעות) ו-**עומק** (שכבות גרף) — לעולם לא verdict שונה. הציון והסף זהים בכל פלאן.
 
@@ -309,7 +314,7 @@ CREATE UNIQUE INDEX ux_journal_noset ON journal_scenarios(user_id, scan_date) WH
 - **ברירת מחדל:** fetch ישיר מהדפדפן מול `api.bybit.com/v5/market/*` (kline/tickers/OI) — רובם מחזירים CORS תקין. IP של הלקוח.
 - **Fallback:** proxy דק ב-backend רק ל-endpoints בעייתיים — לא מאחד דאטה, רק מעקף CORS.
 - **חישוב:** דרך `scoring-engine.js` המשותף. דטרמיניסטי.
-- **מספר מטבעות בסריקה:** לפי פלאן (בסיס 2 / מתקדם 5 / פרו 10), נשלט מהאדמין דרך `system_settings` בלי קוד.
+- **מספר מטבעות בסריקה:** לפי פלאן (Free 2 / בסיס 5 / פרו 10, אחרי Decision A), נשלט מהאדמין דרך `system_settings` בלי קוד.
 - **רטט בלחיצת SCAN (E6, נדב 2026-07-11):** לחיצת כפתור ה-SCAN מפעילה `navigator.vibrate(...)` עם **fallback שקט** — היכן שה-API לא נתמך (iOS Safari לא תומך ב-Vibration API) פשוט לא יורטט, בלי שגיאה ובלי חסימת הסריקה. haptic feedback עדין בלבד; אינו נוגע בלוגיקת הסריקה/הציון.
 - **כתיבה:** כל סריקה → `scan_events` + שורת `score_log` לכל מטבע (גם שלא עבר). הכרטיס שמוצג → `decision_snapshots`.
 
@@ -344,14 +349,13 @@ CREATE UNIQUE INDEX ux_journal_noset ON journal_scenarios(user_id, scan_date) WH
 ## 9. תשלומים, מנוי, חבר-מביא-חבר
 
 - **Cardcom v11** (V1): checkout (LowProfile/Create), webhook HMAC, recurring (ChargeToken), **trial 14 יום ללא כרטיס** (ללא tokenization בהרשמה, ללא חיוב אוטומטי; תזכורת יום 11; בסוף התקופה בחירה אקטיבית: פלאן בתשלום או Free). לכידת הכרטיס (tokenization) עוברת לרגע ההמרה לתשלום בלבד. Stripe גלובלי = V2. _(change order מאושר — נדב 2026-07-09; מחליף את "trial עם כרטיס" שהיה נעול.)_
-- **Free + 3 פלאנים בתשלום:**
+- **Free + 2 פלאנים בתשלום (Decision A, 2026-07-13, Advanced הוסר, Basic ירש את רוחבו):**
 
 | פלאן | מחיר ₪/חודש | מטבעות בסריקה |
 |---|---|---|
 | Free | 0 | 2 (סריקה 1/יום) |
-| בסיס | 50 | 2 |
-| מתקדם | 100 | 5 |
-| פרו | 150 | 10 |
+| בסיס | 59 (PENDING-ACCOUNTANT) | 5 |
+| פרו | 149 (PENDING-ACCOUNTANT) | 10 |
 
 > כל המגבלות (מטבעות, סף) נשלטות מהאדמין דרך `system_settings` בלי קוד. אוצר מילים אחד לפלאנים (לא premium/b2b מול pro/unlimited).
 > **Free tier (D2, נדב 2026-07-09):** סריקה 1/יום · 2 מטבעות · **Trading Blueprint מלא** · דאשבורד F3 מוגבל ל-7 הימים האחרונים · ללא ייצוא · academy בסיסי. כל המגבלות נשלטות דרך `system_settings`. במסכי paywall/פיצול — אפשרות משנית "Continue on Free".
@@ -386,8 +390,8 @@ CREATE UNIQUE INDEX ux_journal_noset ON journal_scenarios(user_id, scan_date) WH
 
 | # | החלטה |
 |---|---|
-| 1 | **3 פלאנים: בסיס 50 / מתקדם 100 / פרו 150 ₪** |
-| 2 | מטבעות בסריקה: בסיס 2 / מתקדם 5 / פרו 10 — **נשלט מהאדמין בלי קוד** |
+| 1 | **פלאנים (Decision A, 2026-07-13, Advanced הוסר): Free ₪0 / בסיס ₪59 / פרו ₪149 (PENDING-ACCOUNTANT). Basic ירש את רוחב ה-Advanced.** |
+| 2 | מטבעות בסריקה: Free 2 / בסיס 5 / פרו 10 — **נשלט מהאדמין בלי קוד** |
 | 3 | trial **ללא כרטיס** (change order, נדב 2026-07-09): 14 יום, ללא tokenization בהרשמה, ללא חיוב אוטומטי, תזכורת יום 11; בסוף התקופה בחירה אקטיבית — פלאן בתשלום או Free. לכידת הכרטיס עוברת לרגע ההמרה לתשלום. _(מחליף את "trial עם כרטיס" שהיה נעול ב-v1.0.)_ |
 | 4 | **חבר מביא חבר:** 50% הנחה לחודש למגייס, רק אחרי 3 חודשי התמדה של המגויס + בקרת אדמין |
 | 5 | קהל V1 ישראלי (Cardcom), **UI באנגלית מלאה**, Stripe בעתיד |

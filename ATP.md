@@ -489,6 +489,49 @@
 - Expected: banner מוחזר עם הכותרת; נשמר; email=stub לוגי.
 - Status: ✅ automated (test_broadcast_create_and_active_banner)
 
+## FIX-R3R4 (validations 3+4) — v0.10.0
+
+### TC-A-101 — 3-plan public table (Decision A)
+- Steps: GET /api/plans.
+- Expected: tiers = {free, basic, pro} בלבד (Advanced הוסר); prices 0/59/149; coins 2/5/10; free chart_layers=ema200_only, basic/pro=full.
+- Status: ✅ automated (test_plans_public_comparison_table)
+
+### TC-A-102 — Daily scan cap enforced (Bug 3)
+- Entry: משתמש Free (scans_per_day=1).
+- Steps: POST /api/scan/events פעמיים באותו יום; ואז משתמש pro חוזר 3 פעמים.
+- Expected: Free — סריקה 1 = 200, סריקה 2 = 429 (`DAILY_SCAN_LIMIT`, scans_per_day=1); pro — כל 3 = 200 (unlimited).
+- Status: ✅ automated (test_daily_scan_cap_free_blocks_second, test_daily_scan_cap_unlimited_for_paid)
+
+### TC-A-103 — Trial activation → Free on expiry (Bug 4)
+- Steps: POST /api/cardcom/trial → trial(pro); דחיפת trial_ends_at לעבר; expire_trials.
+- Expected: moved_to_free≥1; status → tier=free, subscription_status=none (לא חויב, לא נחסם).
+- Status: ✅ automated (test_trial_expires_to_free); day-11 → notifications_log idempotent (בדיקת cron ידנית).
+
+### TC-A-104 — Recent scans history (Decision B)
+- Steps: POST /api/scan/events; GET /api/scan/history; GET /api/scan/history/{id}; משתמש אחר מנסה את אותו id.
+- Expected: history מחזיר את הסריקה (time/coins/passes); detail מחזיר את שורות ה-momentum השמורות; משתמש אחר → 404 (owner-scoped).
+- Status: ✅ automated (test_scan_history_lists_and_stores, test_scan_history_owner_scoped)
+
+### TC-A-105 — Onboarding flash + XP@S9 (Bugs 1+2)
+- Steps (ידני, incognito): לרוץ S0→S11; לצפות ב-S8/S10 שאין מסך ביניים בין SCAN ל-reveal; לצאת ב-S11; לבדוק ש-XP=300 נחת גם אם יוצאים מיד אחרי S9.
+- Expected: אין flash ב-S8/S10; XP 300 נחת ב-S9 (call-sign submit) ולא תלוי ב-S11; call-sign מופיע בפרופיל+greeting.
+- Status: ⬜ manual (S5→S6 flash — אימות דפדפן; reveal-gap = תוקן בקוד).
+
+### TC-A-106 — Coin selection within plan (Decision C)
+- Steps: במסך idle לבחור מטבעות; לוודא cap לפי coins_per_scan; לסרוק.
+- Expected: הבחירה נשמרת (localStorage) והסריקה רצה על המטבעות שנבחרו בלבד; מעבר ל-cap מחליף את הפריט הישן.
+- Status: ⬜ manual.
+
+### TC-A-107 — Paid why-not enrichment + defaults + copy (Decisions D+E, Bugs 7+8)
+- Steps: coin לא-עובר בתשלום → "THE ACTUAL NUMBERS" (price vs EMA200 %, EMA7 slope, volume); Free → הפניה לתשלום. Lens/Style מסמנים default. כפתור SCAN = "N COINS". S1 כותרת 2 שורות.
+- Expected: כמתואר; ללא weights/formulas.
+- Status: ⬜ manual.
+
+### TC-A-108 — Login DEV SIGN-IN + admin back + Profile≠Settings (Bugs 9,10,11)
+- Steps: login עם DEV_RETURN_MAGIC_LINK → כפתור DEV SIGN-IN מופיע ומחבר; admin → "Back to app"→/scan; /profile מול /settings תוכן שונה.
+- Expected: כמתואר.
+- Status: ⬜ manual.
+
 ---
 
 ## ATR (Acceptance Test Reports)
