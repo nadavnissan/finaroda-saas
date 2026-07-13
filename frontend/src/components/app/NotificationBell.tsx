@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { C } from "@/lib/onboarding/types";
 import { apiFetch } from "@/lib/api";
+import { addBreadcrumb } from "@/lib/breadcrumbs";
 import type { NotificationFeed, NotificationItem, NotificationPrefs } from "@/lib/app/types";
 import {
   formatBadge,
@@ -94,6 +95,7 @@ export function NotificationBell({ onNavigate }: { onNavigate: (path: string) =>
     const next = !open;
     setOpen(next);
     if (!next) return;
+    addBreadcrumb("notif_open");
     const ids = unreadIds(items);
     if (ids.length === 0) return;
     const r = await apiFetch<{ unread_count: number }>("/api/notifications/read", {

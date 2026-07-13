@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { RouteBreadcrumbs } from "@/components/app/RouteBreadcrumbs";
 
 export const metadata: Metadata = {
   title: "FINARODA",
@@ -11,7 +12,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <RouteBreadcrumbs />
+        {children}
+      </body>
     </html>
   );
 }

@@ -259,14 +259,16 @@ same verified threshold, so the base-rate stays clean and comparable.
 **Flow:** קוד → מגויס נרשם → 3 חודשי מנוי רצוף → סימון זכאות → **אישור אדמין** → הנחה.
 **AC:** AC1: מעקב referrer→referred. AC2: בדיקת 3 חודשים רצופים. AC3: gate אישור אדמין. AC4: תגמול = הנחה (לא טוקנים). AC5: אין הפניה עצמית.
 
-## F9 — דאשבורד מנהל — ✅ SHIPPED v0.9.0 (Package B B7, desktop-first)
-> **מומש v0.9.0 (B7):** קונסולת אדמין admin-gated (‏`require_admin` → 403). Overview (vitals מדאטת-אמת: users/trials/MRR-מ-plan-prices/scans-day/churn), Users + override פר-משתמש (plan/extend-trial/grant-XP/suspend) עם audit ל-`admin_events` (mig 006), Settings editor (‏`system_settings`; score-gate + card-off מוצגים LOCKED), Broadcast compose+audience(all/plan/trial-ending)+channel → banner in-app (לעולם לא מכסה SCAN/disclaimer), Notifications log. XP source חדש `admin_grant` (audited, לא user-earnable — `XP_ECONOMY.md` §1). ⬜ follow-up: layout מובייל; churn = placeholder עד שתצטבר דאטת exit-survey; email sends = stubs לוגיים.
+## F9 — דאשבורד מנהל — ✅ SHIPPED v0.9.0 (B7) · v1.1 v0.12.0 (Stage 7)
+> **מומש v0.9.0 (B7):** קונסולת אדמין admin-gated (‏`require_admin` → 403). Overview (vitals מדאטת-אמת: users/trials/MRR-מ-plan-prices/scans-day/churn), Users + override פר-משתמש (plan/extend-trial/grant-XP/suspend) עם audit ל-`admin_events` (mig 006), Settings editor (‏`system_settings`; score-gate + card-off מוצגים LOCKED), Broadcast compose+audience(all/plan/trial-ending)+channel → banner in-app (לעולם לא מכסה SCAN/disclaimer), Notifications log. XP source חדש `admin_grant` (audited, לא user-earnable — `XP_ECONOMY.md` §1).
+> **מומש v0.12.0 (Stage 7 — Admin v1.1):** טבלת משתמשים מורחבת — עמודות scans total/week, **active-days 7d/30d** (‏ADMIN ANALYTICS בלבד: read-only מ-scan_events, לא user-facing, לא XP, לא gate — D-A1), XP, **rank** (server-side), referrals (placeholder 0, Stage 4 חסום), churn-flag. פילטרים צד-שרת AND (plan/status(trial/active/expired/churned)/signup-range/last-active-range/min_scans) URL-encoded shareable. **CSV export** (view מסונן, admin-only). **Churn survey** נלכד (‏`POST /api/churn/survey` → `churn_reasons`) ומוצג ב-admin (`/api/admin/churn` + flag בטבלה). **Sentry** env-gated (backend+frontend, ללא PII). **Breadcrumbs** לכל טיקט (ראה F10). ⬜ follow-up: email sends = stubs לוגיים (ticket-reply); referral logic (Stage 4).
 
 **מסכים:** לקוחות (כניסה/נטישה/סטטוס/MRR) · churn (שיעור + סיבת עזיבה משאלון יציאה) · טיקטים · ברודקאסט · קופונים · referral approvals · academy · system_settings (סף, מטבעות/פלאן) · beta/waitlist.
 **AC:** AC1: MRR מכבד קופונים/trial/הנחות. AC2: churn = שיעור עם חלון. AC3: כל מוטציה ל-admin log. AC4: סף ומטבעות/פלאן נערכים בלי קוד.
 
-## F10 — מערכת טיקטים — ✅ SHIPPED (open v0.8.0 B3 · queue+reply v0.9.0 B7)
-> **מומש:** "Report a problem" מגיש טיקט אמיתי (‏`POST /api/support/tickets`, B3 v0.8.0). Queue + thread + reply של האדמין (‏`ticket_replies`, mig 028) + מעברי status (B7 v0.9.0). ⬜ follow-up: fan-out מייל = stub לוגי (‏`email_sent` דגל).
+## F10 — מערכת טיקטים — ✅ SHIPPED (open v0.8.0 B3 · queue+reply v0.9.0 B7 · breadcrumbs v0.12.0 Stage 7)
+> **מומש:** "Report a problem" מגיש טיקט אמיתי (‏`POST /api/support/tickets`, B3 v0.8.0). Queue + thread + reply של האדמין (‏`ticket_replies`, mig 028) + מעברי status (B7 v0.9.0).
+> **מומש v0.12.0 (Stage 7):** לכל טיקט מצורף **breadcrumb trail** — 20 האירועים האחרונים בצד-לקוח (route_change/scan_submit/api_error/notif_open, ‏`lib/breadcrumbs.ts` ring buffer), נשמר ב-`support_tickets.breadcrumbs` (mig 032) אחרי **sanitizer allowlist** צד-שרת (‏`core/breadcrumbs.py`). admin ticket view מרנדר timeline (client trail + server events). **RED LINE:** אף ערך תוצאה של יומן לא-חשוף לא נכנס ל-breadcrumbs (allowlist + הלקוח לא מחזיק ערכים כאלה; נבדק). ⬜ follow-up: fan-out מייל = stub לוגי (‏`email_sent` דגל).
 
 **Flow:** לקוח פותח (קטגוריה+תיאור) → מייל למנהל → מנהל עונה → מייל ללקוח → open→resolved.
 **AC:** AC1: סטטוסים open/in_progress/resolved/closed. AC2: Resend. AC3: לקוח רואה היסטוריה.

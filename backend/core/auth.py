@@ -68,6 +68,10 @@ async def get_current_user(
         raise credentials_exception
 
     row = dict(rows[0])
+    # Attach the user id (only — no PII) to the Sentry scope when monitoring is on.
+    from backend.core.monitoring import set_request_user
+
+    set_request_user(row["internal_id"])
     return CurrentUser(
         internal_id=row["internal_id"],
         email=row["email"],

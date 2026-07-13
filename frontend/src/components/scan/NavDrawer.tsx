@@ -6,6 +6,7 @@ import { LevelMeter } from "@/components/onboarding/LevelMeter";
 import { NotificationBell } from "@/components/app/NotificationBell";
 import { C } from "@/lib/onboarding/types";
 import { apiFetch } from "@/lib/api";
+import { getBreadcrumbs } from "@/lib/breadcrumbs";
 import { APP_VERSION } from "@/lib/version";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -31,9 +32,10 @@ function ReportProblem({ onDone }: { onDone: () => void }) {
     setState("sending");
     const res = await apiFetch("/api/support/tickets", {
       method: "POST",
-      // app_version is captured so admin can debug blind (server also attaches the
-      // reporter's id/email/plan + last 20 logged events on the admin ticket view).
-      body: JSON.stringify({ subject: subject.trim(), body: body.trim(), category: "bug", app_version: APP_VERSION }),
+      // app_version + breadcrumbs are captured so admin can debug blind (server also
+      // attaches the reporter's id/email/plan + last 20 logged events on the ticket view).
+      // Breadcrumbs are re-sanitized server-side: never any journal outcome value.
+      body: JSON.stringify({ subject: subject.trim(), body: body.trim(), category: "bug", app_version: APP_VERSION, breadcrumbs: getBreadcrumbs() }),
     });
     setState(res.ok ? "sent" : "error");
   }

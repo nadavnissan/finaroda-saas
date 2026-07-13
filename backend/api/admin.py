@@ -4,16 +4,20 @@ admin id + reason (audit trail). No em dashes in any copy; disclaimers/limits li
 system_settings so the business is tunable without a deploy, but the engine's honesty
 (85/82 score gate, card-off D1) is never an editable setting.
 """
+import csv
+import io
 import json
 
 import aiosqlite
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from backend.core import notifications as notif
 from backend.core.auth import require_admin
 from backend.core.database import get_db_connection
 from backend.core.email import send_broadcast_email
+from backend.core.ranks import rank_for
 from backend.models.admin import (
     BroadcastCreate,
     SettingsUpdateBatch,
@@ -108,15 +112,28 @@ async def overview(
     }
 
 
-# ── Users ───────────────────────────────────────────────────────────────────
-@router.get("/users")
-async def list_users(
-    search: str | None = Query(None),
-    plan: str | None = Query(None),
-    trial: str | None = Query(None),
-    admin: CurrentUser = Depends(require_admin),
-    db: aiosqlite.Connection = Depends(get_db_connection),
-) -> dict:
+# ── Users (v1.1: richer columns + server-side filters + CSV export) ──────────
+# Correlated-subquery fragments reused by list + CSV export so both compute identically.
+# active-days are ADMIN ANALYTICS only (D-A1): distinct calendar days with a scan in the
+# rolling window — read-only from scan_events, never user-facing, never grant XP.
+_LAST_ACTIVE = "COALESCE(u.last_scan_at, u.last_login_at)"
+_XP = "(SELECT COALESCE(SUM(amount),0) FROM xp_events x WHERE x.user_id=u.internal_id)"
+_SCANS_TOTAL = "(SELECT COUNT(*) FROM scan_events se WHERE se.user_id=u.internal_id)"
+_SCANS_WEEK = ("(SELECT COUNT(*) FROM scan_events se WHERE se.user_id=u.internal_id "
+               "AND se.scanned_at >= datetime('now','-7 days'))")
+_ACTIVE_7D = ("(SELECT COUNT(DISTINCT date(se.scanned_at)) FROM scan_events se "
+              "WHERE se.user_id=u.internal_id AND date(se.scanned_at) >= date('now','-6 days'))")
+_ACTIVE_30D = ("(SELECT COUNT(DISTINCT date(se.scanned_at)) FROM scan_events se "
+               "WHERE se.user_id=u.internal_id AND date(se.scanned_at) >= date('now','-29 days'))")
+_CHURN_FLAG = "EXISTS(SELECT 1 FROM churn_reasons cr WHERE cr.user_id=u.internal_id)"
+
+
+def _user_filters(
+    search: str | None, plan: str | None, status: str | None,
+    signup_from: str | None, signup_to: str | None,
+    active_from: str | None, active_to: str | None, min_scans: int | None,
+) -> tuple[list[str], list]:
+    """Build the shared WHERE clause (AND semantics) for /users and its CSV export."""
     where = ["1=1"]
     params: list = []
     if search:
@@ -125,34 +142,122 @@ async def list_users(
     if plan in ("free", "basic", "pro"):
         where.append("u.tier = ?")
         params.append(plan)
-    if trial == "active":
-        where.append("u.subscription_status='trial'")
-    elif trial == "expired":
-        where.append("u.subscription_status='expired'")
+    # churned = user submitted an exit survey (distinct from a silently-expired trial).
+    if status == "churned":
+        where.append(_CHURN_FLAG)
+    elif status in ("trial", "active", "expired"):
+        where.append("u.subscription_status = ?")
+        params.append(status)
+    if signup_from:
+        where.append("date(u.created_at) >= date(?)")
+        params.append(signup_from)
+    if signup_to:
+        where.append("date(u.created_at) <= date(?)")
+        params.append(signup_to)
+    if active_from:
+        where.append(f"date({_LAST_ACTIVE}) >= date(?)")
+        params.append(active_from)
+    if active_to:
+        where.append(f"date({_LAST_ACTIVE}) <= date(?)")
+        params.append(active_to)
+    if min_scans is not None:
+        where.append(f"{_SCANS_TOTAL} >= ?")
+        params.append(min_scans)
+    return where, params
 
-    rows = await db.execute_fetchall(
-        f"""SELECT u.internal_id, u.email, u.tier, u.subscription_status,
-                   u.trial_started_at, u.trial_ends_at, u.last_scan_at, u.suspended_at,
-                   s.call_sign,
-                   (SELECT COALESCE(SUM(amount),0) FROM xp_events x WHERE x.user_id=u.internal_id) AS xp
-              FROM users u LEFT JOIN user_settings s ON s.user_id=u.internal_id
-             WHERE {' AND '.join(where)}
-             ORDER BY u.last_scan_at DESC NULLS LAST, u.internal_id DESC
-             LIMIT 200""",
-        tuple(params),
+
+def _user_select(where: list[str], limit: int) -> str:
+    return f"""
+        SELECT u.internal_id, u.email, u.tier, u.subscription_status,
+               u.created_at, u.trial_started_at, u.trial_ends_at, u.suspended_at,
+               {_LAST_ACTIVE} AS last_active, s.call_sign,
+               {_XP} AS xp, {_SCANS_TOTAL} AS scans_total, {_SCANS_WEEK} AS scans_week,
+               {_ACTIVE_7D} AS active_days_7d, {_ACTIVE_30D} AS active_days_30d,
+               {_CHURN_FLAG} AS churn_flag
+          FROM users u LEFT JOIN user_settings s ON s.user_id=u.internal_id
+         WHERE {' AND '.join(where)}
+         ORDER BY last_active DESC, u.internal_id DESC
+         LIMIT {limit}"""
+
+
+def _shape_user(r: dict) -> dict:
+    xp = r["xp"] or 0
+    rank = rank_for(xp)
+    return {
+        "id": r["internal_id"], "email": r["email"], "call_sign": r["call_sign"],
+        "tier": r["tier"], "subscription_status": r["subscription_status"],
+        "signup_at": r["created_at"], "last_active": r["last_active"],
+        "trial_started_at": r["trial_started_at"], "trial_ends_at": r["trial_ends_at"],
+        "suspended": r["suspended_at"] is not None,
+        "xp": xp, "rank_level": rank["level"], "rank_name": rank["name"],
+        "scans_total": r["scans_total"], "scans_week": r["scans_week"],
+        "active_days_7d": r["active_days_7d"], "active_days_30d": r["active_days_30d"],
+        "referrals": 0,  # placeholder — referral logic is Stage 4 (blocked)
+        "churn_survey": bool(r["churn_flag"]),
+    }
+
+
+@router.get("/users")
+async def list_users(
+    search: str | None = Query(None),
+    plan: str | None = Query(None),
+    status: str | None = Query(None),          # trial | active | expired | churned
+    signup_from: str | None = Query(None),      # YYYY-MM-DD
+    signup_to: str | None = Query(None),
+    active_from: str | None = Query(None),
+    active_to: str | None = Query(None),
+    min_scans: int | None = Query(None, ge=0),
+    admin: CurrentUser = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> dict:
+    where, params = _user_filters(
+        search, plan, status, signup_from, signup_to, active_from, active_to, min_scans
     )
-    users = [
-        {
-            "id": r["internal_id"], "email": r["email"],
-            "call_sign": r["call_sign"], "tier": r["tier"],
-            "subscription_status": r["subscription_status"],
-            "trial_started_at": r["trial_started_at"], "trial_ends_at": r["trial_ends_at"],
-            "last_scan_at": r["last_scan_at"], "suspended": r["suspended_at"] is not None,
-            "xp": r["xp"],
-        }
-        for r in rows
-    ]
-    return {"users": users, "count": len(users)}
+    rows = await db.execute_fetchall(_user_select(where, 200), tuple(params))
+    return {"users": [_shape_user(dict(r)) for r in rows], "count": len(rows)}
+
+
+_CSV_COLUMNS = [
+    "id", "email", "call_sign", "tier", "subscription_status", "signup_at",
+    "last_active", "xp", "rank_level", "rank_name", "scans_total", "scans_week",
+    "active_days_7d", "active_days_30d", "referrals", "churn_survey", "suspended",
+]
+
+
+@router.get("/users/export.csv")
+async def export_users_csv(
+    search: str | None = Query(None),
+    plan: str | None = Query(None),
+    status: str | None = Query(None),
+    signup_from: str | None = Query(None),
+    signup_to: str | None = Query(None),
+    active_from: str | None = Query(None),
+    active_to: str | None = Query(None),
+    min_scans: int | None = Query(None, ge=0),
+    admin: CurrentUser = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> StreamingResponse:
+    """Stream the CURRENT filtered view as CSV (admin-only; row-capped, no unbounded load)."""
+    where, params = _user_filters(
+        search, plan, status, signup_from, signup_to, active_from, active_to, min_scans
+    )
+    rows = await db.execute_fetchall(_user_select(where, 5000), tuple(params))
+    shaped = [_shape_user(dict(r)) for r in rows]
+
+    def generate():
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=_CSV_COLUMNS, extrasaction="ignore")
+        writer.writeheader()
+        yield buf.getvalue(); buf.seek(0); buf.truncate(0)
+        for u in shaped:
+            writer.writerow(u)
+            yield buf.getvalue(); buf.seek(0); buf.truncate(0)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="finaroda_users.csv"'},
+    )
 
 
 @router.get("/users/{user_id}")
@@ -275,7 +380,7 @@ async def ticket_detail(
 ) -> dict:
     rows = await db.execute_fetchall(
         """SELECT t.id, t.subject, t.body, t.category, t.status, t.created_at, t.user_id,
-                  t.app_version, u.email, u.tier, u.subscription_status, s.call_sign
+                  t.app_version, t.breadcrumbs, u.email, u.tier, u.subscription_status, s.call_sign
              FROM support_tickets t
              JOIN users u ON u.internal_id=t.user_id
              LEFT JOIN user_settings s ON s.user_id=t.user_id
@@ -285,6 +390,11 @@ async def ticket_detail(
     if not rows:
         raise HTTPException(404, "ticket not found")
     ticket = dict(rows[0])
+    # Client-side breadcrumb trail (Stage 7), already sanitized at write time.
+    try:
+        ticket["breadcrumbs"] = json.loads(ticket["breadcrumbs"]) if ticket.get("breadcrumbs") else []
+    except (TypeError, ValueError):
+        ticket["breadcrumbs"] = []
     replies = await db.execute_fetchall(
         "SELECT id, author_id, is_admin, body, created_at FROM ticket_replies WHERE ticket_id=? ORDER BY created_at",
         (ticket_id,),
@@ -354,6 +464,25 @@ async def update_ticket(
     await _audit(db, admin.internal_id, "ticket_status", None, {"ticket_id": ticket_id, "status": body.status})
     await db.commit()
     return {"ok": True}
+
+
+# ── Churn / exit survey (Stage 7) ────────────────────────────────────────────
+@router.get("/churn")
+async def list_churn(
+    admin: CurrentUser = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> dict:
+    """Recent exit-survey responses (detail behind the /overview churn aggregate)."""
+    rows = await db.execute_fetchall(
+        """SELECT c.id, c.reason_category, c.reason_free_text, c.improvement_text,
+                  c.days_as_customer, c.subscription_plan, c.would_return, c.created_at,
+                  u.email, s.call_sign
+             FROM churn_reasons c
+             JOIN users u ON u.internal_id=c.user_id
+             LEFT JOIN user_settings s ON s.user_id=c.user_id
+            ORDER BY c.created_at DESC LIMIT 200"""
+    )
+    return {"responses": [dict(r) for r in rows], "count": len(rows)}
 
 
 # ── Settings ────────────────────────────────────────────────────────────────

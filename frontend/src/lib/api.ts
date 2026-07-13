@@ -1,7 +1,8 @@
 // Minimal API client for the FINARODA backend.
 // Uses httpOnly cookie auth → every request sends credentials.
+import { addBreadcrumb } from "@/lib/breadcrumbs";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export interface ApiError {
   code?: string;
@@ -25,11 +26,17 @@ export async function apiFetch<T = unknown>(
       body = null;
     }
     if (!res.ok) {
+      addBreadcrumb("api_error", { path, code: res.status });
       const detail = (body as { detail?: ApiError } | null)?.detail ?? null;
       return { ok: false, status: res.status, data: null, error: detail ?? { message: "Request failed" } };
     }
+    // Record scan submits from the one call site (no journal outcome values involved).
+    if (path === "/api/scan/events" && (options.method ?? "GET").toUpperCase() === "POST") {
+      addBreadcrumb("scan_submit", { path });
+    }
     return { ok: true, status: res.status, data: body as T, error: null };
   } catch {
+    addBreadcrumb("api_error", { path, code: 0 });
     return { ok: false, status: 0, data: null, error: { message: "Network error" } };
   }
 }

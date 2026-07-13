@@ -121,7 +121,9 @@ BYBIT_PUBLIC_BASE_URL: str = os.getenv("BYBIT_PUBLIC_BASE_URL", "https://api.byb
 DEFAULT_SCAN_THRESHOLD: float = float(os.getenv("DEFAULT_SCAN_THRESHOLD", "70.0"))
 
 # ── Monitoring / Sentry ───────────────────────────────────────────────────────
-SENTRY_DSN_BACKEND: str = os.getenv("SENTRY_DSN_BACKEND", "")
+# Backend DSN: prefer SENTRY_DSN_BACKEND, fall back to a shared SENTRY_DSN. Absent in
+# dev/test → Sentry fully disabled (zero network). Frontend uses NEXT_PUBLIC_SENTRY_DSN.
+SENTRY_DSN_BACKEND: str = os.getenv("SENTRY_DSN_BACKEND") or os.getenv("SENTRY_DSN", "")
 SENTRY_ENVIRONMENT: str = os.getenv("SENTRY_ENVIRONMENT", ENVIRONMENT)
 SENTRY_TRACES_SAMPLE_RATE: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
 SENTRY_RELEASE: str = os.getenv("SENTRY_RELEASE", "")

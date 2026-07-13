@@ -148,6 +148,7 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 - **Dashboard "How is R measured?" explainer (v0.10.0 shipped 2026-07-13):** מסביר את מודל ה-what-if: trigger fill → target / risk, פקיעה אחרי 7 ימים, ה-trailing אינו מסומלץ. חינוכי בלבד, לא נוגע בציון/סף.
 - **DEV SIGN-IN button (v0.10.0):** מסך ה-login מרנדר כפתור DEV SIGN-IN כשה-backend מחזיר `dev_magic_link` (‏`DEV_RETURN_MAGIC_LINK`, **prod-guarded**, לעולם לא בפרודקשן). כלי פיתוח בלבד.
 - **Admin back-to-app nav (v0.10.0):** קונסולת האדמין כוללת ניווט קבוע חזרה לאפליקציה.
+- **Admin v1.1 + churn survey (Stage 7, v0.12.0):** טבלת המשתמשים באדמין מקבלת שורת פילטרים (search/plan/status/min-scans/signup-range) שמצב שלה מקודד ב-URL (shareable), עמודות נוספות (scans, active-days 7/30, rank, churn) בטבלה רחבה שגוללת אופקית ב-desktop (דפוס v0.10.1), וכפתור **EXPORT CSV**. פאנל הטיקט מציג **timeline של breadcrumbs** (מסלול הלקוח: route/scan/api_error/notif) לצד ה-server events. **Churn survey**: ב-Settings נוסף "Cancel plan or leave" — שאלה אחת + טקסט חופשי אופציונלי, **skippable**, נשמר לאדמין (אין פעולת חיוב כאן; Stage 3 חסום). **RED LINE:** active-days הן מטריקת-אדמין בלבד ולא מופיעות בשום מסך משתמש; breadcrumbs לעולם בלי ערך תוצאה.
 
 ---
 

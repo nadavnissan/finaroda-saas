@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppHeader, Disclaimer } from "@/components/scan/AppHeader";
+import { ChurnSurvey } from "@/components/app/ChurnSurvey";
 import { apiFetch } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
 import { useMe } from "@/lib/app/session";
@@ -124,6 +125,12 @@ export default function SettingsPage() {
           ) : (
             <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>Loading preferences.</div>
           )}
+        </Card>
+
+        {/* Manage plan: surfaces the exit/churn survey (no billing action here) */}
+        <Card>
+          <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>MANAGE PLAN</span>
+          <ChurnSurvey />
         </Card>
 
         <div style={{ marginTop: "auto" }}>

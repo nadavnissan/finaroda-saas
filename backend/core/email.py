@@ -103,7 +103,7 @@ async def send_welcome_email(to_email: str, first_name: str | None = None) -> No
     html = _wrap(
         "Welcome to FINARODA",
         f"<p>{greeting}</p><p>You have a <strong>14-day trial</strong>. "
-        f"Scan → score → decision board. Analysis, not advice — you decide.</p>",
+        f"Scan, score, decision board. Analysis, not advice. You decide.</p>",
         get_frontend_url(),
         "Open FINARODA",
     )
@@ -118,13 +118,13 @@ async def send_beta_approved_email(to_email: str, first_name: str | None = None)
         return
     greeting = f"Hi {first_name}," if first_name else "Hi,"
     html = _wrap(
-        "You're in — FINARODA beta access",
+        "You're in: FINARODA beta access",
         f"<p>{greeting}</p><p>Your beta access is approved. You have a 14-day trial.</p>",
         get_frontend_url(),
         "Sign in",
     )
     text = f"{greeting}\n\nYour FINARODA beta access is approved.\n{get_frontend_url()}"
-    await _send(to_email, "You're in — FINARODA beta access", html, text)
+    await _send(to_email, "You're in: FINARODA beta access", html, text)
 
 
 # ── Stage 5 flows — pure renderers (testable) + send wrappers (DEV fallback) ──

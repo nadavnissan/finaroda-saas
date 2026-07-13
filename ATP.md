@@ -573,6 +573,24 @@
 - **TC-N5-15 — unit: bell/prefs/vibration:** `formatBadge` (ריק ב-0, "9+" מעל 9), `togglePref` immutable, `vibrateSafe` יורה כשיש vibrate ו-no-op כשאין (iOS), gating של shouldVibrate/shouldPlaySound על inapp_enabled, `unreadIds`. ✅ auto (6 בדיקות).
 - **TC-N5-16 — manual (browser):** לפתוח פעמון בטלפון + desktop, לוודא badge/mark-read; 5 ה-toggles ב-Settings; admin broadcast preview+confirm; לחיצת unsubscribe מדף המייל. ⬜ manual (Nadav).
 
+### TC-A7 — Stage 7: Admin v1.1 + Sentry + Ticket Breadcrumbs (v0.12.0)
+> אוטומטי: `backend/tests/test_stage7_admin.py` + `frontend/tests/admin.unit.test.ts`. Sentry מנוטרל בבדיקות (אין DSN) → אפס רשת.
+
+- **TC-A7-01 — filters AND (AC2):** plan/status/min_scans מסננים צד-שרת; שילוב = חיתוך (pro AND min_scans>=6 מחריג משתמש pro עם 0 סריקות). ✅ auto.
+- **TC-A7-02 — columns + rank (AC1):** שורת משתמש מכילה signup/last_active/xp/rank/scans/active-days/referrals(=0)/churn; rank מ-`core/ranks.py` (0→L1, 1000→L2, 3000→L3, 8000→L4). ✅ auto.
+- **TC-A7-03 — active-days boundary (D-A1/AC4):** סריקות בימים 0/-3/-6/-7/-10 → active_days_7d=3, active_days_30d=5. ✅ auto.
+- **TC-A7-04 — active-days לא user-facing (AC4):** `GET /api/profile` payload ללא "active_days". ✅ auto.
+- **TC-A7-05 — CSV auth + content (AC3):** non-admin→403; admin→200 text/csv + Content-Disposition attachment; קבוצת המיילים ב-CSV == ה-view המסונן ב-JSON. ✅ auto.
+- **TC-A7-06 — churn CRUD + admin (AC5):** `POST /api/churn/survey`→200; מופיע ב-`/api/admin/churn`; flag churn_survey=true בטבלה; סינון status=churned כולל; ללא auth→401. ✅ auto.
+- **TC-A7-07 — Sentry disabled zero-network (AC6):** בבדיקה `sentry_enabled()`=False, `init_sentry()`=False (אפס init/רשת). ✅ auto.
+- **TC-A7-08 — Sentry PII scrub (AC6):** `scrub_event` משאיר user.id בלבד, מסיר email/ip/username + cookies + Cookie/Authorization headers. ✅ auto.
+- **TC-A7-09 — breadcrumb red-line (AC7/S2):** `sanitize_breadcrumbs` מסיר r_result/status/coin/nested (allowlist); שומר event_type/path/route/code. ✅ auto.
+- **TC-A7-10 — breadcrumb cap:** 50 → 20. ✅ auto.
+- **TC-A7-11 — ticket breadcrumbs stored+rendered (AC7):** יצירת טיקט עם breadcrumb זדוני (r_result/status) → admin ticket_detail מחזיר breadcrumbs נקיים (ללא r_result/status/loss). ✅ auto.
+- **TC-A7-12 — admin endpoints 403:** non-admin על tickets/churn/export.csv → 403. ✅ auto.
+- **TC-A7-13 — unit (frontend):** filters↔URL round-trip; `userRow` עמודות v1.1; ring buffer overflow ב-20; `shouldInitSentry` gating (DSN + non-test). ✅ auto (7 בדיקות).
+- **TC-A7-14 — manual (browser):** אדמין ב-390px+1280px: פילטרים משנים URL + נשמרים ב-refresh; טבלה רחבה גוללת אופקית; EXPORT CSV מוריד; טיקט מציג breadcrumbs timeline; Settings "Cancel plan or leave" שולח survey. ⬜ manual (Nadav).
+
 ---
 
 ## ATR (Acceptance Test Reports)

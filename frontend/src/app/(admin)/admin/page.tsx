@@ -3,10 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { apiFetch } from "@/lib/api";
+import { API_URL, apiFetch } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
 import { useMe } from "@/lib/app/session";
 import { useIsMobile } from "@/lib/app/useIsMobile";
+import {
+  EMPTY_FILTERS,
+  filtersToQuery,
+  queryToFilters,
+  userRow,
+  type UserFilters,
+} from "@/lib/adminFilters";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -115,13 +122,59 @@ function Users() {
   const mobile = useIsMobile();
   const [rows, setRows] = useState<any[]>([]);
   const [sel, setSel] = useState<any | null>(null);
-  const [q, setQ] = useState("");
   const [note, setNote] = useState("");
+  const [filters, setFilters] = useState<UserFilters>(() =>
+    typeof window !== "undefined" ? queryToFilters(window.location.search) : { ...EMPTY_FILTERS });
+
   const load = useCallback(async () => {
-    const r = await apiFetch<any>(`/api/admin/users${q ? `?search=${encodeURIComponent(q)}` : ""}`);
+    const qs = filtersToQuery(filters);
+    const r = await apiFetch<any>(`/api/admin/users${qs ? `?${qs}` : ""}`);
     if (r.ok && r.data) setRows(r.data.users);
-  }, [q]);
-  useEffect(() => { void load(); }, [load]);
+  }, [filters]);
+
+  // Reflect filters in the URL (shareable / refreshable, AC2) and reload on change.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const qs = filtersToQuery(filters);
+      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+    void load();
+  }, [filters, load]);
+
+  function setF(patch: Partial<UserFilters>) {
+    setFilters((f) => ({ ...f, ...patch }));
+  }
+
+  async function downloadCsv() {
+    const qs = filtersToQuery(filters);
+    const res = await fetch(`${API_URL}/api/admin/users/export.csv${qs ? `?${qs}` : ""}`, { credentials: "include" });
+    if (!res.ok) { alert("Export failed"); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "finaroda_users.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const selCtl: React.CSSProperties = { background: C.bg, color: C.fg, border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 8px", font: `600 9px ${MONO}` };
+  const filterBar = (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+      <input placeholder="search call-sign / email" value={filters.search} onChange={(e) => setF({ search: e.target.value })} style={{ ...selCtl, minWidth: 180, flex: "1 1 180px", maxWidth: 240 }} />
+      <select value={filters.plan} onChange={(e) => setF({ plan: e.target.value })} style={selCtl}>
+        <option value="">ALL PLANS</option>{["free", "basic", "pro"].map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+      </select>
+      <select value={filters.status} onChange={(e) => setF({ status: e.target.value })} style={selCtl}>
+        <option value="">ALL STATUS</option>{["trial", "active", "expired", "churned"].map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+      </select>
+      <input type="number" min={0} placeholder="min scans" value={filters.min_scans} onChange={(e) => setF({ min_scans: e.target.value })} style={{ ...selCtl, width: 90 }} />
+      <label style={{ font: `400 8px ${MONO}`, color: C.muted }}>SIGNUP<input type="date" value={filters.signup_from} onChange={(e) => setF({ signup_from: e.target.value })} style={{ ...selCtl, marginLeft: 4 }} /></label>
+      <input type="date" value={filters.signup_to} onChange={(e) => setF({ signup_to: e.target.value })} style={selCtl} />
+      <button type="button" onClick={() => setFilters({ ...EMPTY_FILTERS })} style={{ ...selCtl, color: C.muted, cursor: "pointer" }}>CLEAR</button>
+      <button type="button" onClick={downloadCsv} style={{ ...selCtl, color: C.bg, background: C.green, border: "none", cursor: "pointer" }}>EXPORT CSV</button>
+    </div>
+  );
 
   async function override(action: string, value?: string) {
     if (!sel) return;
@@ -160,38 +213,51 @@ function Users() {
     <div style={{ flex: 1, display: "flex", minWidth: 0 }}>
       <div style={{ flex: 1, padding: "20px clamp(16px,4vw,20px)", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <H title="Users" note={`${rows.length}`} />
-        <input placeholder="search call-sign / email" value={q} onChange={(e) => setQ(e.target.value)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: "7px 10px", font: `400 10px ${MONO}`, color: C.fg, width: "100%", maxWidth: 260, boxSizing: "border-box" }} />
+        {filterBar}
         {mobile ? (
-          // Stacked cards — the 5-column table is unreadable at 360px.
+          // Stacked cards — the wide table is unreadable at 360px.
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {rows.map((u) => (
-              <button key={u.id} type="button" onClick={() => setSel(u)} style={{ textAlign: "left", background: C.panel, border: `1px solid ${sel?.id === u.id ? "rgba(31,178,134,.4)" : "rgba(233,238,243,.08)"}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ font: `600 12px ${MONO}`, color: C.fg }}>{u.call_sign ?? u.email}</span>
-                  <span style={{ font: `600 10px ${MONO}`, color: C.green }}>{u.tier.toUpperCase()}</span>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", font: `400 9px ${MONO}`, color: C.muted }}>
-                  <span>{u.subscription_status === "trial" ? "TRIAL" : u.subscription_status === "expired" ? "EXPIRED" : "ACTIVE"}</span>
-                  <span>LAST {u.last_scan_at ? String(u.last_scan_at).slice(0, 10) : "·"}</span>
-                  <span>XP {u.xp}</span>
-                </div>
-              </button>
-            ))}
+            {rows.map((u) => {
+              const c = userRow(u);
+              return (
+                <button key={u.id} type="button" onClick={() => setSel(u)} style={{ textAlign: "left", background: C.panel, border: `1px solid ${sel?.id === u.id ? "rgba(31,178,134,.4)" : "rgba(233,238,243,.08)"}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ font: `600 12px ${MONO}`, color: C.fg }}>{c.name}</span>
+                    <span style={{ font: `600 10px ${MONO}`, color: C.green }}>{c.plan}</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", font: `400 9px ${MONO}`, color: C.muted }}>
+                    <span>{c.status}</span><span>SCANS {c.scans}</span><span>XP {c.xp}</span>
+                    <span>ACT {c.activeDays}</span><span>{c.rank}</span>
+                    {u.churn_survey && <span style={{ color: C.amber }}>CHURN</span>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         ) : (
-          <div style={{ background: C.panel, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 10, overflow: "hidden", font: `400 10px ${MONO}` }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr .9fr 1.1fr 1fr", padding: "10px 14px", borderBottom: `1px solid rgba(233,238,243,.08)`, fontWeight: 600, fontSize: 8, letterSpacing: 1, color: C.muted }}>
-              <span>CALL-SIGN</span><span>PLAN</span><span>TRIAL</span><span>LAST SCAN</span><span>XP</span>
+          // Wide table lives in a horizontal scroller (never clips; v0.10.1 pattern).
+          <div style={{ overflowX: "auto", background: C.panel, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 10 }}>
+            <div style={{ minWidth: 820, font: `400 10px ${MONO}` }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.4fr .7fr .8fr 1fr 1fr .7fr 1.3fr .8fr .6fr", padding: "10px 14px", borderBottom: `1px solid rgba(233,238,243,.08)`, fontWeight: 600, fontSize: 8, letterSpacing: 1, color: C.muted }}>
+                <span>CALL-SIGN</span><span>PLAN</span><span>STATUS</span><span>LAST ACTIVE</span><span>SCANS</span><span>XP</span><span>RANK</span><span>ACT 7/30</span><span>CHURN</span>
+              </div>
+              {rows.map((u) => {
+                const c = userRow(u);
+                return (
+                  <button key={u.id} type="button" onClick={() => setSel(u)} style={{ width: "100%", textAlign: "left", display: "grid", gridTemplateColumns: "1.4fr .7fr .8fr 1fr 1fr .7fr 1.3fr .8fr .6fr", padding: "11px 14px", borderBottom: `1px solid rgba(233,238,243,.05)`, alignItems: "center", background: sel?.id === u.id ? "rgba(31,178,134,.05)" : "none", border: "none", cursor: "pointer", font: `400 10px ${MONO}` }}>
+                    <span style={{ color: C.fg, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                    <span style={{ color: C.green }}>{c.plan}</span>
+                    <span style={{ color: C.muted }}>{c.status}</span>
+                    <span style={{ color: C.fg }}>{c.lastActive}</span>
+                    <span style={{ color: C.fg }}>{c.scans}</span>
+                    <span style={{ color: C.muted }}>{c.xp}</span>
+                    <span style={{ color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rank}</span>
+                    <span style={{ color: C.fg }}>{c.activeDays}</span>
+                    <span style={{ color: u.churn_survey ? C.amber : C.muted }}>{c.churn}</span>
+                  </button>
+                );
+              })}
             </div>
-            {rows.map((u) => (
-              <button key={u.id} type="button" onClick={() => setSel(u)} style={{ width: "100%", textAlign: "left", display: "grid", gridTemplateColumns: "1.5fr 1fr .9fr 1.1fr 1fr", padding: "11px 14px", borderBottom: `1px solid rgba(233,238,243,.05)`, alignItems: "center", background: sel?.id === u.id ? "rgba(31,178,134,.05)" : "none", border: "none", cursor: "pointer", font: `400 10px ${MONO}` }}>
-                <span style={{ color: C.fg, fontWeight: 600 }}>{u.call_sign ?? u.email}</span>
-                <span style={{ color: C.green }}>{u.tier.toUpperCase()}</span>
-                <span style={{ color: C.muted }}>{u.subscription_status === "trial" ? "TRIAL" : u.subscription_status === "expired" ? "EXPIRED" : "·"}</span>
-                <span style={{ color: C.fg }}>{u.last_scan_at ? String(u.last_scan_at).slice(0, 10) : "·"}</span>
-                <span style={{ color: C.muted }}>{u.xp}</span>
-              </button>
-            ))}
           </div>
         )}
       </div>
@@ -214,6 +280,7 @@ function Tickets() {
   const [counts, setCounts] = useState<any>({});
   const [sel, setSel] = useState<any | null>(null);
   const [replies, setReplies] = useState<any[]>([]);
+  const [detail, setDetail] = useState<any | null>(null);
   const [reply, setReply] = useState("");
   const load = useCallback(async () => {
     const r = await apiFetch<any>("/api/admin/tickets");
@@ -224,7 +291,7 @@ function Tickets() {
   async function open(t: any) {
     setSel(t);
     const r = await apiFetch<any>(`/api/admin/tickets/${t.id}`);
-    if (r.ok && r.data) setReplies(r.data.replies);
+    if (r.ok && r.data) { setReplies(r.data.replies); setDetail(r.data); }
   }
   async function sendReply(status?: string) {
     if (!sel || !reply.trim()) return;
@@ -281,6 +348,36 @@ function Tickets() {
               </div>
             ))}
           </div>
+          {detail && ((detail.ticket?.breadcrumbs?.length ?? 0) > 0 || (detail.recent_events?.length ?? 0) > 0) && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "0 0 12px" }}>
+              {(detail.ticket?.breadcrumbs?.length ?? 0) > 0 && (
+                <div style={{ flex: "1 1 240px", minWidth: 0, background: C.bg, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 10, padding: "10px 13px" }}>
+                  <div style={{ font: `600 8px ${MONO}`, letterSpacing: 1, color: C.muted, marginBottom: 8 }}>BREADCRUMBS (CLIENT TRAIL)</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, font: `400 9px ${MONO}`, color: C.muted }}>
+                    {detail.ticket.breadcrumbs.map((b: any, i: number) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ color: C.fg }}>{(b.event_type ?? b.type ?? "event")}{b.path ? ` ${b.path}` : ""}{b.code ? ` (${b.code})` : ""}</span>
+                        <span>{b.ts ? String(b.ts).slice(11, 19) : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(detail.recent_events?.length ?? 0) > 0 && (
+                <div style={{ flex: "1 1 240px", minWidth: 0, background: C.bg, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 10, padding: "10px 13px" }}>
+                  <div style={{ font: `600 8px ${MONO}`, letterSpacing: 1, color: C.muted, marginBottom: 8 }}>SERVER EVENTS (LAST 20)</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, font: `400 9px ${MONO}`, color: C.muted }}>
+                    {detail.recent_events.map((e: any, i: number) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ color: C.fg }}>{e.kind}: {e.detail}</span>
+                        <span>{e.ts ? String(e.ts).slice(0, 10) : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, borderTop: `1px solid rgba(233,238,243,.08)`, paddingTop: 12 }}>
             <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Reply (email send is a logged stub)" style={{ flex: 1, minWidth: 0, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 13px", font: `400 10.5px ${MONO}`, color: C.fg }} />
             <button type="button" onClick={() => sendReply()} style={{ flex: "none", background: C.green, borderRadius: 8, padding: "0 16px", font: `600 10px ${MONO}`, color: C.bg, border: "none", cursor: "pointer" }}>SEND</button>

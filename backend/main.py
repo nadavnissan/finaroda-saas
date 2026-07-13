@@ -49,27 +49,11 @@ if ENVIRONMENT == "production" and DEV_RETURN_MAGIC_LINK:
 
 
 def _init_sentry() -> None:
-    from backend.config import (
-        SENTRY_DSN_BACKEND,
-        SENTRY_ENVIRONMENT,
-        SENTRY_RELEASE,
-        SENTRY_TRACES_SAMPLE_RATE,
-    )
-    if not SENTRY_DSN_BACKEND:
-        return
-    import sentry_sdk
-    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from backend.config import SENTRY_ENVIRONMENT
+    from backend.core.monitoring import init_sentry
 
-    sentry_sdk.init(
-        dsn=SENTRY_DSN_BACKEND,
-        environment=SENTRY_ENVIRONMENT,
-        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
-        release=SENTRY_RELEASE or None,
-        send_default_pii=False,
-        max_request_body_size="never",
-        integrations=[FastApiIntegration()],
-    )
-    log.info("sentry_init", environment=SENTRY_ENVIRONMENT)
+    if init_sentry():
+        log.info("sentry_init", environment=SENTRY_ENVIRONMENT)
 
 
 _init_sentry()
@@ -155,6 +139,7 @@ from backend.api.admin import router as admin_router
 from backend.api.auth import router as auth_router
 from backend.api.broadcasts import router as broadcasts_router
 from backend.api.cardcom import router as cardcom_router
+from backend.api.churn import router as churn_router
 from backend.api.cron import router as cron_router
 from backend.api.email import router as email_router
 from backend.api.journal import router as journal_router
@@ -183,3 +168,4 @@ app.include_router(broadcasts_router)
 app.include_router(notifications_router)
 app.include_router(email_router)
 app.include_router(cron_router)
+app.include_router(churn_router)
