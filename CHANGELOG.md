@@ -4,6 +4,30 @@
 
 ---
 
+## [PKG-B-P2 / Package B phase 2: B4 dashboard + B5 profile + B6 academy + B7 admin] — 2026-07-13
+- GOAL: לסגור את חבילת Design B — היומן "What Would Have Happened" עם reveal-gating (B4, לב ה-retention), הפרופיל + סולם הדרגות (B5), מעטפת האקדמיה (B6), וקונסולת האדמין (B7). MINOR.
+- SOLUTION (מה עשינו בפועל):
+  1. **B4 — journal + reveal-gating (F3):** טבלת `journal_scenarios` (mig 028) נוצרת מכל סריקה — תרחיש `pass` לכל PASS (שורת momentum, `passed_threshold=1`) + רשומת `no_setups_day` ליום דילוג. **WATCH לעולם לא תרחיש** (AC2). Job צד-שרת (`journal_tasks.resolve_scenarios_task` + `scripts/run_resolve_scenarios.py`) מריץ את הנרות הבאים מ-Bybit (‏trigger→target/risk/7-day expiry) ומחשב `r_result` היפותטי (R בלבד, לעולם לא כסף). **Reveal-gating (AC5):** התוצאה נכתבת לשרת אך **לא נכללת בשום payload ללקוח עד הסריקה הבאה** — אירוע החשיפה הוא הסריקה (`core/journal.on_scan` חושף קודם, ואז יוצר תרחישים חדשים). שורות לא-חשופות נושאות **אפס דאטת תוצאה** ב-payload וב-DOM (regression מגובה-טסט, תבנית S10). Nav badge = ספירת לא-חשופים בלבד (‏`/api/journal/badge`, לעולם לא תוכן/פוש). `+25 XP` על צפייה בתוצאה חשופה (`journal_reveal_viewed`, idempotent per scenario). מסך B4: R מצטבר (חשוף), CAPITAL SAVES שווה-ערך ל-wins, discipline meter מדאטת דילוג אמיתית, מסגור סימטרי.
+  2. **B5 — profile (F5):** `/api/profile` — call-sign (ב-`user_settings`, נגזר מ-email אם לא הוגדר), כרטיס דרגה + סולם (XP_ECONOMY 1000/3000/8000, מ-`levelFor`), "HOW XP IS EARNED" (ארבעת המקורות הנעולים), הגדרות Lens/Risk Style נשמרות (`PUT /api/profile/settings`, display+geometry בלבד), sign-out.
+  3. **B6 — academy shell (F6):** 12 מודולים = 12 ה-`academy` ids ב-`concept_tooltips_content.json`, כל אחד מרונדר את תוכן ה-`what` של המונחים שלו (אין שיעורים מומצאים). Deep-link של Concept Tooltip (`/academy#<id>`) נוחת ומדגיש את המודול. `+100 XP` לשיעור — **רק למודולים עם תוכן אמת (≥3 מונחים); מודולי-stub (volume/positioning/regime_transitions) לא מזכים** (`academy_lesson`, idempotent). Plan gating: basic פתוח לכולם · full ל-Advanced+/Pro-trial · שני מודולי בונוס (spike 1000XP, regime_transitions 3000XP) — אורתוגונלי לפלאן.
+  4. **B7 — admin console (desktop-first, admin-gated):** כל route תלוי `require_admin` → 403 ל-non-admin. Overview (vitals מדאטת אמת, לא sample: users/trials/MRR-מ-plan prices/scans-day/churn), Users + override פר-משתמש (plan/extend-trial/grant-XP/suspend) עם audit ל-`admin_events`, Tickets queue+thread+reply (email=stub לוגי) + status, Settings editor (`system_settings` editable; score-gate + card-off מוצגים LOCKED), Broadcast compose+audience(all/plan/trial-ending)+channel → נשמר + banner in-app (‏`/api/broadcasts/active`, לעולם לא מכסה SCAN/disclaimer), Notifications log (day-11 reminder + reveal teaser, via `journal_tasks`).
+- FILES CREATED: backend: `migrations/028_journal_scenarios_admin.py`, `core/journal.py`, `api/{journal,profile,academy,admin,broadcasts}.py`, `models/{journal,profile,academy,admin}.py`, `app/tasks/journal_tasks.py`, `scripts/run_resolve_scenarios.py`, `tests/test_pkg_b_phase2.py`. frontend: `app/(dashboard)/dashboard/page.tsx` (מומש), `app/(profile)/{profile,settings}/page.tsx`, `app/(academy)/academy/page.tsx`(+`[moduleId]/page.tsx`), `app/(admin)/admin/page.tsx` (מומש), `components/app/BroadcastBanner.tsx`, `lib/app/{types,session,scenario}.ts`, `tests/pkgb2.unit.test.ts`.
+- FILES MODIFIED: backend/main.py (5 routers חדשים), api/scan.py (hook ל-`journal.on_scan`), core/entitlements.py (`get_setting_int`). frontend: components/scan/NavDrawer.tsx (badge אמיתי מ-`/api/journal/badge`), app/(scan)/scan/page.tsx (BroadcastBanner), lib/onboarding/concepts.ts (`termsByAcademy`).
+- DB CHANGES: migration 028 — `journal_scenarios`, `ticket_replies`, `notifications_log`, `user_settings`; `admin_broadcasts` +audience/+channel columns; system_settings seeds (trial_reminder_day, journal_history_days_free). קיימים מראש: admin_events, admin_broadcasts, support_tickets, churn_reasons, xp_events.
+- CONFIG ADDED: אין (jobs משתמשים ב-BYBIT_PUBLIC_BASE_URL + TRIAL_REMINDER_LEAD_DAYS הקיימים).
+- VALIDATION: pytest 66/66, frontend unit 18/18, shared node --test 14/14, tsc clean, eslint clean, next build clean (20/20), em-dash lint 0.
+- ATP: TC-B4-101..106 (scenario creation/WATCH-excluded, resolution evaluator, reveal-withholding, reveal-on-scan, +25 view idempotent, badge), TC-I-101/102 (profile fallback+settings), TC-B6-101/102 (12 modules, lesson XP + stub/locked), TC-H-201..205 (admin 403, overview, override+audit, settings-guard, broadcast+banner).
+- VERSION: v0.9.0
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: המשתמש מקבל את מלוא המעטפת שאחרי הסריקה — יומן retention עם חשיפה נמשכת (pull), פרופיל+דרגות, אקדמיה, ולאדמין קונסולה מלאה לניהול ה-first-100. אין שינוי ב-main/production (dev בלבד).
+- DECISIONS (התקבלו תוך כדי — טעונות סקירת נדב):
+  1. **CAPITAL SAVES — הגדרה:** הפרומפט קובע "תרחיש לכל PASS + no-setups-day; WATCH לעולם לא תרחיש". במסגרת זו מימשתי SAVE כ-**PASS שה-trigger שלו לא נורה בחלון (אף כניסה לא נפתחה → הון נשמר)**. זה שונה משורת ה-SAVE הפר-מטבע-לא-עובר (LINK) שבפריים B4. שתי הגישות ישרות; בחרתי בכתובה בפרומפט (לא יוצרים תרחישים ל-non-passers). ניתן להרחיב ל-per-coin saves בהמשך. **מבקש אישור/כיוון.**
+  2. **Academy "תוכן אמת" = ≥3 מונחים** (9 מודולים מזכים +100, 3 stubs=0). כלל אחיד וישר במקום "מומצא". **לאישור.**
+  3. **כותרות מודול בנקודתיים (":") במקום em-dash** של הפריים — חוק ה-no-em-dash גובר.
+  4. **Admin = דאטת אמת** (queries), לא ה-SAMPLE של הפריימים (churn=placeholder עד שתצטבר דאטה) — לפי הפרומפט.
+  5. **call-sign** נשמר ב-`user_settings` והפרופיל בעליו (fallback מ-email). התמדה מ-onboarding S9 היא follow-up קטן (לא נגעתי בזרימת האונבורדינג).
+
 ## [PKG-B-P1 / Package B phase 1: B1 scan + B2 subscribe + B3 nav] — 2026-07-13
 - GOAL: לממש את חבילת Design B שלב 1 — מסך הסריקה (B1a–B1g, לב המוצר), עמוד ה-Subscribe (B2), וניווט ההמבורגר + header (B3). Server-authoritative gating, first-scan XP, Chart Standard בגרף הסריקה, E7b why-not, מנוע swing משותף. MINOR.
 - SOLUTION (מה עשינו בפועל):

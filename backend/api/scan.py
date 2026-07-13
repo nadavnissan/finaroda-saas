@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.core.auth import get_current_user
 from backend.core.database import get_db_connection
 from backend.core.entitlements import resolve_entitlements
+from backend.core import journal
 from backend.models.auth import CurrentUser
 from backend.models.scan import (
     EntitlementsResponse,
@@ -76,6 +77,7 @@ async def record_scan(
     scan_event_id = cursor.lastrowid
 
     score_logs = []
+    momentum_rows: list[dict] = []
     for c in body.coins:
         cur = await db.execute(
             """INSERT INTO score_log
@@ -89,6 +91,19 @@ async def record_scan(
         # Return only the DISPLAYED (momentum) rows for snapshot linking.
         if c.profile == "momentum":
             score_logs.append({"coin": c.coin, "id": cur.lastrowid})
+            momentum_rows.append({
+                "score_log_id": cur.lastrowid, "profile": "momentum", "coin": c.coin,
+                "direction": c.direction, "score": c.score,
+                "passed_threshold": c.passed_threshold, "entry": c.entry, "sl": c.sl,
+                "tp": c.tp, "trailing_pct": c.trailing_pct,
+            })
+
+    # B4/F3 journal (reveal-gated): reveal any resolved-but-unrevealed prior scenarios
+    # (the scan IS the reveal event, ALIGNMENT B3), then record this scan's PASS setups
+    # (or a no_setups_day discipline row). Server-side; outcomes stay withheld.
+    scan_date_rows = await db.execute_fetchall("SELECT date('now')")
+    scan_date = scan_date_rows[0][0]
+    await journal.on_scan(db, user.internal_id, scan_event_id, scan_date, momentum_rows)
 
     # First-scan-of-the-day XP (D3): idempotent per calendar day via
     # UNIQUE(user_id, source, ref). rowcount == 1 means this was the day's first.

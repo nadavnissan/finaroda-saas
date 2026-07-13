@@ -23,6 +23,15 @@ async def _setting(db: aiosqlite.Connection, key: str) -> str | None:
     return rows[0][0] if rows and rows[0][0] is not None else None
 
 
+async def get_setting_int(db: aiosqlite.Connection, key: str, default: int) -> int:
+    """Read an int system_setting with a safe fallback (shared by journal / admin)."""
+    raw = await _setting(db, key)
+    try:
+        return int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
 def _norm_tier(tier: str | None) -> str:
     return tier if tier in VALID_TIERS else "free"
 

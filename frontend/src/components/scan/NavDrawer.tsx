@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { LevelMeter } from "@/components/onboarding/LevelMeter";
 import { C } from "@/lib/onboarding/types";
@@ -11,8 +11,8 @@ const SANS = "'Space Grotesk', system-ui, sans-serif";
 
 // E5 hamburger nav (B3). Four destinations + a "Report a problem" item at the foot
 // that files a support ticket (→ B7 queue). Opens over a dimmed scan screen.
-const ITEMS: { label: string; icon: string; path: string; badge?: string }[] = [
-  { label: "Dashboard", icon: "◫", path: "/dashboard", badge: "UPDATE" },
+const ITEMS: { label: string; icon: string; path: string }[] = [
+  { label: "Dashboard", icon: "◫", path: "/dashboard" },
   { label: "Profile", icon: "◈", path: "/profile" },
   { label: "Academy", icon: "▤", path: "/academy" },
   { label: "Settings", icon: "⚙", path: "/settings" },
@@ -96,6 +96,13 @@ export function NavDrawer({
   onNavigate: (path: string) => void;
 }) {
   const [reporting, setReporting] = useState(false);
+  // Reveal badge = count of unrevealed resolved outcomes (content-free, never push).
+  const [unrevealed, setUnrevealed] = useState(0);
+  useEffect(() => {
+    void apiFetch<{ unrevealed: number }>("/api/journal/badge").then((r) => {
+      if (r.ok && r.data) setUnrevealed(r.data.unrevealed);
+    });
+  }, []);
   const isTrial = tier !== "free"; // simplified plan pill for phase 1
 
   return (
@@ -139,8 +146,8 @@ export function NavDrawer({
             >
               <span style={{ font: `400 13px ${MONO}`, color: i === 0 ? C.green : C.muted }}>{it.icon}</span>
               {it.label}
-              {it.badge && (
-                <span style={{ marginLeft: "auto", font: `600 8px ${MONO}`, color: C.bg, background: C.green, borderRadius: 8, padding: "2px 7px" }}>{it.badge}</span>
+              {it.path === "/dashboard" && unrevealed > 0 && (
+                <span style={{ marginLeft: "auto", font: `600 8px ${MONO}`, color: C.bg, background: C.green, borderRadius: 8, padding: "2px 7px" }}>{unrevealed} UPDATE</span>
               )}
             </button>
           ))}

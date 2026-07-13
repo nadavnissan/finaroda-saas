@@ -412,6 +412,78 @@
 
 ---
 
+## TC — Package B phase 2 (B4 dashboard + B5 profile + B6 academy + B7 admin) — v0.9.0
+> Automated: backend/tests/test_pkg_b_phase2.py (13) + frontend/tests/pkgb2.unit.test.ts (4).
+
+### TC-B4-101 — Scenario creation: PASS → scenario, WATCH never, skip recorded
+- Feature: F3 (AC1/AC2)
+- Steps: POST /api/scan/events עם coin PASS (passed_threshold=1) → נוצר תרחיש `pass`. POST עם non-passer (0) → אין `pass`, נוצר `no_setups_day`.
+- Expected: WATCH/non-passer לעולם לא הופך לתרחיש; יום דילוג נרשם.
+- Status: ✅ automated (test_watch_is_never_a_scenario_and_skip_is_recorded)
+
+### TC-B4-102 — Resolution evaluator (pure): win/loss/save/expired/open
+- Feature: F3 (resolution)
+- Steps: evaluate_outcome עם נרות סינתטיים (short entry100/sl110/tp80).
+- Expected: target→win +R · risk→loss -1 · trigger לא נורה בחלון מלא→save 0 · חלון לא-מלא ללא פגיעה→open · trigger ללא target/risk בחלון מלא→expired (R חתום).
+- Status: ✅ automated (test_evaluate_outcome_win_loss_save_expired)
+
+### TC-B4-103 — Reveal-withholding regression (S10 pattern)
+- Feature: F3 (AC5)
+- Precondition: תרחיש PASS נפתר צד-שרת (win 2.60) אך לא נחשף.
+- Steps: GET /api/journal.
+- Expected: השורה `revealed=false`, **ללא status/r_result/resolved_at**; הערך 2.60 ו-"win" **לא מופיעים בכל ה-payload**; awaiting_reveal=1; cumulative_r=0; badge=1.
+- Status: ✅ automated (test_journal_withholds_outcome_until_reveal + frontend scenarioOutcome=null)
+
+### TC-B4-104 — Reveal on next scan
+- Feature: F3 (AC5)
+- Steps: אחרי פתרון-לא-חשוף, POST /api/scan/events (סריקה חדשה) → GET /api/journal.
+- Expected: התרחיש כעת `revealed=true` עם status=win, r_result=2.60; cumulative_r=2.60; badge=0.
+- Status: ✅ automated (test_next_scan_reveals_outcome)
+
+### TC-B4-105 — +25 XP on viewing a revealed outcome (idempotent)
+- Feature: F3 / XP_ECONOMY §1
+- Steps: POST view על תרחיש חשוף פעמיים; ניסיון view על לא-חשוף.
+- Expected: ראשון +25, שני 0 (idempotent per scenario); view על לא-חשוף → 409.
+- Status: ✅ automated (test_journal_view_awards_25_xp_once, test_cannot_view_unrevealed_scenario)
+
+### TC-I-101 — Profile: call-sign fallback + settings persist (F5)
+- Steps: GET /api/profile; PUT /api/profile/settings.
+- Expected: call-sign נגזר מ-email (NIGHTHAWK) כשלא הוגדר; risk_style/call-sign נשמרים.
+- Status: ✅ automated (test_profile_call_sign_fallback_and_settings_persist)
+
+### TC-B6-101 — Academy: 12 modules + lesson XP + stub awards nothing (F6)
+- Steps: GET /api/academy; complete regime_ema200 פעמיים; complete volume_basics (stub).
+- Expected: 12 מודולים; שיעור-אמת +100 חד-פעמי (replay=0); stub=0 XP, completed=false.
+- Status: ✅ automated (test_academy_twelve_modules_and_lesson_xp)
+
+### TC-B6-102 — Academy plan gating (full module locked for Free)
+- Steps: Free user → complete smart_skip ('full').
+- Expected: 403.
+- Status: ✅ automated (test_academy_full_module_locked_for_free)
+
+### TC-H-201 — Admin routes 403 for non-admins
+- Feature: F (admin gate)
+- Steps: משתמש רגיל → GET כל route תחת /api/admin/*.
+- Expected: 403 בכולם.
+- Status: ✅ automated (test_admin_routes_403_for_non_admin)
+
+### TC-H-202 — Admin overview (real data) + user override with audit
+- Steps: admin GET /api/admin/overview; POST override plan_override.
+- Expected: overview sample=false + mrr_ils; override מחיל tier=pro + שורת admin_events.
+- Status: ✅ automated (test_admin_overview_and_override)
+
+### TC-H-203 — Settings editor guards non-editable (RED LINE)
+- Steps: PUT /api/admin/settings על מפתח editable ועל score_gate.
+- Expected: editable→200; score_gate→400 (נעול).
+- Status: ✅ automated (test_admin_settings_edit_rejects_non_editable)
+
+### TC-H-204 — Broadcast compose → in-app banner
+- Steps: admin POST /api/admin/broadcasts (audience all, in-app) → GET /api/broadcasts/active.
+- Expected: banner מוחזר עם הכותרת; נשמר; email=stub לוגי.
+- Status: ✅ automated (test_broadcast_create_and_active_banner)
+
+---
+
 ## ATR (Acceptance Test Reports)
 מיוצרים בהרצה, נשמרים כ-ATR-{date}.md. לא בקובץ זה.
 

@@ -25,3 +25,17 @@ export function getTerm(id: string): TermContent | null {
 export function termCount(): number {
   return Object.keys(TERMS).length;
 }
+
+// B6 Academy: the seed material for a module is its related terms' plain-language
+// `what` content (no invented lessons this phase). Grouped by the `academy` id.
+export interface AcademyTerm {
+  id: string;
+  term: string;
+  what: string;
+}
+
+export function termsByAcademy(academyId: string): AcademyTerm[] {
+  return Object.entries(TERMS)
+    .filter(([, t]) => t.academy === academyId)
+    .map(([id, t]) => ({ id, term: t.term, what: t.what }));
+}

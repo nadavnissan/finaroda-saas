@@ -8,9 +8,23 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** Package B phase 1 — B1 scan + B2 subscribe + B3 nav (v0.8.0) — on top of F13 v0.7.1/v0.7.0/v0.6.0.
-- **Validation:** ✅ all green — **pytest 55/55**, **frontend unit 14/14** (node --test type-strip), **shared node --test 14/14** (incl. swing equivalence), **tsc clean**, **eslint clean**, **next build clean**, em-dash lint 0.
-- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.8.0) is **dev only** — Nadav merges to main manually.
+- **Last commit (dev):** Package B phase 2 — B4 dashboard + B5 profile + B6 academy + B7 admin (v0.9.0) — closes Package B, on top of phase 1 (v0.8.0).
+- **Validation:** ✅ all green — **pytest 66/66**, **frontend unit 18/18** (node --test type-strip), **shared node --test 14/14**, **tsc clean**, **eslint clean**, **next build clean (20/20)**, em-dash lint 0.
+- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.9.0) is **dev only** — Nadav merges to main manually.
+
+## Latest — Package B phase 2: B4 dashboard + B5 profile + B6 academy + B7 admin (v0.9.0, code + migration 028)
+- **What shipped:** the whole post-scan shell. **B4** "What Would Have Happened" (F3, the retention core) with real reveal-gating; **B5** profile + rank ladder; **B6** academy shell (12 modules); **B7** admin console (6 sections). Backend pytest **66/66**; frontend builds clean (20 routes).
+- **B4 reveal-gating (the AC that matters):** `journal_scenarios` (mig 028) is created from each scan — one `pass` scenario per PASS momentum row, one `no_setups_day` per skip day; **WATCH is never a scenario**. A server-side job (`backend/app/tasks/journal_tasks.py` + `scripts/run_resolve_scenarios.py`) resolves open scenarios against subsequent Bybit daily candles (trigger fill → target/risk/7-day expiry) into an honest hypothetical R. **Outcomes are withheld from every client payload until the user's next scan reveals them** (`core/journal.on_scan` reveals-then-creates); unrevealed rows carry zero outcome data in the payload AND the DOM (regression: backend `test_journal_withholds_outcome_until_reveal` asserts the value/label are absent from the whole response; frontend `scenarioOutcome()` returns null when unrevealed). Nav badge = `/api/journal/badge` count only. +25 XP on viewing a revealed outcome (idempotent per scenario).
+- **B5/B6/B7:** profile (`/api/profile`, call-sign in `user_settings` with email fallback, ladder from `levelFor`, Lens/Risk settings persist); academy (12 modules = the 12 `academy` ids in the tooltip JSON, seeded from each term's `what`; +100 only for real-content modules ≥3 terms, stubs award 0; tooltip `/academy#<id>` deep-link highlights the module; plan + rank gating); admin (`require_admin`→403, real-data overview/MRR/churn, user overrides audited to `admin_events`, ticket queue+reply with email-stub, `system_settings` editor with score-gate/card-off shown LOCKED, broadcast→in-app banner that never covers SCAN/disclaimer, notifications log).
+- **⚠ DECISIONS MADE THIS SESSION (need Nadav sign-off):**
+  1. **CAPITAL SAVES** implemented as a **PASS whose trigger never filled in the window** (capital preserved, no entry) — faithful to the prompt's "scenario per PASS + no-setups only; WATCH never a scenario", but different from the design frame's per-coin non-passer SAVE row (LINK). Extendable to per-coin saves later if you prefer the frame's literal reading.
+  2. **Academy "real content" = ≥3 seed terms** → 9 completable lessons (+100), 3 reference stubs (0 XP: volume_basics, positioning_basics, regime_transitions).
+  3. **Module titles use colons** (no-em-dash rule) instead of the frame's em-dash titles.
+  4. **Admin shows real DB data** (not the frames' SAMPLE); churn is a real-but-placeholder query until exit-survey data accrues.
+  5. **New XP source `admin_grant`** (B7 "Grant XP (support)") added to `XP_ECONOMY.md` §1 as an audited admin-only source (not user-earnable, not shown in "How XP is earned").
+- **⬜ Gaps / follow-ups:** the resolution job is server-side and needs the cron wired in the deploy (`python -m backend.scripts.run_resolve_scenarios`, daily) — it is NOT auto-run; scenarios stay `open` until it runs. Call-sign is not yet persisted from onboarding S9 (profile owns it with an email fallback; wiring S9→`/api/profile/settings` is a small follow-up). Admin console is desktop-first (no mobile layout). Email sends (ticket reply, broadcast email, day-11) are logged stubs. Fonts still system-fallback (Design round 2).
+- **Ready for production?** Not yet — recommend a manual click-through: B4 reveal flow (scan → resolve job → next scan reveals), B7 admin as an admin user, B6 deep-link from a tooltip. Nadav decides the dev→main merge.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, calculator terminology, main branch.
 
 ## Latest — Package B phase 1: B1 scan + B2 subscribe + B3 nav (v0.8.0, code + migration 027)
 - **What shipped:** the full scan screen (B1a–B1g, the product's heart) replacing the P2 page; the Subscribe page (B2); and the post-auth hamburger nav + unified header (B3). Backend gating is now server-authoritative.
