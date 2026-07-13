@@ -12,6 +12,13 @@
 - **Validation:** ✅ all green — **pytest 66/66**, tsc/eslint clean (DOCS-SYNC is docs-only, no code change). Package B baseline: frontend unit 18/18, shared node --test 14/14, next build 20/20, em-dash lint 0.
 - **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.9.1) is **dev only** — Nadav merges to main manually.
 
+## DOC DRIFT (predates current task — for Nadav's call, NOT silently fixed)
+> Per CLAUDE.md §2.x: divergences discovered during the DOCS-SYNC run that predate it (introduced by the Package B / F13 commits, outside this task's named PRD/SPEC/UX scope) are listed here rather than edited. `FINARODA_ONBOARDING_SPEC.md` is the affected source-of-truth doc; it was not in the DOCS-SYNC task's scope. Decide whether to reconcile it or leave the drift.
+- **`FINARODA_ONBOARDING_SPEC.md` line 40 — E1 = LINK (stale).** Says "E1 trap = LINK 30/06→02/07". Shipped E1 was **re-picked to BTCUSDT** (LINK 30/06→02/07 actually rose in real klines — a curation error; see `EPISODES_AND_VERIFIED_NUMBERS.md`). Line 50 of the same doc **already** reflects BTC — so the doc is internally contradictory and line 40 is the stale one.
+- **`FINARODA_ONBOARDING_SPEC.md` line 109 — `computeRangeLevels` (removed).** Chart Standard v1 is described with "swing S/R (`computeRangeLevels`)". That fn was **removed** in v0.8.0; the canonical S/R is now `findRecentSwingLevels` via the `swingLevels` adapter (equivalence-tested). Reconciled in SPEC §6.1 this run; the onboarding spec still names the old fn.
+- **`FINARODA_ONBOARDING_SPEC.md` lines 118 & 125 — recharts (superseded).** The Design-components/dependencies rows say the episode chart renders via "recharts". Shipped rendering is **in-app SVG** (EpisodeChart / Chart Standard v1) — line 109 of the same doc already says "in-app (SVG)", so the doc is internally inconsistent. (Same recharts-vs-SVG open decision noted for PRD/SPEC/UX; recharts remains a listed dep.)
+- **Checked & in sync:** `XP_ECONOMY.md` v1.0 matches shipped code (4 user-earnable sources + audited `admin_grant`, ranks 1000/3000/8000, server-side idempotent) — no drift.
+
 ## Latest — DOCS-SYNC: source-of-truth docs reconciled with Package B (v0.9.1, docs only, no code)
 - Aligned **PRD/SPEC/UX** to the implemented state after Package B phases 1+2 (v0.8.x–v0.9.0). **No app/engine/scorer/DB change.**
 - **PRD F3 = the shipped `journal_scenarios` model:** documented the `pass` / `no_setups_day` records (WATCH is never a scenario), server-side resolution + status enum, and reveal-gating. **CAPITAL SAVES defined** = a PASS whose trigger never filled in the window (capital preserved, r=0); a **note** marks the per-coin non-passer SAVE row as a **future F3 extension** (not v0.9.0, needs Nadav's call).
