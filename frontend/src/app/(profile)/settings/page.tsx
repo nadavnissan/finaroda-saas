@@ -7,7 +7,8 @@ import { AppHeader, Disclaimer } from "@/components/scan/AppHeader";
 import { apiFetch } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
 import { useMe } from "@/lib/app/session";
-import type { ProfileResponse } from "@/lib/app/types";
+import type { NotificationPrefs, ProfileResponse } from "@/lib/app/types";
+import { togglePref } from "@/lib/notifications";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -23,21 +24,51 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
+function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", font: `400 11px ${MONO}` }}>
+      <span style={{ color: C.fg }}>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        onClick={onClick}
+        style={{ width: 44, height: 24, borderRadius: 12, border: `1px solid ${on ? C.green : C.border}`, background: on ? "rgba(31,178,134,.25)" : C.bg, position: "relative", cursor: "pointer", padding: 0 }}
+      >
+        <span style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: 9, background: on ? C.green : C.muted, transition: "left .12s" }} />
+      </button>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const { me, loading } = useMe();
   const [p, setP] = useState<ProfileResponse | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
 
   useEffect(() => {
     if (!me) return;
     void apiFetch<ProfileResponse>("/api/profile").then((r) => {
       if (r.ok && r.data) setP(r.data);
     });
+    void apiFetch<NotificationPrefs>("/api/notifications/prefs").then((r) => {
+      if (r.ok && r.data) setPrefs(r.data);
+    });
   }, [me]);
 
   async function saveSetting(patch: Record<string, unknown>) {
     const r = await apiFetch<ProfileResponse>("/api/profile/settings", { method: "PUT", body: JSON.stringify(patch) });
     if (r.ok && r.data) setP(r.data);
+  }
+
+  async function flipPref(key: keyof NotificationPrefs) {
+    if (!prefs) return;
+    const next = togglePref(prefs, key);
+    setPrefs(next); // optimistic
+    const r = await apiFetch<NotificationPrefs>("/api/notifications/prefs", { method: "PUT", body: JSON.stringify({ [key]: next[key] }) });
+    if (r.ok && r.data) setPrefs(r.data);
   }
 
   if (loading || !me || !p) {
@@ -76,10 +107,23 @@ export default function SettingsPage() {
           <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>Display and geometry only, never what counts as an opportunity.</div>
         </Card>
 
-        {/* Notifications placeholder (future toggles) */}
+        {/* Notification preferences (cross-device, stored server-side) */}
         <Card>
           <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>NOTIFICATIONS</span>
-          <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>More settings coming soon.</div>
+          {prefs ? (
+            <>
+              <Toggle label="IN-APP NOTIFICATIONS" on={prefs.inapp_enabled} onClick={() => flipPref("inapp_enabled")} />
+              <Toggle label="ARRIVAL SOUND" on={prefs.sound_enabled} onClick={() => flipPref("sound_enabled")} />
+              <Toggle label="VIBRATION" on={prefs.vibration_enabled} onClick={() => flipPref("vibration_enabled")} />
+              <Toggle label="PRODUCT EMAILS" on={prefs.email_product} onClick={() => flipPref("email_product")} />
+              <Toggle label="UPDATE EMAILS" on={prefs.email_broadcast} onClick={() => flipPref("email_broadcast")} />
+              <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>
+                Sound and vibration apply to arrivals while the app is open. Update emails always carry a one-click unsubscribe link.
+              </div>
+            </>
+          ) : (
+            <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>Loading preferences.</div>
+          )}
         </Card>
 
         <div style={{ marginTop: "auto" }}>

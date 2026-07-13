@@ -155,8 +155,11 @@ from backend.api.admin import router as admin_router
 from backend.api.auth import router as auth_router
 from backend.api.broadcasts import router as broadcasts_router
 from backend.api.cardcom import router as cardcom_router
+from backend.api.cron import router as cron_router
+from backend.api.email import router as email_router
 from backend.api.journal import router as journal_router
 from backend.api.market_proxy import router as market_proxy_router
+from backend.api.notifications import router as notifications_router
 from backend.api.onboarding import router as onboarding_router
 from backend.api.plans import router as plans_router
 from backend.api.profile import router as profile_router
@@ -177,3 +180,6 @@ app.include_router(profile_router)
 app.include_router(academy_router)
 app.include_router(admin_router)
 app.include_router(broadcasts_router)
+app.include_router(notifications_router)
+app.include_router(email_router)
+app.include_router(cron_router)

@@ -10,8 +10,10 @@ import aiosqlite
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from backend.core import notifications as notif
 from backend.core.auth import require_admin
 from backend.core.database import get_db_connection
+from backend.core.email import send_broadcast_email
 from backend.models.admin import (
     BroadcastCreate,
     SettingsUpdateBatch,
@@ -396,6 +398,34 @@ async def update_settings_batch(
 
 
 # ── Broadcast ───────────────────────────────────────────────────────────────
+def _audience_where(audience: str, target_tier) -> tuple[str, tuple]:
+    """SQL predicate (over `users u`) selecting a broadcast audience. active=1 always."""
+    if audience == "plan":
+        return "u.active=1 AND u.tier=?", (target_tier,)
+    if audience == "trial_ending":
+        return (
+            "u.active=1 AND u.subscription_status='trial' AND "
+            "datetime(u.trial_ends_at) BETWEEN datetime('now') AND datetime('now','+3 days')",
+            (),
+        )
+    return "u.active=1", ()
+
+
+async def _broadcast_recipients(db, audience: str, target_tier, email_only: bool) -> list[dict]:
+    """Resolve recipients. When email_only, exclude broadcast-email opt-outs
+    (email_broadcast=0); users without a prefs row default to opted-in (COALESCE 1)."""
+    where, params = _audience_where(audience, target_tier)
+    optin = "AND COALESCE(np.email_broadcast, 1) = 1" if email_only else ""
+    rows = await db.execute_fetchall(
+        f"""SELECT u.internal_id, u.email, u.first_name
+              FROM users u
+              LEFT JOIN notification_prefs np ON np.user_id = u.internal_id
+             WHERE {where} {optin}""",
+        params,
+    )
+    return [dict(r) for r in rows]
+
+
 @router.get("/broadcasts")
 async def list_broadcasts(
     admin: CurrentUser = Depends(require_admin),
@@ -409,7 +439,7 @@ async def list_broadcasts(
         "all": await scalar("SELECT COUNT(*) FROM users WHERE active=1"),
         "trial_ending": await scalar(
             "SELECT COUNT(*) FROM users WHERE subscription_status='trial' "
-            "AND trial_ends_at BETWEEN datetime('now') AND datetime('now','+3 days')"
+            "AND datetime(trial_ends_at) BETWEEN datetime('now') AND datetime('now','+3 days')"
         ),
     }
     rows = await db.execute_fetchall(
@@ -417,6 +447,20 @@ async def list_broadcasts(
              FROM admin_broadcasts ORDER BY created_at DESC LIMIT 50"""
     )
     return {"broadcasts": [dict(r) for r in rows], "audience_counts": audience_counts}
+
+
+@router.get("/broadcasts/preview")
+async def preview_broadcast(
+    audience: str = Query("all"),
+    target_tier: str | None = Query(None),
+    admin: CurrentUser = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> dict:
+    """Confirm-step preview: audience size + how many will actually receive an email
+    (opted-in to broadcast email). Drives the admin confirm dialog count (D-N6)."""
+    total = len(await _broadcast_recipients(db, audience, target_tier, email_only=False))
+    email_optin = len(await _broadcast_recipients(db, audience, target_tier, email_only=True))
+    return {"audience": audience, "recipients": total, "email_optin": email_optin}
 
 
 @router.post("/broadcasts")
@@ -436,20 +480,40 @@ async def create_broadcast(
          1 if body.channel_in_app else 0, 1 if body.channel_email else 0, admin.internal_id),
     )
     bid = cur.lastrowid
-    # Log the broadcast as a notification send (email fan-out is a logged stub).
+
+    # In-app channel: a persistent bell row per recipient (complements the banner),
+    # gated per-user by inapp_enabled.
+    delivered_inapp = 0
+    if body.channel_in_app:
+        for r in await _broadcast_recipients(db, body.audience, body.target_tier, email_only=False):
+            nid = await notif.create_notification(
+                db, r["internal_id"], "broadcast", body.title, body.body, None, commit=False,
+            )
+            if nid is not None:
+                delivered_inapp += 1
+
+    # Email channel: send only to broadcast-email opt-ins, each with a signed one-click
+    # unsubscribe link (Israeli spam-law compliance, D-N6). Best-effort per recipient.
+    delivered_email = 0
+    if body.channel_email:
+        for r in await _broadcast_recipients(db, body.audience, body.target_tier, email_only=True):
+            if await send_broadcast_email(r["email"], r["internal_id"], body.title, body.body):
+                delivered_email += 1
+
     await db.execute(
         """INSERT OR IGNORE INTO notifications_log (notif_type, channel, ref, status, detail)
            VALUES ('broadcast', ?, ?, 'sent', ?)""",
         ("email_in_app" if body.channel_email and body.channel_in_app else
          ("email" if body.channel_email else "in_app"),
-         f"broadcast:{bid}", body.title),
+         f"broadcast:{bid}",
+         f"{body.title} (in_app={delivered_inapp}, email={delivered_email})"),
     )
     await _audit(db, admin.internal_id, "broadcast_send", None,
-                 {"broadcast_id": bid, "audience": body.audience, "target_tier": body.target_tier})
+                 {"broadcast_id": bid, "audience": body.audience, "target_tier": body.target_tier,
+                  "delivered_inapp": delivered_inapp, "delivered_email": delivered_email})
     await db.commit()
-    if body.channel_email:
-        log.info("broadcast_email_stub", broadcast_id=bid)
-    return {"ok": True, "id": bid}
+    log.info("broadcast_send", broadcast_id=bid, inapp=delivered_inapp, email=delivered_email)
+    return {"ok": True, "id": bid, "delivered_inapp": delivered_inapp, "delivered_email": delivered_email}
 
 
 # ── In-app broadcast banner (for all authed clients) ─────────────────────────

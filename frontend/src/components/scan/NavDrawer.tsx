@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { LevelMeter } from "@/components/onboarding/LevelMeter";
+import { NotificationBell } from "@/components/app/NotificationBell";
 import { C } from "@/lib/onboarding/types";
 import { apiFetch } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
@@ -122,6 +123,8 @@ export function NavDrawer({
             <span style={{ color: C.green }}>{tier.toUpperCase()}{isTrial ? " PLAN" : " PLAN"}</span>
             <span style={{ color: C.muted }}>{isTrial ? "" : "1 SCAN / DAY"}</span>
           </div>
+          {/* Notification bell + panel (server-authoritative badge) */}
+          <NotificationBell onNavigate={onNavigate} />
         </div>
 
         {/* destinations */}

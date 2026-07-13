@@ -88,32 +88,75 @@ async def resolve_scenarios_task() -> dict:
 
 
 async def journal_reveal_teasers_task() -> dict:
-    """Log an in-app reveal teaser per user with resolved-but-unrevealed outcomes."""
-    logged = 0
+    """Teaser sweep for users with resolved-but-unrevealed outcomes (D-N5).
+
+    PULL-ONLY red line: the teaser NEVER carries an outcome value — the reveal still
+    requires the user's own next scan. Deduped per reveal via journal_scenarios.
+    teaser_sent_at, so a second run sends zero (idempotent). Multiple pending reveals
+    for one user collapse into a single teaser (one bell row + one email) per sweep."""
+    from backend.core import notifications as notif
+    from backend.core.email import send_reveal_teaser_email
+
+    teased_users = 0
+    teased_scenarios = 0
     async with aiosqlite.connect(_db_path()) as db:
         db.row_factory = aiosqlite.Row
         rows = await db.execute_fetchall(
-            """SELECT DISTINCT user_id FROM journal_scenarios
-                WHERE scenario_type='pass' AND status!='open'
-                  AND resolved_at IS NOT NULL AND revealed_at IS NULL"""
+            """SELECT js.id, js.user_id, u.email, u.first_name
+                 FROM journal_scenarios js
+                 JOIN users u ON u.internal_id = js.user_id
+                WHERE js.scenario_type='pass' AND js.status!='open'
+                  AND js.resolved_at IS NOT NULL AND js.revealed_at IS NULL
+                  AND js.teaser_sent_at IS NULL"""
         )
-        today = date.today().isoformat()
+        by_user: dict[int, dict] = {}
         for r in rows:
-            cur = await db.execute(
+            u = by_user.setdefault(
+                r["user_id"],
+                {"email": r["email"], "first_name": r["first_name"], "ids": []},
+            )
+            u["ids"].append(r["id"])
+
+        today = date.today().isoformat()
+        for user_id, info in by_user.items():
+            # Admin audit record (idempotent per user per day; teaser_sent_at is the
+            # authoritative per-reveal dedup below).
+            await db.execute(
                 """INSERT OR IGNORE INTO notifications_log
                    (user_id, notif_type, channel, ref, status, detail)
-                   VALUES (?, 'journal_reveal_teaser', 'in_app', ?, 'sent',
-                           'Your journal has an update (revealed on your next scan)')""",
-                (r["user_id"], f"teaser:{r['user_id']}:{today}"),
+                   VALUES (?, 'journal_reveal_teaser', 'email_in_app', ?, 'sent',
+                           'A journal reveal is waiting (unlocked on your next scan)')""",
+                (user_id, f"teaser:{user_id}:{today}"),
             )
-            logged += cur.rowcount
+            # Bell row (D-N11), content-free, gated by inapp_enabled.
+            await notif.create_notification(
+                db, user_id, "reveal_teaser",
+                "A journal reveal is waiting",
+                "Run your next scan to unlock it.",
+                "/dashboard", commit=False,
+            )
+            prefs = await notif.get_prefs(db, user_id)
+            if prefs["email_product"]:
+                await send_reveal_teaser_email(info["email"], info["first_name"])
+            # Per-reveal sent-flag — makes the sweep idempotent.
+            placeholders = ",".join("?" for _ in info["ids"])
+            await db.execute(
+                f"UPDATE journal_scenarios SET teaser_sent_at = CURRENT_TIMESTAMP "
+                f"WHERE id IN ({placeholders})",
+                tuple(info["ids"]),
+            )
+            teased_users += 1
+            teased_scenarios += len(info["ids"])
         await db.commit()
-    log.info("journal_reveal_teasers_task: logged=%d", logged)
-    return {"logged": logged}
+    log.info("journal_reveal_teasers_task: users=%d scenarios=%d", teased_users, teased_scenarios)
+    return {"teased_users": teased_users, "teased_scenarios": teased_scenarios}
 
 
 async def log_trial_reminders_task() -> dict:
-    """Record day-11 trial reminders into notifications_log (B7f)."""
+    """DEPRECATED (Stage 5): superseded by billing_tasks.trial_ending_soon_task, which the
+    POST /api/cron/notifications endpoint runs. That task is now the single authoritative
+    day-11 path (bell row + email + audit log). Kept for backward compatibility; no longer
+    wired into any cron. Do not call alongside trial_ending_soon_task — divergent refs."""
     from datetime import timedelta
 
     from backend.config import TRIAL_REMINDER_LEAD_DAYS

@@ -91,6 +91,12 @@ EMAIL_SENDING_ENABLED = os.getenv("EMAIL_SENDING_ENABLED", "false").lower() == "
 # Must be False (default) in production.
 DEV_RETURN_MAGIC_LINK = os.getenv("DEV_RETURN_MAGIC_LINK", "false").lower() == "true"
 
+# ── Cron (Stage 5 scheduled notification sweeps — SPEC §5) ───────────────────
+# Shared secret for POST /api/cron/notifications (day-11 reminder + reveal-teaser).
+# Sent as the `X-Cron-Secret` header. Empty in dev disables the endpoint (503) so a
+# misconfigured deploy never runs unauthenticated. Railway wiring is manual (HANDOFF).
+CRON_SECRET = os.getenv("CRON_SECRET", "")
+
 # ── Trial ─────────────────────────────────────────────────────────────────────
 # Trial WITHOUT card (D1 change order 2026-07-09; SPEC §9/§12.3, PRD F7): no card,
 # no tokenization, no auto-charge. A reminder goes out TRIAL_REMINDER_LEAD_DAYS before

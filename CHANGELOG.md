@@ -4,6 +4,31 @@
 
 ---
 
+## [UPGRADE-STAGE5 / Notifications + Bell + Preferences + Real Resend] — 2026-07-14
+- GOAL: מערכת נוטיפיקציות מלאה — פיד in-app עם פעמון בהמבורגר, העדפות per-user (sound/vibration/off + opt-in לאימייל), אינטגרציית Resend אמיתית (עם DEV fallback), ושלושה זרמי אימייל (day-11 trial reminder, reveal-teaser, admin broadcast). OUT OF SCOPE: web push/PWA (שלב 8), referral/payment emails (חסומים), כל שינוי XP.
+- STOP POINTS: **S1 (trial length)** — SPEC §5 "Trial 14 יום" + `trial_reminder_day`=11 + `TRIAL_DAYS=14`/`TRIAL_REMINDER_LEAD_DAYS=3` ⇒ יום-11 = 3 ימים לפני הסוף. אושר, לא נדרשה עצירה. **S2 (sending domain)** — `EMAIL_FROM_BRAND` כבר מוגדר כברירת-מחדל `FINARODA <noreply@finaroda.com>`; לא הומצא דומיין. הבנייה והבדיקות רצות ב-DEV console-fallback (בלי RESEND_API_KEY) ⇒ אפס קריאות רשת. שליחה חיה דורשת אימות `finaroda.com` ב-Resend (hardening/שלב 8) — מתועד ב-HANDOFF.
+- SOLUTION:
+  - **DB (mig 031):** `notifications` (פיד פעמון: id/user_id/type/title/body/link_path/created_at/read_at, index על (user_id,read_at)), `notification_prefs` (PK user_id, 5 דגלים default true), `journal_scenarios.teaser_sent_at` (sent-flag ל-dedup per-reveal). ה-`notifications_log` (mig 028) נשאר כ-ledger idempotency/audit — נפרד מהפיד.
+  - **Service (`core/notifications.py`):** get/update prefs (lazy defaults), create_notification (חסום ע"י inapp_enabled), list/unread/mark_read (server-authoritative), טוקני unsubscribe חתומים (HMAC על JWT_SECRET, per-category, TTL שנה).
+  - **Email (`core/email.py`):** render+send ל-trial_reminder/reveal_teaser/broadcast (renderers טהורים לבדיקה); `_send_or_log` = Resend או log ב-DEV. **reveal-teaser = אפס ערכי תוצאה** (D-N5, נבדק על ה-body). unsubscribe link בכל broadcast.
+  - **API:** `/api/notifications` (GET feed+unread, POST /read, GET/PUT /prefs); `/api/email/unsubscribe` (GET, ללא login, HMAC, idempotent, דף HTML); `/api/cron/notifications` (POST, X-Cron-Secret, idempotent). Admin broadcast: `GET /broadcasts/preview` (audience + email_optin), `POST /broadcasts` שולח מיילים אמיתיים לאופט-אין בלבד + unsubscribe + שורות פעמון (per-user gated).
+  - **Tasks:** `trial_ending_soon_task` — חלון datetime() half-open [+3d,+4d) (boundary מדויק day-10/11/12), email מכבד email_product, שורת פעמון מכבדת inapp_enabled, idempotency דרך notifications_log. `journal_reveal_teasers_task` — per-user, teaser_sent_at כ-dedup, אימייל+פעמון content-free.
+  - **Frontend:** `NotificationBell.tsx` (פעמון+badge cap 9+, panel newest-first, mark-read on open, arrival sound/vibration gated ל-prefs + first-interaction), `lib/notifications.ts` (helpers טהורים), settings toggles (5), admin Broadcast preview+confirm step, unsubscribe copy.
+- FILES CREATED: `backend/migrations/031_notifications_prefs.py`, `backend/core/notifications.py`, `backend/api/notifications.py`, `backend/api/email.py`, `backend/api/cron.py`, `backend/tests/test_stage5_notifications.py`, `frontend/src/lib/notifications.ts`, `frontend/src/components/app/NotificationBell.tsx`, `frontend/tests/notifications.unit.test.ts`.
+- FILES MODIFIED: `backend/config.py` (CRON_SECRET), `backend/core/email.py` (renderers+senders, unsubscribe_url, footer em-dash→hyphen), `backend/app/tasks/billing_tasks.py`, `backend/app/tasks/journal_tasks.py` (+ deprecate log_trial_reminders_task), `backend/scripts/run_resolve_scenarios.py`, `backend/api/admin.py` (broadcast preview+real send), `backend/main.py` (3 routers), `backend/tests/conftest.py` (CRON_SECRET), `frontend/src/lib/app/types.ts`, `frontend/src/components/scan/NavDrawer.tsx`, `frontend/src/app/(profile)/settings/page.tsx`, `frontend/src/app/(admin)/admin/page.tsx`, `frontend/src/lib/version.ts`.
+- DB CHANGES: migration 031 (notifications, notification_prefs, journal_scenarios.teaser_sent_at). מיגרציה מנטרלת התנגשות: טבלת `notifications` הישנה מ-mig 005 (scheduled-outbox שאף קוד לא קורא/כותב) שונתה ל-`notifications_legacy_outbox` (לא-הרסני, שומר שורות).
+- CONFIG ADDED: `CRON_SECRET` (חדש). `RESEND_API_KEY` / `EMAIL_FROM_BRAND` / `EMAIL_REPLY_TO` / `EMAIL_SENDING_ENABLED` — כבר היו קיימים ב-config.
+- VALIDATION: pytest **86/86** (71→86, +15), tsc clean, eslint clean, frontend unit **30/30** (24→30, +6), shared **14/14** (לא נגעתי).
+- ATP: TC-N5-01..TC-N5-12 (feed/read, prefs, inapp-gate, day-11 boundary, cron idempotency, reveal-teaser no-outcome+dedup, broadcast 403/filtering/preview, unsubscribe valid/tampered/repeat, cron auth, bell badge 9+/toggle/vibration no-op).
+- VERSION: v0.11.0
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: משתמש רואה פעמון עם ספירת unread שורדת refresh, מסמן נקרא בפתיחה; שולט ב-sound/vibration/in-app + opt-in לאימיילים; מקבל תזכורת יום-11 ו-reveal-teaser (ללא ערכי תוצאה); אדמין שולח broadcast עם preview + confirm + unsubscribe חובה. אין שליחה חיה עד אימות דומיין.
+- DECISIONS: (1) `notifications` (פיד) ≠ `notifications_log` (ledger) — קיום-משותף נקי. (2) reveal-teaser עם sent-flag על שורת ה-reveal + אימייל אחד למשתמש per-sweep (מכבד "one teaser per pending reveal" + לא ספאם). (3) `log_trial_reminders_task` deprecated — `trial_ending_soon_task` דרך endpoint הוא הנתיב הסמכותי היחיד ל-day-11.
+- DRIFT FOUND (מדווח, לא תוקן בשקט): (a) טבלת `notifications` מתה מ-mig 005 (שונתה בצד, לא נמחקה); (b) em-dashes ב-copy קיים של welcome/beta emails (email.py:106,121,127) — לא נגעתי; (c) שני נתיבי day-11 עם ref שונה (billing vs journal task) — אוחדו.
+
+---
+
 ## [RESPONSIVE-PASS / phone+desktop usability] — 2026-07-13
 - GOAL: כל מסך במוצר שמיש במלואו בטלפון (~390px) וב-desktop (mandate של נדב). אפס גלילה אופקית של העמוד ב-360–430px, אפס טבלה/מסגרת חתוכה. dev בלבד, PATCH. אין שינוי פיצ'ר פרט לשורת copy אחת.
 - SOLUTION (מה עשינו בפועל):

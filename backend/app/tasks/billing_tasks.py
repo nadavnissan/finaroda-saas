@@ -32,33 +32,33 @@ async def subscription_renewal_task() -> dict:
 
 
 async def trial_ending_soon_task() -> dict:
-    """Day-11 reminder (no-card trial, D1): find trials ending ~TRIAL_REMINDER_LEAD_DAYS
-    out (default 3 → day 11 of a 14-day trial). Daily cron + a 1-day window fires once
-    per trial. Emails are best-effort. No charge — the reminder just prompts an active
-    choice (paid plan or Free) before the trial ends."""
-    from datetime import datetime, timedelta, timezone
+    """Day-11 reminder (no-card trial, D1): find trials ending TRIAL_REMINDER_LEAD_DAYS
+    out (default 3 → day 11 of a 14-day trial). Idempotent via notifications_log
+    UNIQUE(notif_type, ref); a re-run inside the daily window sends zero. Each first send
+    creates a bell row (respecting inapp_enabled) and a reminder email (respecting
+    email_product). No charge — the reminder only prompts an active choice."""
+    from datetime import datetime, timezone
 
     from backend.config import TRIAL_REMINDER_LEAD_DAYS
-    from backend.core.email import send_welcome_email  # placeholder reminder sender
+    from backend.core import notifications as notif
+    from backend.core.email import send_trial_reminder_email
 
     lead = TRIAL_REMINDER_LEAD_DAYS
-    now = datetime.now(timezone.utc)
-    window_start = (now + timedelta(days=lead)).isoformat()
-    window_end = (now + timedelta(days=lead + 1)).isoformat()
     notified = 0
     async with aiosqlite.connect(_db_path()) as db:
         db.row_factory = aiosqlite.Row
+        # Half-open window [now+lead, now+lead+1). datetime() normalizes stored ISO
+        # timestamps (with or without tz/'T') so the day-10/11/12 boundary is exact.
         rows = await db.execute_fetchall(
             """SELECT internal_id, email, first_name, trial_ends_at FROM users
                WHERE subscription_status='trial'
-                 AND trial_ends_at BETWEEN ? AND ?""",
-            (window_start, window_end),
+                 AND datetime(trial_ends_at) >= datetime('now', ? )
+                 AND datetime(trial_ends_at) <  datetime('now', ? )""",
+            (f"+{lead} days", f"+{lead + 1} days"),
         )
         for row in rows:
-            # Idempotent notification record (B7f notifications_log): one day-11 reminder
-            # per user per trial-end date. UNIQUE(notif_type, ref) makes a re-run a no-op,
-            # so the day+1 window overlap never double-notifies. This is the durable record
-            # (in-app + email); the email itself is a best-effort stub in dev.
+            # One day-11 reminder per user per trial-end date. UNIQUE(notif_type, ref)
+            # makes the daily-window overlap a no-op. This is the durable audit record.
             ref = f"trial:{row['internal_id']}:{(row['trial_ends_at'] or '')[:10]}"
             cur = await db.execute(
                 """INSERT OR IGNORE INTO notifications_log
@@ -66,10 +66,20 @@ async def trial_ending_soon_task() -> dict:
                    VALUES (?, 'trial_reminder_day11', 'email_in_app', ?, 'sent', ?)""",
                 (row["internal_id"], ref, f"Trial ends in ~{lead} days — choose a plan or continue on Free."),
             )
-            if cur.rowcount == 1:
-                notified += 1
-                # Reminder email is a no-op without RESEND_API_KEY (dev). Best-effort.
-                await send_welcome_email(row["email"], row["first_name"])
+            if cur.rowcount != 1:
+                continue  # already sent for this trial-end date
+            notified += 1
+            # Bell row (D-N11), gated by inapp_enabled. Batched — committed below.
+            await notif.create_notification(
+                db, row["internal_id"], "trial_reminder",
+                "Your trial is ending soon",
+                f"Your trial ends in {lead} days. Choose a paid plan or continue on Free — no auto-charge.",
+                "/subscribe", commit=False,
+            )
+            # Product email, gated by email_product.
+            prefs = await notif.get_prefs(db, row["internal_id"])
+            if prefs["email_product"]:
+                await send_trial_reminder_email(row["email"], row["first_name"], lead)
         await db.commit()
     log.info("trial_ending_soon_task: notified=%d", notified)
     return {"notified": notified}

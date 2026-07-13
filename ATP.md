@@ -553,6 +553,26 @@
 - Expected: Free → "Revealed on tomorrow's scan, never by push."; paid/trial → "Revealed on your next scan, never by push."
 - Status: ⬜ manual.
 
+### TC-N5 — Stage 5: Notifications + Bell + Preferences + Real Resend (v0.11.0)
+> חבילת בדיקות אוטומטית: `backend/tests/test_stage5_notifications.py` (pytest) + `frontend/tests/notifications.unit.test.ts` (node --test). כל האימיילים רצים ב-DEV mode → אפס קריאות רשת ל-Resend (AC8).
+
+- **TC-N5-01 — feed + read-marking (AC1):** יוצר notification → `GET /api/notifications` מראה unread_count=1 + read_at=null → `POST /api/notifications/read {ids}` → unread_count=0 → refresh שומר על המצב (server-authoritative). ✅ auto.
+- **TC-N5-02 — mark-all (ids מושמט):** 3 notifications → `POST /read {}` → unread_count=0. ✅ auto.
+- **TC-N5-03 — prefs CRUD (AC2):** defaults כולם true → `PUT /prefs {sound_enabled:false}` → sound=false, שאר לא נגעו → refetch עקבי. ✅ auto.
+- **TC-N5-04 — inapp gate (AC3):** `inapp_enabled=false` → `create_notification` מחזיר None, feed ריק. ✅ auto.
+- **TC-N5-05 — day-11 boundary (AC4):** משתמשי trial ב-day 10/11/12 → `trial_ending_soon_task` יורה **רק** ל-day 11 (3 ימים לפני הסוף, חלון half-open). ✅ auto.
+- **TC-N5-06 — cron idempotency (AC4):** ריצה ראשונה notified=1, שנייה notified=0; בדיוק שורת פעמון trial_reminder אחת. ✅ auto.
+- **TC-N5-07 — email_product opt-out:** trial user שביטל product email → notified=1 (in-app + audit עדיין), אך ללא מייל. ✅ auto.
+- **TC-N5-08 — reveal-teaser no-outcome (AC5):** `render_reveal_teaser` — ה-copy נטול win/loss/profit/gain/target/%/$ ומכיל את הטקסט הקבוע "a journal reveal is waiting / run your next scan to unlock it". ✅ auto.
+- **TC-N5-09 — reveal-teaser sweep dedup (AC5):** תרחיש resolved-unrevealed → sweep יוצר teaser אחד + `teaser_sent_at` מסומן; sweep שני = אפס למשתמש; body content-free. ✅ auto.
+- **TC-N5-10 — broadcast 403 (AC6):** משתמש לא-אדמין → `POST /api/admin/broadcasts` = 403. ✅ auto.
+- **TC-N5-11 — broadcast filtering + preview (AC6):** משתמש שביטל email_broadcast מוחרג מ-`_broadcast_recipients(email_only=True)`; `preview.email_optin` יורד ב-1 אחרי opt-out בעוד `recipients` לא משתנה; `delivered_email` = email_optin; opted-out עדיין מקבל שורת פעמון (channel_in_app). ✅ auto.
+- **TC-N5-12 — unsubscribe token (AC7):** טוקן מזויף → 400; תקין → 200 + הדגל כבוי (ללא login); חזרה → 200 idempotent, נשאר כבוי. ✅ auto.
+- **TC-N5-13 — cron auth (D-N9):** ללא/עם secret שגוי → 403; secret נכון → 200 עם trial_reminder + reveal_teaser. ✅ auto.
+- **TC-N5-14 — em-dash lint (D-N10):** `render_trial_reminder` ללא em-dash; "no automatic charge" בקופי. ✅ auto.
+- **TC-N5-15 — unit: bell/prefs/vibration:** `formatBadge` (ריק ב-0, "9+" מעל 9), `togglePref` immutable, `vibrateSafe` יורה כשיש vibrate ו-no-op כשאין (iOS), gating של shouldVibrate/shouldPlaySound על inapp_enabled, `unreadIds`. ✅ auto (6 בדיקות).
+- **TC-N5-16 — manual (browser):** לפתוח פעמון בטלפון + desktop, לוודא badge/mark-read; 5 ה-toggles ב-Settings; admin broadcast preview+confirm; לחיצת unsubscribe מדף המייל. ⬜ manual (Nadav).
+
 ---
 
 ## ATR (Acceptance Test Reports)

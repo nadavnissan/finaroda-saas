@@ -81,3 +81,27 @@ export interface Me {
   subscription_status: string;
   onboarding_completed: boolean;
 }
+
+// Stage 5 — in-app notifications (bell feed) + prefs. Mirror the backend rows.
+export interface NotificationItem {
+  id: number;
+  type: string;                 // trial_reminder | reveal_teaser | broadcast
+  title: string;
+  body: string;
+  link_path?: string | null;    // in-app deep link
+  created_at: string;
+  read_at?: string | null;      // null => unread
+}
+
+export interface NotificationFeed {
+  notifications: NotificationItem[];
+  unread_count: number;
+}
+
+export interface NotificationPrefs {
+  inapp_enabled: boolean;
+  sound_enabled: boolean;
+  vibration_enabled: boolean;
+  email_product: boolean;
+  email_broadcast: boolean;
+}

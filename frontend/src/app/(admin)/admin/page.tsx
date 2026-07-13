@@ -311,13 +311,28 @@ function Broadcast() {
   const [targetTier, setTargetTier] = useState("basic");
   const [inApp, setInApp] = useState(true);
   const [email, setEmail] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [preview, setPreview] = useState<{ recipients: number; email_optin: number } | null>(null);
   useEffect(() => { void apiFetch<any>("/api/admin/broadcasts").then((r) => r.ok && setCounts(r.data.audience_counts)); }, []);
+
+  // Confirm-step preview: audience size + how many will actually receive an email
+  // (opted in to broadcast email). Refreshes when the audience selection changes.
+  useEffect(() => {
+    const q = new URLSearchParams({ audience, ...(audience === "plan" ? { target_tier: targetTier } : {}) });
+    void apiFetch<{ recipients: number; email_optin: number }>(`/api/admin/broadcasts/preview?${q}`).then((r) => {
+      if (r.ok && r.data) setPreview(r.data);
+    });
+    setConfirming(false);
+  }, [audience, targetTier]);
 
   async function send() {
     if (!title.trim() || !body.trim()) return;
-    const r = await apiFetch("/api/admin/broadcasts", { method: "POST", body: JSON.stringify({ title: title.trim(), body: body.trim(), audience, target_tier: audience === "plan" ? targetTier : null, channel_in_app: inApp, channel_email: email }) });
-    if (r.ok) { setSent(true); setTitle(""); setBody(""); }
+    const r = await apiFetch<{ delivered_inapp: number; delivered_email: number }>("/api/admin/broadcasts", { method: "POST", body: JSON.stringify({ title: title.trim(), body: body.trim(), audience, target_tier: audience === "plan" ? targetTier : null, channel_in_app: inApp, channel_email: email }) });
+    if (r.ok && r.data) {
+      setSent(`Sent. In-app: ${r.data.delivered_inapp}, email: ${r.data.delivered_email}.`);
+      setTitle(""); setBody(""); setConfirming(false);
+    }
   }
 
   return (
@@ -339,15 +354,34 @@ function Broadcast() {
         </div>
         <Label text="CHANNEL" />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, font: `600 9px ${MONO}` }}>
-          <button type="button" onClick={() => setInApp(!inApp)} style={pill(inApp)}>{inApp ? "✓ " : ""}IN-APP BANNER</button>
-          <button type="button" onClick={() => setEmail(!email)} style={pill(email)}>{email ? "✓ " : ""}EMAIL (stub)</button>
+          <button type="button" onClick={() => setInApp(!inApp)} style={pill(inApp)}>{inApp ? "✓ " : ""}IN-APP</button>
+          <button type="button" onClick={() => setEmail(!email)} style={pill(email)}>{email ? "✓ " : ""}EMAIL</button>
         </div>
+        {preview && (
+          <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>
+            Audience: {preview.recipients}. Email opted-in: {preview.email_optin}. Every update email carries a one-click unsubscribe link.
+          </div>
+        )}
         <Label text="MESSAGE" />
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 13px", font: `400 11px ${SANS}`, color: C.fg, width: "100%", boxSizing: "border-box" }} />
         <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Your message. It never covers the scan button or the disclaimer." rows={4} style={{ background: C.panel, border: `1px solid rgba(31,178,134,.35)`, borderRadius: 10, padding: "13px 15px", font: `400 11.5px/1.6 ${SANS}`, color: C.fg, resize: "vertical", width: "100%", boxSizing: "border-box" }} />
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          {sent && <span style={{ font: `400 9px ${MONO}`, color: C.green, alignSelf: "center" }}>Broadcast stored.</span>}
-          <button type="button" onClick={send} style={{ font: `600 10px ${MONO}`, color: C.bg, background: C.green, borderRadius: 8, padding: "9px 16px", border: "none", cursor: "pointer" }}>SEND BROADCAST</button>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+          {sent && <span style={{ font: `400 9px ${MONO}`, color: C.green, alignSelf: "center" }}>{sent}</span>}
+          {confirming && (
+            <span style={{ font: `400 9px ${MONO}`, color: C.amber, alignSelf: "center" }}>
+              Send to {preview?.recipients ?? 0}{email ? ` (${preview?.email_optin ?? 0} email)` : ""}?
+            </span>
+          )}
+          {confirming && (
+            <button type="button" onClick={() => setConfirming(false)} style={{ font: `600 10px ${MONO}`, color: C.muted, background: "none", borderRadius: 8, padding: "9px 12px", border: `1px solid ${C.border}`, cursor: "pointer" }}>CANCEL</button>
+          )}
+          <button
+            type="button"
+            onClick={() => { if (!title.trim() || !body.trim()) return; if (confirming) { void send(); } else { setSent(null); setConfirming(true); } }}
+            style={{ font: `600 10px ${MONO}`, color: C.bg, background: confirming ? C.amber : C.green, borderRadius: 8, padding: "9px 16px", border: "none", cursor: "pointer" }}
+          >
+            {confirming ? "CONFIRM SEND" : "SEND BROADCAST"}
+          </button>
         </div>
       </div>
       <div style={{ width: mobile ? "auto" : 300, flex: "none", padding: mobile ? "0 16px 20px" : "20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>

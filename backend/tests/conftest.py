@@ -19,3 +19,5 @@ os.environ["DATABASE_URL"] = str(_tmp_db)
 os.environ["DEV_RETURN_MAGIC_LINK"] = "true"       # magic link returned in API response
 os.environ["FEATURE_PUBLIC_SIGNUPS_OPEN"] = "true"  # bypass beta gate by default in tests
 os.environ["FEATURE_CARDCOM_LIVE"] = "false"        # never hit a real terminal in tests
+os.environ["CRON_SECRET"] = "test-cron-secret"      # Stage 5 cron endpoint auth
+# RESEND_API_KEY stays unset → emails log in DEV mode, zero network calls (AC8).
