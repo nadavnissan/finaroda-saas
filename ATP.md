@@ -532,6 +532,27 @@
 - Expected: כמתואר.
 - Status: ⬜ manual.
 
+### TC-RESP-01 — Responsive pass · no horizontal overflow 360–430px (RESPONSIVE PASS v0.10.1)
+- Feature: UX (mobile-first product screens; admin usable on phone)
+- Precondition: dev build, DevTools device toolbar (or a real phone).
+- Steps (ידני, לכל route): onboarding S0–S11, scan (controls/results/Blueprint/charts), subscribe, dashboard, profile, settings, academy (list+module), history, login — ולכל מסך אדמין (overview/users/tickets/broadcast/settings/notifications) — לרנדר ב-**390px** וב-**1280px**; לגלול כל מסך.
+- Expected: אין גלילה אופקית של העמוד באף מסך ב-360–430px; אין טבלה/מסגרת חתוכה; טבלאות רחבות (S11 comparison, admin notifications, admin tab strip) גוללות אופקית ולא נחתכות; ה-Rail של האדמין הופך לפס טאבים עליון + master/detail מתחלף (users/tickets); charts מתאימים לרוחב; targets ≥44px. ב-≥1024px: מסכי מוצר ממורכזים בעמודת max-width, האדמין רוחב-מלא לפי מסגרות B7.
+- Status: ⬜ manual (Nadav phone validation)
+
+### TC-RESP-02 — Structural-lint viewport guard (אוטומטי · frontend/tests/viewport.regression.test.ts)
+- Feature: רגרסיה — מונע חזרה של דפוסי overflow.
+- Precondition: אין.
+- Steps: `cd frontend && node --test --experimental-strip-types "tests/**/*.test.ts"`.
+- Expected: 6 בדיקות ה-viewport עוברות — אין fixed width ≥360 ללא maxWidth/vw/mobile; כל route מוצר עם maxWidth; admin עם useIsMobile; טבלאות רחבות ב-overflowX scroller; chart width=100%+viewBox; globals.css עם overflow-x hidden + main padding clamp.
+- Status: ✅ pass (24/24 frontend unit)
+
+### TC-RESP-03 — Free journal reveal caption (copy)
+- Feature: F3 (journal reveal) — daily-limit implication.
+- Precondition: משתמש Free מול משתמש בתשלום/trial, dashboard.
+- Steps: לפתוח /dashboard כ-Free ואז כ-paid; לקרוא את שורת ה-caption התחתונה.
+- Expected: Free → "Revealed on tomorrow's scan, never by push."; paid/trial → "Revealed on your next scan, never by push."
+- Status: ⬜ manual.
+
 ---
 
 ## ATR (Acceptance Test Reports)

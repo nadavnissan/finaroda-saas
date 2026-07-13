@@ -15,6 +15,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  /* RESPONSIVE PASS: never allow a horizontal page scrollbar. Screens that need a
+     wide table (e.g. admin) scroll inside their own container, not the page. */
+  overflow-x: hidden;
 }
 
 main {
@@ -24,8 +27,22 @@ main {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 2rem;
+  /* Responsive gutter: ~14px on a 360px phone, 2rem on desktop. Reclaims usable
+     width on phones where the old fixed 2rem ate 64px of a 360px screen. Pages that
+     set their own padding inline (login, admin) override this. */
+  padding: clamp(0.9rem, 4vw, 2rem);
   text-align: center;
+}
+
+/* RESPONSIVE PASS: media can never force horizontal overflow. Charts are already
+   viewBox-scaled; this guards any future raw <img>/<svg>/<table>/<pre>. */
+img,
+svg,
+video,
+canvas,
+table,
+pre {
+  max-width: 100%;
 }
 
 /* Reduce single-word line orphans in headings/copy (paired with noOrphan()). */

@@ -181,7 +181,9 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ padding: "12px 20px 0", font: `400 9.5px/1.5 ${MONO}`, color: C.muted, textAlign: "center" }}>
-          Results reveal on your next scan, never by push.
+          {/* Free = 1 scan/day, so the reveal lands on tomorrow's scan; paid scans are
+              unlimited, so it's simply the next scan. */}
+          {me.tier === "free" ? "Revealed on tomorrow's scan, never by push." : "Revealed on your next scan, never by push."}
         </div>
         <div style={{ marginTop: "auto" }}>
           <Disclaimer />

@@ -4,6 +4,27 @@
 
 ---
 
+## [RESPONSIVE-PASS / phone+desktop usability] — 2026-07-13
+- GOAL: כל מסך במוצר שמיש במלואו בטלפון (~390px) וב-desktop (mandate של נדב). אפס גלילה אופקית של העמוד ב-360–430px, אפס טבלה/מסגרת חתוכה. dev בלבד, PATCH. אין שינוי פיצ'ר פרט לשורת copy אחת.
+- SOLUTION (מה עשינו בפועל):
+  1. **מיפוי מצב:** מסכי המוצר כבר בנויים mobile-first מהסבבים הקודמים (Package B / FIX-R3R4) — כל route מוצר ממורכז בעמודת `maxWidth` (scan 480, dashboard/profile/settings/academy 440, history/subscribe/blueprint 480, login 420, onboarding shell 480), charts כבר responsive (SVG viewBox + `width:100%`), tooltips clamped. ה-offender האמיתי היחיד: **קונסולת האדמין** (desktop-first, rail קבוע 200px + פאנלים צדדיים 280/340/300px + grids צפופים 5-טורים) — נשברה בטלפון.
+  2. **`useIsMobile` hook** (`frontend/src/lib/app/useIsMobile.ts`) — `matchMedia`, mounted-guard (מחזיר desktop עד mount → אין hydration mismatch). קומפוננטות inline-styled לא יכולות media-queries, אז מסכים שצריכים להחליף layout מסתעפים על זה.
+  3. **globals.css** — safety layer: `body { overflow-x: hidden }` (אין scrollbar אופקי לעמוד לעולם; טבלאות רחבות גוללות בתוך container משלהן), `main` padding → `clamp(0.9rem,4vw,2rem)` (משחרר רוחב בטלפון: היה 2rem=64px מתוך 360, עכשיו ~14px), ו-`img/svg/video/canvas/table/pre { max-width:100% }`.
+  4. **קונסולת אדמין responsive** (`app/(admin)/admin/page.tsx`) — ה-`main` דורס את חוק ה-`main` הגלובלי (column+center+2rem+text-center שדלף) ופורש edge-to-edge. Rail → **פס טאבים עליון sticky + tab-strip נגלל** בטלפון / rail 200px ב-desktop. Overview grid → `repeat(auto-fit,minmax(140px,1fr))` (5 ל-2). Users/Tickets → **master/detail swap** בטלפון (בחירה מחליפה את הרשימה עם "← back", במקום פאנל צדדי קבוע שגולש); Users list → כרטיסים בטלפון. Broadcast → stack. Notifications log → overflowX scroller + **טור ראשון sticky** (לא נחתך). Settings locked cards → column. Desktop = מסגרות B7 רוחב-מלא כפי שהיה.
+  5. **copy אחת:** caption ה-reveal ב-dashboard תלוי-tier — Free (‏1 סריקה/יום): **"Revealed on tomorrow's scan"**; בתשלום/trial (unlimited): **"on your next scan"**.
+  6. **Harness רגרסיה (structural lint, בחירת נדב):** `frontend/tests/viewport.regression.test.ts` — רץ ב-`node --test` הקיים ללא deps חדשים (jsdom=אפס layout, Playwright/Next-server לא יציב במכונה הזו — ה-validations הידניים של נדב הם המדידה בדפדפן-אמת). רשימת `PATTERNS`+`MAXWIDTH_ROUTES`+`SCROLLER_FILES` ניתנת-להרחבה עם הערות: כל overflow שנדב ימצא ידנית מקודד כדפוס חדש. בודק: אין fixed width ≥360 ללא guard; כל route מוצר עם maxWidth; admin עם useIsMobile+main לא-ממורכז; טבלאות רחבות ב-overflowX; chart fluid; globals guards.
+- FILES CREATED: `frontend/src/lib/app/useIsMobile.ts`, `frontend/tests/viewport.regression.test.ts`.
+- FILES MODIFIED: `frontend/src/app/globals.css`, `frontend/src/app/(admin)/admin/page.tsx`, `frontend/src/app/(dashboard)/dashboard/page.tsx`, `frontend/src/lib/version.ts`, `ATP.md`, `CHANGELOG.md`, `VERSIONS.md`, `SESSION_HANDOFF.md`.
+- DB CHANGES: אין.
+- CONFIG ADDED: אין.
+- VALIDATION: pytest 71/71 · tsc clean · eslint clean (`next lint` — No warnings/errors) · frontend unit **24/24** (18 קודמים + 6 viewport).
+- ATP: TC-RESP-01 (ידני, no-overflow 360–430px + admin), TC-RESP-02 (אוטומטי, structural-lint 6/6), TC-RESP-03 (copy Free vs paid).
+- VERSION: v0.10.1
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: כל route שמיש בטלפון; קונסולת האדמין (offender ידוע) עוברת לטאבים עליונים + master/detail + טבלאות נגללות בטלפון, ונשארת רוחב-מלא ב-desktop; אין גלילה אופקית לעמוד; רגרסיה שומרת על זה. copy: Free רואה שה-reveal מגיע "מחר".
+- DECISIONS: (1) לפי בחירת נדב — structural-lint ב-`node --test` במקום Playwright (gate שנכשל מסביבה מתעלמים ממנו; ה-validations הידניים = מדידת דפדפן-אמת). Playwright E2E מועמד ל-CI עתידי כשה-pipeline ירוץ במכונה שבה builds מסתיימים. (2) admin נשאר desktop-first אך שמיש בטלפון (master/detail swap במקום להצטופף). (3) לא נגעתי במסכי מוצר שכבר responsive — אין שינוי מיותר.
+
 ## [FIX-R3R4 / validations 3+4 fix round] — 2026-07-13
 - GOAL: לתקן 11 באגים + ליישם 5 החלטות מאושרות (A–E) + תוספות UX מהוולידציות 3+4 של נדב. dev בלבד, MINOR.
 - SOLUTION (מה עשינו בפועל):
