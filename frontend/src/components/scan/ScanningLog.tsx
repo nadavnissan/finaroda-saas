@@ -32,7 +32,7 @@ export function ScanningLog({ step, markets = 10 }: { step: number; markets?: nu
         }}
       >
         <div style={{ font: `600 12px ${MONO}`, letterSpacing: 3, color: C.green }}>SCANNING</div>
-        <div style={{ font: `400 8.5px ${MONO}`, color: C.muted }}>{markets} MARKETS · BYBIT LIVE</div>
+        <div style={{ font: `400 8.5px ${MONO}`, color: C.muted }}>{markets} COINS · BYBIT LIVE</div>
       </div>
       <div
         style={{

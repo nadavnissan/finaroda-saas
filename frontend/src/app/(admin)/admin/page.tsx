@@ -59,7 +59,7 @@ function Overview() {
         <Stat label="USERS" value={String(d.users.total)} sub={`+${d.users.new_this_week} this week`} color={C.green} />
         <Stat label="TRIALS ACTIVE" value={String(d.trials.active)} sub={`${d.trials.expiring_3d} end within 3 days`} color={C.green} />
         <Stat label="TRIALS EXPIRED" value={String(d.trials.expired)} />
-        <Stat label="MRR" value={`₪${d.mrr_ils}`} sub={`${d.mrr_breakdown.basic} basic · ${d.mrr_breakdown.advanced} adv · ${d.mrr_breakdown.pro} pro`} color={C.green} />
+        <Stat label="MRR" value={`₪${d.mrr_ils}`} sub={`${d.mrr_breakdown.basic} basic · ${d.mrr_breakdown.pro} pro`} color={C.green} />
         <Stat label="SCANS / DAY" value={String(d.scans.avg_7d)} sub={`today ${d.scans.today}`} />
       </div>
       <div style={{ background: C.panel, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 10, padding: 16 }}>
@@ -247,7 +247,7 @@ function Broadcast() {
           ))}
           {audience === "plan" && (
             <select value={targetTier} onChange={(e) => setTargetTier(e.target.value)} style={{ background: C.bg, color: C.fg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "6px 12px", font: `600 9px ${MONO}` }}>
-              {["free", "basic", "advanced", "pro"].map((t) => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+              {["free", "basic", "pro"].map((t) => <option key={t} value={t}>{t.toUpperCase()}</option>)}
             </select>
           )}
         </div>

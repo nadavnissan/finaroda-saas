@@ -54,7 +54,7 @@ export default function AcademyModulePage({ params }: { params: Promise<{ module
         <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column" }}>
           <AppHeader xp={xp} left="close" onLeft={() => router.push("/academy")} />
           <div style={{ padding: 24, textAlign: "center", font: `400 12px ${MONO}`, color: C.muted }}>
-            {mod.rank_unlock != null ? `Bonus module. Unlocks at ${mod.rank_unlock.toLocaleString()} XP.` : "This module is available on Advanced and Pro plans."}
+            {mod.rank_unlock != null ? `Bonus module. Unlocks at ${mod.rank_unlock.toLocaleString()} XP.` : "This module is available on Basic and Pro plans."}
           </div>
           <div style={{ marginTop: "auto" }}><Disclaimer /></div>
         </div>
