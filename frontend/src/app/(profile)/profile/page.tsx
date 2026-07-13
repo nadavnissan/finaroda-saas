@@ -14,9 +14,6 @@ const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
 const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 
-const LENSES = ["ema200", "rsi", "volume", "full"] as const;
-const STYLES = ["conservative", "balanced", "aggressive"] as const;
-
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ margin: "12px 16px 0", background: C.panel, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 12, padding: "13px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -36,11 +33,6 @@ export default function ProfilePage() {
       if (r.ok && r.data) setP(r.data);
     });
   }, [me]);
-
-  async function saveSetting(patch: Record<string, unknown>) {
-    const r = await apiFetch<ProfileResponse>("/api/profile/settings", { method: "PUT", body: JSON.stringify(patch) });
-    if (r.ok && r.data) setP(r.data);
-  }
 
   async function signOut() {
     await api.logout();
@@ -104,24 +96,6 @@ export default function ProfilePage() {
             </div>
           ))}
           <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>Never from outcomes. Re-scans earn nothing.</div>
-        </Card>
-
-        {/* Remembered scan settings (display & geometry only) */}
-        <Card>
-          <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>REMEMBERED SCAN SETTINGS</span>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", font: `400 11px ${MONO}` }}>
-            <span style={{ color: C.fg }}>ANALYSIS LENS</span>
-            <select value={p.settings.analysis_lens} onChange={(e) => saveSetting({ analysis_lens: e.target.value })} style={{ background: C.bg, color: C.green, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 8px", font: `600 11px ${MONO}` }}>
-              {LENSES.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
-            </select>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", font: `400 11px ${MONO}` }}>
-            <span style={{ color: C.fg }}>RISK STYLE</span>
-            <select value={p.settings.risk_style} onChange={(e) => saveSetting({ risk_style: e.target.value })} style={{ background: C.bg, color: C.green, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 8px", font: `600 11px ${MONO}` }}>
-              {STYLES.map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-            </select>
-          </div>
-          <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>Display and geometry only, never what counts as an opportunity.</div>
         </Card>
 
         <div style={{ padding: "16px 16px 0" }}>

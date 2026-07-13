@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
@@ -14,12 +15,15 @@ const SECTIONS: Section[] = ["overview", "users", "tickets", "broadcast", "setti
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-function Rail({ section, setSection, ticketCount }: { section: Section; setSection: (s: Section) => void; ticketCount: number }) {
+function Rail({ section, setSection, ticketCount, onExit }: { section: Section; setSection: (s: Section) => void; ticketCount: number; onExit: () => void }) {
   return (
     <div style={{ width: 200, flex: "none", background: C.panel, borderRight: `1px solid rgba(233,238,243,.08)`, display: "flex", flexDirection: "column", padding: "18px 0" }}>
-      <div style={{ padding: "0 20px 18px", font: `700 12px ${SANS}`, letterSpacing: 3, color: C.fg }}>
+      <button type="button" onClick={onExit} aria-label="Back to app" style={{ padding: "0 20px 18px", background: "none", border: "none", cursor: "pointer", textAlign: "left", font: `700 12px ${SANS}`, letterSpacing: 3, color: C.fg }}>
         FINARODA <span style={{ font: `600 8px ${MONO}`, color: C.amber, border: `1px solid rgba(224,145,63,.4)`, borderRadius: 3, padding: "2px 5px", marginLeft: 4 }}>ADMIN</span>
-      </div>
+      </button>
+      <button type="button" onClick={onExit} style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 20px 12px", padding: "7px 10px", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, font: `600 9px ${MONO}`, letterSpacing: 1, color: C.muted, cursor: "pointer", textAlign: "left" }}>
+        ← BACK TO APP
+      </button>
       {SECTIONS.map((s) => {
         const active = s === section;
         return (
@@ -329,6 +333,7 @@ function Notifications() {
   return (
     <div style={{ flex: 1, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
       <H title="Notifications log" note="system sends" />
+      <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>System notification log: the two automated sends (day-11 trial reminder, journal-reveal teaser). Broadcasts are separate (see Broadcast).</div>
       <div style={{ background: C.panel, border: `1px solid rgba(233,238,243,.08)`, borderRadius: 10, overflow: "hidden", font: `400 10px ${MONO}` }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1.1fr 1.4fr .9fr", padding: "10px 16px", borderBottom: `1px solid rgba(233,238,243,.08)`, fontWeight: 600, fontSize: 8, letterSpacing: 1, color: C.muted }}>
           <span>TYPE</span><span>TO</span><span>CHANNEL · WHEN</span><span>STATUS</span>
@@ -362,6 +367,7 @@ function pill(active: boolean): React.CSSProperties {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const { me, loading } = useMe("admin");
   const [section, setSection] = useState<Section>("overview");
   const [ticketCount, setTicketCount] = useState(0);
@@ -375,7 +381,7 @@ export default function AdminPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: C.bg, color: C.fg, fontFamily: SANS, display: "flex" }}>
-      <Rail section={section} setSection={setSection} ticketCount={ticketCount} />
+      <Rail section={section} setSection={setSection} ticketCount={ticketCount} onExit={() => router.push("/scan")} />
       <div style={{ flex: 1, display: "flex", minWidth: 0 }}>
         {section === "overview" && <Overview />}
         {section === "users" && <Users />}

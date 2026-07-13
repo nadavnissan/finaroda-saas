@@ -55,12 +55,19 @@ export interface RecordScanResult {
   xp_awarded: number;
 }
 
+// The scan may be rejected by the server-side daily cap (Bug 3). We surface that so
+// the client can show a friendly limit state instead of the results.
+export interface RecordScanOutcome {
+  result: RecordScanResult | null;
+  dailyLimit: { scans_per_day: number } | null;
+}
+
 export async function recordScan(
   coinsScanned: number,
   coinsPassed: number,
   threshold: number | null,
   coins: ScoreLogItemPayload[],
-): Promise<RecordScanResult | null> {
+): Promise<RecordScanOutcome> {
   const res = await apiFetch<RecordScanResult>("/api/scan/events", {
     method: "POST",
     body: JSON.stringify({
@@ -70,7 +77,12 @@ export async function recordScan(
       coins,
     }),
   });
-  return res.ok ? res.data : null;
+  if (res.ok) return { result: res.data, dailyLimit: null };
+  const err = res.error as { code?: string; scans_per_day?: number } | null;
+  if (res.status === 429 && err?.code === "DAILY_SCAN_LIMIT") {
+    return { result: null, dailyLimit: { scans_per_day: err.scans_per_day ?? 1 } };
+  }
+  return { result: null, dailyLimit: null };
 }
 
 export async function recordSnapshot(scoreLogId: number, cardJson: string): Promise<void> {

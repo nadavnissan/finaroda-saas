@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LevelMeter } from "@/components/onboarding/LevelMeter";
 import { C } from "@/lib/onboarding/types";
 import { apiFetch } from "@/lib/api";
+import { APP_VERSION } from "@/lib/version";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -13,6 +14,7 @@ const SANS = "'Space Grotesk', system-ui, sans-serif";
 // that files a support ticket (→ B7 queue). Opens over a dimmed scan screen.
 const ITEMS: { label: string; icon: string; path: string }[] = [
   { label: "Dashboard", icon: "◫", path: "/dashboard" },
+  { label: "Recent scans", icon: "≣", path: "/history" },
   { label: "Profile", icon: "◈", path: "/profile" },
   { label: "Academy", icon: "▤", path: "/academy" },
   { label: "Settings", icon: "⚙", path: "/settings" },
@@ -28,7 +30,9 @@ function ReportProblem({ onDone }: { onDone: () => void }) {
     setState("sending");
     const res = await apiFetch("/api/support/tickets", {
       method: "POST",
-      body: JSON.stringify({ subject: subject.trim(), body: body.trim(), category: "bug" }),
+      // app_version is captured so admin can debug blind (server also attaches the
+      // reporter's id/email/plan + last 20 logged events on the admin ticket view).
+      body: JSON.stringify({ subject: subject.trim(), body: body.trim(), category: "bug", app_version: APP_VERSION }),
     });
     setState(res.ok ? "sent" : "error");
   }

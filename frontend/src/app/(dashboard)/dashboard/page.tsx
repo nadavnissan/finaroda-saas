@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AppHeader, Disclaimer } from "@/components/scan/AppHeader";
 import { NavDrawer } from "@/components/scan/NavDrawer";
 import { BroadcastBanner } from "@/components/app/BroadcastBanner";
+import { ConceptTooltip } from "@/components/onboarding/ConceptTooltip";
 import { apiFetch } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
 import { useMe } from "@/lib/app/session";
@@ -82,12 +83,16 @@ export default function DashboardPage() {
   const [data, setData] = useState<JournalResponse | null>(null);
   const [xp, setXp] = useState(0);
   const [drawer, setDrawer] = useState(false);
+  const [callSign, setCallSign] = useState<string>("");
 
   const load = useCallback(async () => {
     const r = await apiFetch<JournalResponse>("/api/journal");
     if (r.ok && r.data) setData(r.data);
     const xr = await apiFetch<{ total: number }>("/api/onboarding/xp");
     if (xr.ok && xr.data) setXp(xr.data.total);
+    // Call-sign for the greeting (server falls back to the email local-part if unset).
+    const pr = await apiFetch<{ call_sign?: string }>("/api/profile");
+    if (pr.ok && pr.data?.call_sign) setCallSign(pr.data.call_sign);
   }, []);
 
   useEffect(() => {
@@ -125,8 +130,17 @@ export default function DashboardPage() {
         <BroadcastBanner />
 
         <div style={{ padding: "8px 20px 0" }}>
+          {callSign && (
+            <div style={{ font: `400 10.5px ${MONO}`, color: C.muted, marginBottom: 2 }}>
+              Welcome back, <span style={{ color: C.green }}>{callSign}</span>
+            </div>
+          )}
           <div style={{ font: `700 20px/1.3 ${SANS}`, color: C.fg }}>What Would Have Happened</div>
           <div style={{ font: `400 10.5px ${MONO}`, color: C.muted, marginTop: 3 }}>Hypothetical · not advice · never entries-per-day</div>
+          {/* How is R measured? explainer (r_multiple tooltip + one caption line). */}
+          <div style={{ font: `400 10px ${MONO}`, color: C.muted, marginTop: 5 }}>
+            <ConceptTooltip id="r_multiple" label="How is R measured?" /> Trigger fill to target or risk, 7 day expiry. Trailing is not simulated.
+          </div>
         </div>
 
         {/* Headline stats: capital SAVES is co-equal with wins (symmetric framing). */}

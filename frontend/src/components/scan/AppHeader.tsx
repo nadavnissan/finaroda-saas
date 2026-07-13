@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { C } from "@/lib/onboarding/types";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -13,12 +15,15 @@ export function AppHeader({
   left = "menu",
   onLeft,
   freeBadge = false,
+  trialBadge = false,
 }: {
   xp: number;
   left?: "menu" | "close";
   onLeft?: () => void;
   freeBadge?: boolean;
+  trialBadge?: boolean;
 }) {
+  const router = useRouter();
   return (
     <div
       style={{
@@ -36,9 +41,21 @@ export function AppHeader({
       >
         {left === "menu" ? "≡" : "✕"}
       </button>
-      <span style={{ font: `700 13px ${SANS}`, letterSpacing: 4, color: C.fg }}>FINARODA</span>
+      <button
+        type="button"
+        onClick={() => router.push("/scan")}
+        aria-label="Go to scan"
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: `700 13px ${SANS}`, letterSpacing: 4, color: C.fg }}
+      >
+        FINARODA
+      </button>
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {freeBadge && (
+        {trialBadge && (
+          <span style={{ font: `700 9px ${MONO}`, color: C.amber, border: `1px solid rgba(224,145,63,.5)`, borderRadius: 4, padding: "3px 7px" }}>
+            TRIAL
+          </span>
+        )}
+        {freeBadge && !trialBadge && (
           <span style={{ font: `600 9px ${MONO}`, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: "3px 7px" }}>
             FREE
           </span>

@@ -9,13 +9,14 @@ const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const LENSES: Lens[] = ["EMA200", "RSI", "Volume", "Full"];
 const RISK_STYLES: RiskStyle[] = ["Conservative", "Balanced", "Aggressive"];
 
-function seg<T extends string>(value: T, opt: T, onChange: (v: T) => void, key: string) {
+function seg<T extends string>(value: T, opt: T, onChange: (v: T) => void, key: string, isDefault = false) {
   const active = value === opt;
   return (
     <button
       key={key}
       type="button"
       onClick={() => onChange(opt)}
+      title={isDefault ? "Recommended default" : undefined}
       style={{
         flex: 1,
         padding: "7px 4px",
@@ -23,7 +24,8 @@ function seg<T extends string>(value: T, opt: T, onChange: (v: T) => void, key: 
         letterSpacing: 0.3,
         color: active ? C.bg : C.fg,
         background: active ? C.green : C.panel,
-        border: `1px solid ${active ? C.green : C.border}`,
+        // The default option keeps a subtle green outline even when not selected.
+        border: `1px solid ${active ? C.green : isDefault ? "rgba(31,178,134,.45)" : C.border}`,
         borderRadius: 7,
         cursor: "pointer",
         whiteSpace: "nowrap",
@@ -84,13 +86,27 @@ export function HorizonSelector() {
   );
 }
 
+// The recommended default (Decision E) is highlighted so users know the safe starting
+// point. Lens default = Full, Risk Style default = Balanced.
+const DEFAULT_LENS: Lens = "Full";
+const DEFAULT_RISK: RiskStyle = "Balanced";
+
+function DefaultHint({ value }: { value: string }) {
+  return (
+    <span style={{ font: `400 7.5px ${MONO}`, letterSpacing: 0.5, color: C.green }}>
+      default {value.toUpperCase()}
+    </span>
+  );
+}
+
 export function LensSelect({ value, onChange }: { value: Lens; onChange: (l: Lens) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <span style={{ font: `600 7.5px ${MONO}`, letterSpacing: 1.5, color: C.muted }}>
+      <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, font: `600 7.5px ${MONO}`, letterSpacing: 1.5, color: C.muted }}>
         <ConceptTooltip id="analysis_lens" label="ANALYSIS LENS" />
+        <DefaultHint value={DEFAULT_LENS} />
       </span>
-      <div style={{ display: "flex", gap: 5 }}>{LENSES.map((l) => seg(value, l, onChange, l))}</div>
+      <div style={{ display: "flex", gap: 5 }}>{LENSES.map((l) => seg(value, l, onChange, l, l === DEFAULT_LENS))}</div>
     </div>
   );
 }
@@ -98,10 +114,11 @@ export function LensSelect({ value, onChange }: { value: Lens; onChange: (l: Len
 export function RiskStyleSelect({ value, onChange }: { value: RiskStyle; onChange: (s: RiskStyle) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <span style={{ font: `600 7.5px ${MONO}`, letterSpacing: 1.5, color: C.muted }}>
+      <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, font: `600 7.5px ${MONO}`, letterSpacing: 1.5, color: C.muted }}>
         <ConceptTooltip id="risk_style" label="RISK STYLE" />
+        <DefaultHint value={DEFAULT_RISK} />
       </span>
-      <div style={{ display: "flex", gap: 5 }}>{RISK_STYLES.map((s) => seg(value, s, onChange, s))}</div>
+      <div style={{ display: "flex", gap: 5 }}>{RISK_STYLES.map((s) => seg(value, s, onChange, s, s === DEFAULT_RISK))}</div>
     </div>
   );
 }

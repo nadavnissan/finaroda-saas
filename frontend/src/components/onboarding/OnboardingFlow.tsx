@@ -26,7 +26,9 @@ type Step =
 // copy constants (no em dashes, Nadav rule 12/07). Rendered as {expressions}.
 const COPY = {
   s0: "The first 60 seconds",
-  s1: "The market is going wild. What do you do right now?",
+  // Rendered as a deliberate two-line split (Bug 7) so it never wraps mid-word.
+  s1line1: "The market is going wild.",
+  s1line2: "What do you do right now?",
   s1aLong:
     "That was a trap. This is how most beginners get caught, you are in good company. " +
     "The difference between a gambler and a risk manager is checking before acting. " +
@@ -158,7 +160,11 @@ export function OnboardingFlow() {
     }, 260);
   }, []);
 
-  const runScan = useCallback((onDone: () => void) => {
+  // The scanning overlay stays up until onDone's async work (the reveal fetch) resolves.
+  // This closes the flash (Bug 1): previously scanning cleared first, so a scan-then-
+  // reveal screen (S8/S10) briefly re-rendered its PRE-scan frame before the outcome
+  // landed. Now we never drop back to a stale frame between scan and reveal.
+  const runScan = useCallback((onDone: () => void | Promise<unknown>) => {
     vibrateScan();
     setScanning(true);
     setScanStep(0);
@@ -169,8 +175,7 @@ export function OnboardingFlow() {
       if (s >= SCAN_STEPS.length - 1) {
         clearInterval(t);
         window.setTimeout(() => {
-          setScanning(false);
-          onDone();
+          void Promise.resolve(onDone()).finally(() => setScanning(false));
         }, 450);
       }
     }, 350);
@@ -179,14 +184,13 @@ export function OnboardingFlow() {
   // S2 scan illusion: animate, award the scan, reveal the trap, advance
   useEffect(() => {
     if (step !== "S2") return;
-    runScan(() => {
+    runScan(async () => {
       earn("s2_scan");
-      void onboardingApi.revealEpisode("E1").then((r) => {
-        if (r.data) {
-          setE1r(r.data);
-          playReveal(r.data.reveal_klines.length);
-        }
-      });
+      const r = await onboardingApi.revealEpisode("E1");
+      if (r.data) {
+        setE1r(r.data);
+        playReveal(r.data.reveal_klines.length);
+      }
       go("S3");
     });
   }, [step, runScan, earn, go, playReveal]);
@@ -245,8 +249,12 @@ export function OnboardingFlow() {
 
   async function chooseFork(choice: "trial" | "free") {
     void onboardingApi.funnel("fork_choice", { choice }, anon.current);
-    await onboardingApi.complete(); // grants the one-time onboarding XP
-    router.replace(choice === "trial" ? "/subscribe" : "/scan"); // back never re-enters
+    await onboardingApi.complete(); // idempotent safety net (XP already granted at S9)
+    // Bug 4: "Start 14 days" activates the no-card trial directly and lands on /scan
+    // with the trial chip — no old tokenizing/checkout screen. A 409 (already used) is
+    // harmless; the user still proceeds to /scan.
+    if (choice === "trial") await api.startTrial();
+    router.replace("/scan"); // back never re-enters
   }
 
   if (checking) {
@@ -282,7 +290,10 @@ export function OnboardingFlow() {
       return (
         <OnboardingShell xp={xp}>
           {celebration}
-          <h2 style={{ marginTop: 0 }}>{noOrphan(COPY.s1)}</h2>
+          <h2 style={{ marginTop: 0 }}>
+            <span style={{ display: "block" }}>{COPY.s1line1}</span>
+            <span style={{ display: "block" }}>{COPY.s1line2}</span>
+          </h2>
           {e1 && <EpisodeChart data={e1.setup_klines} entryIndex={e1.entry_index} entryPrice={e1.entry_price} emaMode="none" symbol={e1.coin} dateRange={e1.date_range} />}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
             <button type="button" style={btn(C.green)} onClick={() => { setS1Choice("long"); go("S1a"); }}>
@@ -459,14 +470,13 @@ export function OnboardingFlow() {
                 type="button"
                 style={{ ...glow(), marginTop: 14 }}
                 onClick={() =>
-                  runScan(() => {
+                  runScan(async () => {
                     earn("s8_scan");
-                    void onboardingApi.revealEpisode("E3").then((r) => {
-                      if (r.data) {
-                        setE3r(r.data);
-                        playReveal(r.data.reveal_klines.length);
-                      }
-                    });
+                    const r = await onboardingApi.revealEpisode("E3");
+                    if (r.data) {
+                      setE3r(r.data);
+                      playReveal(r.data.reveal_klines.length);
+                    }
                   })
                 }
               >
@@ -497,7 +507,16 @@ export function OnboardingFlow() {
             <span style={{ color: C.green, fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}>◈ {callsign || "trader"}: Strategy Apprentice</span>
           </div>
           <div>
-            <button type="button" style={btn(C.green)} onClick={() => { void onboardingApi.getEpisode("E4").then((r) => r.data && setE4(r.data)); go("S10"); }}>
+            <button type="button" style={btn(C.green)} onClick={() => {
+              // Persist the call-sign (identity) and grant the onboarding XP NOW (Bug 2).
+              // Completion is credited at S9 so a broken S11 exit path can never cost the
+              // 300 grant; complete() is idempotent, so the S11 safety-net call is a no-op.
+              const cs = callsign.trim();
+              if (cs) void api.saveCallSign(cs);
+              void onboardingApi.complete();
+              void onboardingApi.getEpisode("E4").then((r) => r.data && setE4(r.data));
+              go("S10");
+            }}>
               Continue
             </button>
           </div>
@@ -516,7 +535,7 @@ export function OnboardingFlow() {
               <p style={{ color: C.green, fontSize: 14, marginTop: 2 }}>
                 {noOrphan(COPY.s10gate2)} <ConceptTooltip id="journal_reveal" ctx={{ pending_count: 1 }} />
               </p>
-              <button type="button" style={glow()} onClick={() => runScan(() => void onboardingApi.revealEpisode("E4").then((r) => { if (r.data) { setE4r(r.data); playReveal(r.data.reveal_klines.length); } }))}>
+              <button type="button" style={glow()} onClick={() => runScan(async () => { const r = await onboardingApi.revealEpisode("E4"); if (r.data) { setE4r(r.data); playReveal(r.data.reveal_klines.length); } })}>
                 SCAN
               </button>
             </>
@@ -595,30 +614,28 @@ function EpisodeBlueprint({ setup, reveal }: { setup: EpisodeSetup | null; revea
 function ForkTable() {
   const cell: React.CSSProperties = { padding: "6px 8px", borderBottom: `1px solid ${C.border}`, fontSize: 11, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", whiteSpace: "nowrap" };
   return (
-    <table style={{ width: "100%", minWidth: 320, borderCollapse: "collapse", color: C.fg }}>
+    <table style={{ width: "100%", minWidth: 300, borderCollapse: "collapse", color: C.fg }}>
       <thead>
         <tr>
           <th style={{ ...cell, textAlign: "left", color: C.muted }} />
           <th style={{ ...cell, color: C.green }}>Free forever</th>
           <th style={cell}>Basic</th>
-          <th style={cell}>Advanced</th>
           <th style={cell}>Pro</th>
         </tr>
       </thead>
       <tbody>
         {[
-          ["Scans / day", "1", "unlimited", "unlimited", "unlimited"],
-          ["Coins", "2", "2", "5", "10"],
-          ["Trading Blueprint", "full", "full", "full", "full"],
-          ["Journal (F3)", "7 days", "full", "full", "full"],
-          ["Export", "no", "no", "yes", "yes"],
+          ["Scans / day", "1", "unlimited", "unlimited"],
+          ["Coins", "2", "5", "10"],
+          ["Trading Blueprint", "full", "full", "full"],
+          ["Journal (F3)", "7 days", "full", "full"],
+          ["Export", "no", "yes", "yes"],
         ].map((r) => (
           <tr key={r[0]}>
             <td style={{ ...cell, textAlign: "left", color: C.muted }}>{r[0]}</td>
             <td style={cell}>{r[1]}</td>
             <td style={cell}>{r[2]}</td>
             <td style={cell}>{r[3]}</td>
-            <td style={cell}>{r[4]}</td>
           </tr>
         ))}
       </tbody>
