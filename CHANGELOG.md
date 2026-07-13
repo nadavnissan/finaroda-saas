@@ -21,7 +21,7 @@
 - ATP: TC-A7-01..TC-A7-14 (filters AND, columns+rank, active-days boundary, active-days-not-user-facing, CSV auth+content, churn CRUD+admin+flag+filter, Sentry disabled zero-network, PII scrub, breadcrumb red-line, breadcrumb cap, ticket breadcrumbs stored/rendered, admin 403, unit: filters↔URL/rows/ring/sentry-gate).
 - VERSION: v0.12.0
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: 617e4b3
 - IMPACT: אדמין רואה טבלת משתמשים עשירה עם פילטרים משותפים-URL + CSV; churn survey נלכד ומוצג; Sentry מוכן (env-gated, ללא PII); כל טיקט נושא breadcrumb trail לדיבוג. משתמש קצה: אין שינוי גלוי פרט ל-"Cancel plan or leave" ב-Settings.
 - DECISIONS: (1) D-A8 = **הרחבת** מערכת טיקטים קיימת (support_tickets/ticket_replies). (2) D-A5 hook = endpoint churn מנותק מ-Settings (אין דף ביטול; Stage 3 חסום). (3) churned = יש שורת churn_reasons (שונה מ-expired שקט). (4) Sentry frontend דרך dynamic import כדי לא לחסום tsc/build ללא התקנת החבילה.
 - DRIFT FOUND (מדווח, לא תוקן בשקט): הלינט em-dash סורק גם הערות JSX (`{/* */}`) כ-copy — לא-אינטואיטיבי אך התנהגות קיימת (נשמרתי ממנה בקוד החדש). אין drift חדש נוסף.
