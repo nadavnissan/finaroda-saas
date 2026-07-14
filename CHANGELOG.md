@@ -27,7 +27,7 @@
 - ATP: TC-S4-01..20 (migration reshape, coupon param mapping DEV+live, plan-restriction our-side reject, admin 403, redemption sync + idempotency, expiry/max/status, referral bind once/immutable/self-block, bind-at-signup, reward balance-credit idempotent, banked reward, 100%-coupon no-trigger, banked apply + stacking, void compensating tx, zero-amount no-doc, XP-zero, endpoints, C2 SDK parity, frontend unit, manual browser).
 - VERSION: v0.17.0
 - BRANCH: dev
-- COMMIT: <filled post-commit>
+- COMMIT: a593f6f
 - IMPACT: Admin can issue Stripe-native coupons and see/void referrals; users get a permanent invite link and one free month per referred paid signup; 100%-coupon and credited months issue no tax document; billing webhook verification now uses the official SDK.
 - DECISIONS: (D-S1) plan restriction enforced OUR-SIDE (validate before session creation) not via Stripe applies_to, since we track per-plan Price ids (not Product ids) and build per-plan sessions; unrestricted codes use Stripe's hosted field. (C2) SDK construct_event replaces hand-rolled HMAC. (D-S8) zero-total invoices issue no tax document (audit row instead). Reward idempotency via a single bound->rewarded transition. Reshaped the empty dormant 003/004 tables in place (mig 036) rather than dropping them.
 
