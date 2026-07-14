@@ -54,6 +54,8 @@ export const api = {
     apiFetch("/api/cardcom/initiate", { method: "POST", body: JSON.stringify({ plan }) }),
   startTrial: () => apiFetch("/api/cardcom/trial", { method: "POST" }),
   getPlans: () => apiFetch("/api/plans", { method: "GET" }),
+  // Cancel at period end (D-B6). Returns { access_until, message }.
+  cancelSubscription: () => apiFetch("/api/cardcom/cancel", { method: "POST" }),
   // Persist the onboarding S9 call-sign (identity) to the profile.
   saveCallSign: (callSign: string) =>
     apiFetch("/api/profile/settings", { method: "PUT", body: JSON.stringify({ call_sign: callSign }) }),

@@ -199,6 +199,9 @@ export default function SubscribePage() {
           Every plan sees the same coins pass the same verified{" "}
           <ConceptTooltip id="pass_watch" label="85+ threshold" />.
         </div>
+        <div style={{ padding: "6px 20px 0", font: `400 9px ${MONO}`, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
+          Prices are monthly, in ILS, and include VAT. Cancel any time; access continues until the end of the paid period.
+        </div>
         <div style={{ padding: "10px 20px 0", textAlign: "center" }}>
           <button type="button" onClick={() => router.push("/scan")} style={{ font: `500 12px ${SANS}`, color: C.muted, background: "none", border: "none", borderBottom: `1px solid rgba(133,147,162,.5)`, paddingBottom: 2, cursor: "pointer" }}>
             Continue on Free

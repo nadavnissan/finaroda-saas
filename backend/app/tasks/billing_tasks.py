@@ -31,6 +31,23 @@ async def subscription_renewal_task() -> dict:
     return result
 
 
+async def billing_batch_task() -> dict:
+    """Stage-3 billing cron (D-B9): one pass over the whole subscription lifecycle.
+
+    Order matters: expire lapsed trials, drop cancelled subs whose period ended, then
+    charge/renew + walk dunning. Idempotent and safe to run twice (a second run in-window
+    finds nothing due). Runs on one DB connection. Trial expiry + cancel drops run in any
+    mode; the charge step is a dry-run no-op unless FEATURE_CARDCOM_LIVE."""
+    async with aiosqlite.connect(_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+        expired = await cardcom_service.expire_trials(db)
+        dropped = await cardcom_service.drop_cancelled_to_free(db)
+        renewal = await cardcom_service.run_renewal_batch(db)
+    result = {"expire_trials": expired, "cancel_drop": dropped, "renewal": renewal}
+    log.info("billing_batch_task: %s", result)
+    return result
+
+
 async def trial_ending_soon_task() -> dict:
     """Day-11 reminder (no-card trial, D1): find trials ending TRIAL_REMINDER_LEAD_DAYS
     out (default 3 → day 11 of a 14-day trial). Idempotent via notifications_log

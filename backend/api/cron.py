@@ -4,7 +4,7 @@ resolve-scenarios cron. Railway wiring is a manual step (see SESSION_HANDOFF).""
 import structlog
 from fastapi import APIRouter, Header, HTTPException
 
-from backend.app.tasks.billing_tasks import trial_ending_soon_task
+from backend.app.tasks.billing_tasks import billing_batch_task, trial_ending_soon_task
 from backend.app.tasks.journal_tasks import journal_reveal_teasers_task
 from backend.config import CRON_SECRET
 
@@ -30,3 +30,16 @@ async def run_notification_sweeps(
     teaser = await journal_reveal_teasers_task()
     log.info("cron_notifications", trial=trial, teaser=teaser)
     return {"trial_reminder": trial, "reveal_teaser": teaser}
+
+
+@router.post("/billing")
+async def run_billing_batch(
+    x_cron_secret: str | None = Header(default=None),
+) -> dict:
+    """Stage-3 billing cron (D-B9): expire trials, drop cancelled-at-period-end subs,
+    and charge/renew + dunning. Idempotent; safe to run twice. Railway wiring is a
+    manual step (see SESSION_HANDOFF)."""
+    _authorize(x_cron_secret)
+    result = await billing_batch_task()
+    log.info("cron_billing", **result)
+    return result

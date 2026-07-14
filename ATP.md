@@ -608,6 +608,19 @@
 - **TC-AC6-13 — unit (frontend):** `filterLessons` שילובי type×state×search (AND); `lessonState` locked/completed/open; `videoEmbed` YouTube poster / Vimeo / unknown. ✅ auto (8 בדיקות).
 - **TC-AC6-14 — manual (browser):** Academy ב-390px+1280px: כרטיסים ב-grid (טור אחד בטלפון, מרובה במסך רחב), חיפוש+פילטרים מיידיים, נגן וידאו נטען בלחיצה (lazy), שיעור נעול מציג סיבה בשפה פשוטה, admin create/edit/reorder/archive. ⬜ manual (Nadav).
 
+### TC-B3 — Stage 3: Live Billing (Cardcom) (v0.14.0)
+> מכונת-מצבים שרתית אחת (`core/billing_state.py`, D-B4) על אוצר-המילים הקיים של `subscription_status`. כל קריאות Cardcom mocked, אפס רשת (AC8). כסף = agorot ints (D-B10). אין טרמינל אמיתי מחובר (`FEATURE_CARDCOM_LIVE=false`).
+- **TC-B3-01 — state machine matrix incl. illegal:** כל מעבר חוקי (none→trial/active, trial→active/cancelled/none, active→active/past_due/cancelled, past_due→active/expired/cancelled, cancelled→none/active, expired→active/trial/none) → `can_transition=true`; כל לא-חוקי (none→past_due, active→expired, cancelled→expired, expired→past_due ועוד) → `false` ו-`assert_transition` זורק `IllegalTransition`; `apply_transition` על לא-חוקי לא משנה שורה. `effective_tier`: active/trial/past_due/cancelled שומרים tier בתשלום, expired/none→free. ✅ auto.
+- **TC-B3-02 — agorot arithmetic (AC7/D-B10):** `format_agorot_ils` (backend) + `formatAgorotIls` (frontend): 5900→59.00, 14900→149.00, 99→0.99, 100→1.00, 0→0.00; מחירי פלאן ב-`system_settings` int (5900/14900). ✅ auto.
+- **TC-B3-03 — documents + inert coupon/referral (D-B3/D-B7):** `issue_document` offline → MOCK doc (`MOCK-...`), idempotent per-tx; סוג ברירת-מחדל `receipt`; `coupon_code`/`referral_source` קיימים ב-charges+documents, נישאים למסמך אך המחיר לא משתנה (inert). ✅ auto.
+- **TC-B3-04 — webhook signature + idempotency (AC1/AC2/AC6/D-B8):** callback חתום HMAC → active+tier+token+next_billing+מסמך יחיד; כפול → מעובד פעם אחת (מסמך אחד, tx=success); חתימה פגומה → אין הפעלה (none/free). ✅ auto.
+- **TC-B3-05 — recurring once then zero (AC3):** active-due מחויב פעם אחת (מסמך אחד); ריצה שנייה = 0 (idempotent). ✅ auto.
+- **TC-B3-06 — dunning ladder → expired → Free (AC4/D-B5):** כשל1→past_due+count1+retry (tier נשמר), כשל2→count2, כשל3→expired+tier=free+next_billing=NULL. ✅ auto.
+- **TC-B3-07 — recovery + cancel end-of-period (AC4/AC5/D-B6):** past_due-retry חיוב מוצלח→active+count0; ביטול active→cancelled+גישה עד period end, ביטול-כפול בטוח, cron→none/free; ביטול trial שומר גישה עד trial_ends. ✅ auto.
+- **TC-B3-08 — billing cron auth (D-B9):** `POST /api/cron/billing` ללא secret→403/422, secret שגוי→403, נכון→200 עם `{expire_trials,cancel_drop,renewal}`. ✅ auto.
+- **TC-B3-09 — no live terminal (AC8):** `FEATURE_CARDCOM_LIVE=false`, `CARDCOM_TERMINAL_ID` ריק, `.env.example` שומר על שניהם. ✅ auto.
+- **TC-B3-10 — manual (browser):** BillingBanner ב-390px+1280px למצבי past_due/cancelled/expired ב-scan+settings; cancel dialog מבצע ביטול+survey+access-until; מחירי ₪ + הערת VAT ב-Subscribe. ⬜ manual (Nadav).
+
 ---
 
 ## ATR (Acceptance Test Reports)

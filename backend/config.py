@@ -104,6 +104,16 @@ CRON_SECRET = os.getenv("CRON_SECRET", "")
 TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "14"))
 TRIAL_REMINDER_LEAD_DAYS: int = int(os.getenv("TRIAL_REMINDER_LEAD_DAYS", "3"))
 
+# ── Billing (Stage 3 — recurring + dunning) ──────────────────────────────────
+# Recurring period between charges (days). Dunning retry cadence (D-B5): on a failed
+# recurring charge the subscription goes past_due and is retried at +24h then +72h
+# (two retries, expressed as hours-after-each-failure: 24 then 48). After the second
+# retry fails the subscription expires and entitlements drop to Free. All idempotent.
+BILLING_PERIOD_DAYS: int = int(os.getenv("BILLING_PERIOD_DAYS", "30"))
+DUNNING_RETRY_OFFSETS_HOURS: list[int] = [
+    int(x) for x in os.getenv("DUNNING_RETRY_OFFSETS_HOURS", "24,48").split(",") if x.strip()
+]
+
 # ── Cardcom v11 (sole payment provider for V1 — SPEC §9) ─────────────────────
 FEATURE_CARDCOM_LIVE: bool = os.getenv("FEATURE_CARDCOM_LIVE", "false").lower() == "true"
 CARDCOM_TERMINAL_ID: str = os.getenv("CARDCOM_TERMINAL_ID", "")

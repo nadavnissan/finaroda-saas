@@ -214,3 +214,133 @@ async def send_broadcast_email(
 ) -> bool:
     subject, html, text = render_broadcast(subject, body, unsubscribe_url(user_id, "email_broadcast"))
     return await _send_or_log(to_email, subject, html, text)
+
+
+# ── Stage 3 billing flows — receipt, dunning failure, cancel confirmation ─────
+# Prices are agorot ints (D-B10); rendered as final VAT-inclusive shekel amounts
+# (D-B2). Product-email category (respect Stage-5 email_product pref at the caller).
+# No em-dash anywhere in this copy.
+
+def format_agorot_ils(amount_agorot: int) -> str:
+    """Agorot int -> a final shekel string, e.g. 14900 -> '149.00 ILS'. No float math."""
+    shekels, agorot = divmod(int(amount_agorot), 100)
+    return f"{shekels}.{agorot:02d} ILS"
+
+
+def render_payment_receipt(
+    first_name: str | None, amount_agorot: int, document_url: str | None,
+    document_number: str | None, plan: str | None = None,
+) -> tuple[str, str, str]:
+    """Confirmation + billing-document link for a successful charge (first or recurring)."""
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
+    amount = format_agorot_ils(amount_agorot)
+    plan_line = f" for your {plan.upper()} plan" if plan else ""
+    doc_line_html = (
+        f'<p>Your billing document{f" (no. {document_number})" if document_number else ""} '
+        f'is ready.</p>'
+        if document_url else ""
+    )
+    subject = "Your FINARODA payment receipt"
+    html = _wrap(
+        "Payment received",
+        f"<p>{greeting}</p><p>We received your payment of <strong>{amount}</strong>{plan_line}. "
+        f"Prices include VAT.</p>{doc_line_html}",
+        document_url or f"{get_frontend_url()}/scan",
+        "View document" if document_url else "Open FINARODA",
+    )
+    doc_line_text = (
+        f"\nBilling document{f' no. {document_number}' if document_number else ''}: {document_url}"
+        if document_url else ""
+    )
+    text = (
+        f"{greeting}\n\nWe received your payment of {amount}{plan_line}. Prices include VAT."
+        f"{doc_line_text}"
+    )
+    return subject, html, text
+
+
+def render_payment_failed(
+    first_name: str | None, attempt: int, retry_date: str | None
+) -> tuple[str, str, str]:
+    """Dunning email on a failed recurring charge (D-B5). One per failure/retry.
+
+    `attempt` is the failure number (1..3). `retry_date` is the next automatic retry
+    date, or None when this was the final attempt and access has dropped to Free."""
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
+    if retry_date:
+        headline = "We could not process your payment"
+        body = (
+            f"<p>{greeting}</p><p>We were unable to charge your card for your FINARODA "
+            f"subscription. We will try again automatically on {retry_date}. "
+            f"To avoid any interruption, please check your card details.</p>"
+        )
+        text = (
+            f"{greeting}\n\nWe were unable to charge your card for your FINARODA "
+            f"subscription. We will try again automatically on {retry_date}. "
+            f"Please check your card details to avoid interruption.\n"
+            f"{get_frontend_url()}/subscribe"
+        )
+    else:
+        headline = "Your subscription has ended"
+        body = (
+            f"<p>{greeting}</p><p>We could not process your payment after several attempts, "
+            f"so your FINARODA subscription has ended and your account moved to Free. "
+            f"You can re-subscribe any time to restore the full toolkit.</p>"
+        )
+        text = (
+            f"{greeting}\n\nWe could not process your payment after several attempts, so your "
+            f"FINARODA subscription has ended and your account moved to Free. Re-subscribe any "
+            f"time:\n{get_frontend_url()}/subscribe"
+        )
+    subject = "Action needed: FINARODA payment" if retry_date else "Your FINARODA subscription has ended"
+    html = _wrap(headline, body, f"{get_frontend_url()}/subscribe",
+                 "Update payment" if retry_date else "Re-subscribe")
+    return subject, html, text
+
+
+def render_subscription_canceled(
+    first_name: str | None, access_until: str | None
+) -> tuple[str, str, str]:
+    """Cancel confirmation (D-B6): access retained until period end, then Free."""
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
+    until_line = (
+        f"You keep full access until {access_until}, then your account moves to Free."
+        if access_until else "Your account will move to Free at the end of the current period."
+    )
+    subject = "Your FINARODA subscription is cancelled"
+    html = _wrap(
+        "Subscription cancelled",
+        f"<p>{greeting}</p><p>Your FINARODA subscription is cancelled. {until_line} "
+        f"No further charges will be made. You can re-subscribe any time.</p>",
+        f"{get_frontend_url()}/subscribe",
+        "Re-subscribe",
+    )
+    text = (
+        f"{greeting}\n\nYour FINARODA subscription is cancelled. {until_line} No further charges "
+        f"will be made. Re-subscribe any time:\n{get_frontend_url()}/subscribe"
+    )
+    return subject, html, text
+
+
+async def send_payment_receipt_email(
+    to_email: str, first_name: str | None, amount_agorot: int,
+    document_url: str | None, document_number: str | None, plan: str | None = None,
+) -> bool:
+    subject, html, text = render_payment_receipt(
+        first_name, amount_agorot, document_url, document_number, plan
+    )
+    return await _send_or_log(to_email, subject, html, text)
+
+
+async def send_payment_failed_email(
+    to_email: str, first_name: str | None, attempt: int, retry_date: str | None
+) -> bool:
+    subject, html, text = render_payment_failed(first_name, attempt, retry_date)
+    return await _send_or_log(to_email, subject, html, text)
+
+
+async def send_subscription_canceled_email(
+    to_email: str, first_name: str | None, access_until: str | None
+) -> bool:
+    subject, html, text = render_subscription_canceled(first_name, access_until)
+    return await _send_or_log(to_email, subject, html, text)

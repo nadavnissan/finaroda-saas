@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { MarketContext } from "@finaroda/scoring-engine/scorer.js";
 
 import { AppHeader, Disclaimer } from "@/components/scan/AppHeader";
+import { BillingBanner } from "@/components/app/BillingBanner";
 import { BroadcastBanner } from "@/components/app/BroadcastBanner";
 import { HorizonSelector, LensSelect, RedLineCaption, RiskStyleSelect } from "@/components/scan/Controls";
 import { NavDrawer } from "@/components/scan/NavDrawer";
@@ -232,6 +233,7 @@ export default function ScanPage() {
       <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <AppHeader xp={xp} left="menu" onLeft={() => setDrawer(true)} freeBadge={ent.tier === "free"} trialBadge={onTrial} />
         <BroadcastBanner />
+        <BillingBanner />
 
         {phase === "idle" && (
           <>

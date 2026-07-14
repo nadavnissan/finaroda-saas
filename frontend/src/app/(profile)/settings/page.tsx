@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppHeader, Disclaimer } from "@/components/scan/AppHeader";
+import { BillingBanner } from "@/components/app/BillingBanner";
 import { ChurnSurvey } from "@/components/app/ChurnSurvey";
 import { apiFetch } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
@@ -81,6 +82,8 @@ export default function SettingsPage() {
       <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column" }}>
         <AppHeader xp={p.xp_total} left="close" onLeft={() => router.push("/scan")} freeBadge={me.tier === "free"} />
 
+        <BillingBanner />
+
         {/* Page heading */}
         <div style={{ padding: "14px 20px 0", display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ font: `700 17px ${MONO}`, color: C.fg }}>SETTINGS</div>
@@ -127,10 +130,10 @@ export default function SettingsPage() {
           )}
         </Card>
 
-        {/* Manage plan: surfaces the exit/churn survey (no billing action here) */}
+        {/* Manage plan: cancel at period end (D-B6) + exit survey (D-A5). */}
         <Card>
           <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>MANAGE PLAN</span>
-          <ChurnSurvey />
+          <ChurnSurvey subscriptionStatus={p.subscription_status} />
         </Card>
 
         <div style={{ marginTop: "auto" }}>
