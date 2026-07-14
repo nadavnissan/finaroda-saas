@@ -18,7 +18,7 @@
 - ATP: TC-V1-RVL-01..06, TC-V1-XP-01..07, TC-V1-ENT-01..09, TC-V1-MON-01..06, TC-V1-LINT-01..02, TC-V1-E2E-01..04 (added to ATP.md); coverage matrix maps every Stage 3R/4/5/6/7 + v0.10.x + onboarding AC to >=1 check (validation/ATP_V1.md §3).
 - VERSION: v0.17.1
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: 1821eca
 - IMPACT: A suspended account is now actually locked out (was a silent no-op). The em-dash copy lint is trustworthy. The product now has a runnable, red-line-first acceptance procedure that gates every future stage.
 - DECISIONS: Honest count over vanity (S3) — 240 automated test cases (182 backend + 58 frontend), coverage proven by matrix not raw number. `require_active_trial` wiring left as escalated debt (product-flow decision, not decided unilaterally).
 
