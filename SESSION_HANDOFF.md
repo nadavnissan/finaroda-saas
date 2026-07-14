@@ -13,14 +13,14 @@
 - **Fix shipped this run (FINDING-1, P1):** admin `suspend` was a silent no-op — `get_current_user` never checked `suspended_at`, so a suspended account kept full access. Fixed with a single `403 ACCOUNT_SUSPENDED` chokepoint + regression TC-V1-ENT-09. Not a reveal/XP/money leak.
 - **⚠ Backend dependency (from Stage 3R):** `stripe>=9,<13` in `backend/requirements.txt`; local `.venv` has stripe **14.4.1** (SDK verify stable across 9..14, not a blocker). The fresh clean venv installed the pinned range cleanly.
 - **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.17.1) is **dev only** — Nadav merges to main manually.
-- **NEXT RUN:** open. Product is validation-gated. Candidates: Stage 8, the live-account GO-LIVE loop, or the Israeli tax-invoice provider wiring. First resolve the manual-only checklist below + DEBT-1 (see Validation-V1 section).
+- **NEXT RUN:** **Stage 8.** Founder ruling (2026-07-15): **dev→main happens INSIDE Stage 8, after the founder's manual-only checklist passes** — not before. Stage 8 scope also includes deleting `require_active_trial` (see DEBT-1 ruling below).
 
 ## Validation V1 (pre-Stage-8 quality gate) — SHIPPED (v0.17.1, 2026-07-14)
 - **What shipped:** the Acceptance Test Procedure as CODE — **dedicated red-line invariant suites** + E2E journeys that run on every future stage. Files: `backend/tests/test_v1_redline_{reveal,xp,entitlements,money,lint}.py` + `test_v1_e2e.py`; procedure + full coverage matrix in `validation/ATP_V1.md`; signed run in `validation/VALIDATION_REPORT_2026-07-14.md`.
 - **Final numbers:** ATP **240 automated test cases** (182 backend pytest + 58 frontend), **1 P0 fixed = 0** (no P0), **1 P1 fixed** (suspend enforcement), **2 P2 debt** registered, **suite GREEN** on fresh venv + production build.
 - **Red-line status (S2):** no reveal-leak, no XP spend path, no money-float, no plan/rank entitlement bypass in shipped code. One entitlement-STATE gap (suspend no-op) found + fixed — flagged so it is on record.
 - **P2-debt (escalated, not decided unilaterally):**
-  - **DEBT-1:** `require_active_trial` is defined but wired to no endpoint. Trial expiry is already handled by the daily cron → Free + `effective_tier`. Wiring it to `/billing/*` would 402 an expired-trial user mid-flow — a product-flow decision for Nadav.
+  - **DEBT-1 — RULED (2026-07-15): dead code, DELETE in Stage 8.** `require_active_trial` (backend/core/auth.py) is defined but wired to no endpoint; the billing state machine already handles expired trials (cron → Free + `effective_tier`). Founder ruling: it is dead code — **remove it as part of Stage 8 scope** (do NOT wire it). No behaviour change; a straight deletion + confirm no import references remain.
   - **DEBT-3:** no rate-limit on `/api/market/proxy` + auth endpoints (slowapi is a dep, not yet applied) — hardening-phase item.
   - **DEBT-2 (closed):** the reported Stage-5 email em-dash drift was investigated — backend rendered copy uses hyphens; the em-dashes are in Python comment dividers/docstrings (not user-facing). No fix needed.
 - **⬜ MANUAL-ONLY checklist for the founder (cannot be honestly automated — rendering judgement / real devices / live third parties):**
