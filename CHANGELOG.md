@@ -24,7 +24,7 @@
 - ATP: TC-AC6-01..14 (13 auto + 1 manual browser).
 - VERSION: v0.13.0
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: 17bd07b
 - IMPACT: האקדמיה עברה ל-card grid עם חיפוש/פילטרים ווידאו; אדמין מנהל שיעורים בלי קוד; gating עבר לשער-כפול plan+rank נשלט-שרת. כל ההשלמות/XP הקיימות נשמרו. אין שינוי במסלול המשתמש להשלמה (+100 חד-פעמי).
 - DECISIONS: (1) min_rank מאוחסן כסף-XP int (0/1000/3000/8000), ישיר להשוואה מול xp_total. (2) `awards_xp` boolean per-lesson שומר התנהגות B6 stub (3 seeds=0) → כל הבדיקות הקיימות נשארות ירוקות. (3) reorder = כפתורי up/down ששולחים סדר מלא (D-AC5). (4) body נזרע מ-concept JSON (guarded read, fallback ריק) לשימור תוכן קיים בשליטת-שרת. (5) locked-content = 403 עם reason (לא 404).
 - AC9 (em-dash lint report): ראה SESSION_HANDOFF — הממצא מ-Stage 7 דווח במלואו.
