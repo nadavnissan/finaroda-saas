@@ -7,10 +7,12 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 class MagicLinkRequest(BaseModel):
     email: EmailStr
+    referral_code: Optional[str] = None   # /r/<code> binding at signup (D-S6)
 
 
 class GoogleAuthRequest(BaseModel):
     id_token: str
+    referral_code: Optional[str] = None   # /r/<code> binding at signup (D-S6)
 
 
 class AppleAuthRequest(BaseModel):

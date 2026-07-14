@@ -36,3 +36,21 @@ class SettingUpdate(BaseModel):
 class SettingsUpdateBatch(BaseModel):
     updates: list[SettingUpdate]
     note: str = "settings edit"
+
+
+# ── Stage 4: coupons + referral admin ────────────────────────────────────────
+class CouponCreate(BaseModel):
+    """Admin-created coupon → drives Stripe Coupon + Promotion Code (D-S2). Amounts in
+    agorot (ILS minor unit). duration is always 'once' (first charge only, D-S1)."""
+    code: str
+    discount_type: Literal["percent", "fixed"]
+    percent_off: Optional[int] = None            # 1..100 for percent
+    amount_off_agorot: Optional[int] = None      # positive agorot for fixed
+    max_redemptions: Optional[int] = None        # None = unlimited
+    expires_at: Optional[str] = None             # ISO datetime or None
+    plan_restriction: Optional[Literal["basic", "pro"]] = None
+    description: Optional[str] = None
+
+
+class ReferralVoid(BaseModel):
+    note: str = "referral voided"

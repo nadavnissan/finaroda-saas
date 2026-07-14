@@ -83,6 +83,8 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 ### פרופיל
 שם, תוכנית, ותק במערכת, הגדרות (**Analysis Lens** display-only, **Risk Style** output-only, מטבעות מועדפים בגבולות הפלאן — **אין סף-ציון אישי**, RED LINE PRD §3.5.5), היסטוריית סריקות, מדדי משמעת. Lens + Risk Style are remembered per user.
 
+> **✅ SHIPPED — Invite a friend (Stage 4 referral, v0.17.0):** כרטיס "INVITE A FRIEND" בפרופיל: הקישור הקבוע `/r/<code>`, כפתור **COPY**, ושורת סיכום ("N friends joined, M free months earned, K banked"). קופי מדויק: "When a friend you invite makes their first paid charge, you get one free month. If you are not on a paid plan yet, we bank it for you." **RED LINE:** אין gamification של הזמנות, אין ספירת רצפים, אין דחיפה — סיגנל מצב בלבד; XP אינו מעורב.
+
 ### שלבי יוקרה (Status Tiers) — מבוססי משמעת
 מעמד שמעניק שייכות, **מתוגמל על התנהגות נכונה ולא על תדירות**:
 
@@ -117,6 +119,8 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 > כל המספרים נשלטים מהאדמין בלי קוד. הטבלה היא ברירת מחדל מוצעת — לאישור נדב.
 > **Free tier (D2, נדב 2026-07-09):** מסלול חינמי קבוע — סריקה 1/יום, 2 מטבעות, Blueprint מלא, F3 מוגבל ל-7 ימים, ללא ייצוא, academy בסיסי. במסך paywall/פיצול — אפשרות משנית **"Continue on Free"**.
 > **טבלת ההשוואה — חובה בעמוד ה-Subscribe (E3, נדב 2026-07-11):** טבלת ה-Free-מול-בתשלום שלמעלה **חייבת להיות מוצגת ללקוח בעמוד ה-Subscribe/paywall עצמו** — כדי שהמשתמש רואה בדיוק מה כלול בכל מסלול לפני החלטה. שורת ה-Free מתויגת "Free forever" (1 סריקה/יום · 2 מטבעות · Blueprint מלא · יומן 7 ימים · ללא ייצוא). ראו PRD F7 (AC paywall) + copy-guard ATP TC-J-002.
+
+> **✅ SHIPPED — Coupons (Stage 4, v0.17.0):** הזנת קופון מתבצעת ב**שדה ה-Promotion Code המתארח של Stripe** בתוך ה-Checkout (‏`allow_promotion_codes=true`, D-S3) — עמוד ה-Subscribe שלנו **לא** בונה שדה קופון משלו. הקופון חל על החיוב הראשון בלבד (`duration=once`). קוד מוגבל-פלאן על פלאן שגוי נדחה אצלנו לפני יצירת ה-session (D-S1). **Admin** יוצר/משבית קופונים בסקשן "Coupons" בקונסולה, ורואה referrals + void בסקשן "Referrals".
 > **שליטה ובחירה** = שלושה מסלולים (Free + 2 בתשלום, אחרי Decision A) נותנים ללקוח תחושת בקרה. **trial 14 יום ללא כרטיס** בכל הפלאנים בתשלום; אין חיוב אוטומטי — בסוף התקופה בחירה אקטיבית. **BUG 4 (v0.10.0):** ה-CTA של ה-trial קורא ישירות ל-`POST /api/cardcom/trial` (ללא מסך checkout/כרטיס) ומנחית ל-`/scan` עם TRIAL chip.
 > **✅ SHIPPED — Stage 3 billing UX (v0.14.0, sandbox/mock):** מחירים בעמוד ה-Subscribe מוצגים כ-**₪ סופי + הערת "prices include VAT"** (D-B2). **באנר חיוב בתוך האפליקציה** (`BillingBanner`, ב-scan + settings) למצבים past_due ("Payment issue — update payment"), cancelled ("access until <date>, then Free") ו-expired ("on Free — re-subscribe") — כל אחד עם CTA ל-`/subscribe`. **ביטול** מ-Settings ("Cancel plan or leave"): מבצע ביטול end-of-period אמיתי (גישה נשמרת עד תום התקופה ואז Free) ומיד לאחריו שאלון היציאה (F9), עם הודעת access-until; ביטול-כפול בטוח. חשבונית/קבלה נשלחת במייל לכל חיוב מוצלח. **RED LINE:** אין דחיפה לסחור/gamification; הבאנר הוא סיגנל מצב, לא engagement.
 

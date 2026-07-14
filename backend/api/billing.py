@@ -9,13 +9,15 @@ import aiosqlite
 import structlog
 from fastapi import APIRouter, Depends, Header, Request
 
-from backend.core import stripe_service
+from backend.core import coupon_service, stripe_service
 from backend.core.auth import get_current_user
 from backend.core.database import get_db_connection
 from backend.models.auth import CurrentUser
 from backend.models.billing import (
     CheckoutInitiateRequest,
     CheckoutInitiateResponse,
+    CouponValidateRequest,
+    CouponValidateResponse,
     SubscriptionCancelResponse,
     SubscriptionStatusResponse,
 )
@@ -32,7 +34,27 @@ async def checkout(
 ) -> CheckoutInitiateResponse:
     """Create a Stripe Checkout Session for a plan (DEV fake session until a live key)."""
     return await stripe_service.initiate_checkout(
-        user_id=user.internal_id, plan=body.plan, db=db, is_upgrade=body.is_upgrade
+        user_id=user.internal_id, plan=body.plan, db=db, is_upgrade=body.is_upgrade,
+        promotion_code=body.promotion_code,
+    )
+
+
+@router.post("/coupon/validate", response_model=CouponValidateResponse)
+async def validate_coupon(
+    body: CouponValidateRequest,
+    user: CurrentUser = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> CouponValidateResponse:
+    """Validate a coupon code for a plan our-side (D-S1/AC2) so the client can preview a
+    discount before checkout. Plan-restricted codes on the wrong plan return valid=false."""
+    result = await coupon_service.validate_coupon_for_plan(db, body.code, body.plan)
+    coupon = result.get("coupon") or {}
+    return CouponValidateResponse(
+        valid=result["valid"],
+        reason=result["reason"],
+        discount_type=coupon.get("discount_type") if result["valid"] else None,
+        percent_off=coupon.get("percent_off") if result["valid"] else None,
+        amount_off_agorot=coupon.get("amount_off_agorot") if result["valid"] else None,
     )
 
 

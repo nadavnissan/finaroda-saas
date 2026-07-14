@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
+import { REFERRAL_KEY } from "@/lib/app/promotions";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -44,7 +45,16 @@ export default function LoginPage() {
     }
     setStatus("sending");
     setDevToken(null);
-    const res = await api.requestMagicLink(email);
+    // A pending /r/<code> referral is bound once, server-side, when a NEW account signs up.
+    let referralCode: string | null = null;
+    if (typeof window !== "undefined") {
+      try {
+        referralCode = window.localStorage.getItem(REFERRAL_KEY);
+      } catch {
+        referralCode = null;
+      }
+    }
+    const res = await api.requestMagicLink(email, referralCode);
     if (res.ok) {
       const devLink = (res.data as { dev_magic_link?: string } | null)?.dev_magic_link;
       if (devLink) {

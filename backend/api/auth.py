@@ -72,6 +72,10 @@ async def request_magic_link(
         user_id = cursor.lastrowid
         first_name = None
         await db.commit()
+        # Bind a referral once at signup (immutable, self-referral blocked; D-S6).
+        if body.referral_code:
+            from backend.core import referral_service
+            await referral_service.bind_referral(db, user_id, body.referral_code)
         await send_welcome_email(email)
     else:
         user_id = existing[0][0]
@@ -175,6 +179,9 @@ async def google_oauth(
         )
         user_id = cursor.lastrowid
         await db.commit()
+        if body.referral_code:
+            from backend.core import referral_service
+            await referral_service.bind_referral(db, user_id, body.referral_code)
         await send_welcome_email(email, first_name=info.get("given_name") or None)
     else:
         user_id = existing[0][0]

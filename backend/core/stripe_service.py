@@ -18,11 +18,8 @@ into a zero-network dev path (a fake session id, redirect to the success page). 
 processing itself is provider-logic and runs identically offline — tests POST synthetic
 Stripe events with a valid signature. All amounts are agorot ints (D-B10).
 """
-import hashlib
-import hmac
 import json
 import logging
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -154,6 +151,7 @@ async def initiate_checkout(
     plan: str,
     db: aiosqlite.Connection,
     is_upgrade: bool = False,
+    promotion_code: Optional[str] = None,
 ) -> CheckoutInitiateResponse:
     """
     Create a Stripe Checkout Session (mode=subscription) and return its hosted URL.
@@ -161,6 +159,11 @@ async def initiate_checkout(
     409 when already actively subscribed to this plan. In DEV mode (no live key) returns a
     zero-network fake session that lands on the success page — activation still only ever
     happens via the webhook.
+
+    `promotion_code` (optional): validated our-side for this plan BEFORE the session is
+    created (D-S1/AC2 — a plan-restricted code on the wrong plan is rejected here), then
+    applied via the session `discounts`. When omitted, the session turns on Stripe's hosted
+    promotion-code field (allow_promotion_codes, D-S3).
     """
     if plan not in VALID_PLANS:
         raise HTTPException(400, f"Invalid plan: {plan}")
@@ -182,11 +185,22 @@ async def initiate_checkout(
     if amount_agorot <= 0:
         raise HTTPException(400, f"No price configured for plan: {plan}")
 
+    # Validate a supplied promotion code our-side (plan restriction + status) before we
+    # create anything (AC2). Unrestricted codes may still be entered in Stripe's hosted field.
+    validated_coupon = None
+    code_norm = (promotion_code or "").strip().upper() or None
+    if code_norm:
+        from backend.core import coupon_service
+        result = await coupon_service.validate_coupon_for_plan(db, code_norm, plan)
+        if not result["valid"]:
+            raise HTTPException(400, {"code": "INVALID_COUPON", "reason": result["reason"]})
+        validated_coupon = result["coupon"]
+
     cursor = await db.execute(
         """INSERT INTO payment_transactions
-           (user_id, amount_ils, currency, status, kind, provider_response_json, created_at)
-           VALUES (?, ?, 'ILS', 'pending', 'first', ?, ?)""",
-        (user_id, amount_agorot, json.dumps({"tier_target": plan}), _now().isoformat()),
+           (user_id, amount_ils, currency, status, kind, coupon_code, provider_response_json, created_at)
+           VALUES (?, ?, 'ILS', 'pending', 'first', ?, ?, ?)""",
+        (user_id, amount_agorot, code_norm, json.dumps({"tier_target": plan}), _now().isoformat()),
     )
     await db.commit()
     transaction_id = cursor.lastrowid
@@ -229,6 +243,14 @@ async def initiate_checkout(
         metadata={"user_id": str(user_id), "plan": plan, "transaction_id": str(transaction_id)},
         subscription_data={"metadata": {"user_id": str(user_id), "plan": plan}},
     )
+    # Coupon UX (Stripe forbids `discounts` + `allow_promotion_codes` together): a
+    # validated code is applied directly; otherwise Stripe's hosted field handles entry.
+    if validated_coupon:
+        session_kwargs["discounts"] = [
+            {"promotion_code": validated_coupon["stripe_promotion_code_id"]}
+        ]
+    else:
+        session_kwargs["allow_promotion_codes"] = True
     # `customer` and `customer_email` are mutually exclusive in Stripe.
     if stripe_customer_id:
         session_kwargs["customer"] = stripe_customer_id
@@ -271,32 +293,21 @@ async def initiate_checkout(
 
 # ── Webhook: verify + dispatch ─────────────────────────────────────────────────
 def verify_and_parse(raw_body: bytes, sig_header: str, secret: str) -> Optional[dict]:
-    """Verify a Stripe webhook signature (the documented t=,v1= HMAC-SHA256 scheme) and
-    return the parsed event, or None if verification fails. Hand-rolled (no SDK dependency
-    at the verification boundary) so the webhook path is fully testable offline; the SDK is
-    still used for the outbound Checkout/Subscription API calls (D-R1)."""
+    """Verify a Stripe webhook signature via the official SDK and return the parsed event
+    as a plain dict, or None if verification fails (C2/AC9).
+
+    Verification uses `stripe.Webhook.construct_event`, the SDK's implementation of Stripe's
+    documented `t=,v1=` HMAC-SHA256 scheme with a 300s tolerance — a pure-crypto call with
+    no network, so the webhook path stays fully testable offline. We then re-parse the raw
+    body into a plain dict so every downstream handler keeps its dict contract unchanged.
+    (Replaces the Stage-3R hand-rolled HMAC; hand-rolled crypto is not kept.)"""
     if not secret or not sig_header:
         return None
-    timestamp: Optional[str] = None
-    sigs: list[str] = []
-    for part in sig_header.split(","):
-        if "=" not in part:
-            continue
-        k, v = part.split("=", 1)
-        if k == "t":
-            timestamp = v
-        elif k == "v1":
-            sigs.append(v)
-    if not timestamp or not sigs:
-        return None
-    signed_payload = timestamp.encode() + b"." + raw_body
-    expected = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
-    if not any(hmac.compare_digest(expected, s) for s in sigs):
-        return None
     try:
-        if abs(time.time() - int(timestamp)) > _SIG_TOLERANCE_SECONDS:
-            return None
-    except ValueError:
+        import stripe
+
+        stripe.Webhook.construct_event(raw_body, sig_header, secret, tolerance=_SIG_TOLERANCE_SECONDS)
+    except Exception:  # noqa: BLE001 — bad signature / stale timestamp / malformed body
         return None
     try:
         return json.loads(raw_body.decode("utf-8"))
@@ -379,6 +390,59 @@ async def _resolve_user(
     return None
 
 
+async def _audit_no_document(db: aiosqlite.Connection, user_id: int, tx_id: Optional[int], where: str) -> None:
+    """A zero-total invoice/charge issues NO Israeli tax document (D-S8/AC7). Record an
+    internal audit row so admin still sees the credited/skipped month."""
+    await db.execute(
+        """INSERT INTO subscription_events (user_id, event_type, transaction_id, metadata_json, created_at)
+           VALUES (?, 'zero_amount_invoice_no_document', ?, ?, ?)""",
+        (user_id, tx_id, json.dumps({"source": where}), _now().isoformat()),
+    )
+
+
+async def _sync_coupon_redemption(
+    db: aiosqlite.Connection, user_id: int, tx_id: Optional[int], obj: dict
+) -> None:
+    """Sync a coupon redemption from a completed checkout (AC3): find the coupon (by the
+    code recorded on our transaction, else by the session's promotion-code id), record the
+    redemption, and bump our mirror count. Idempotent per (coupon, user)."""
+    from backend.core import coupon_service
+
+    coupon = None
+    if tx_id:
+        trows = await db.execute_fetchall(
+            "SELECT coupon_code FROM payment_transactions WHERE id = ?", (tx_id,)
+        )
+        if trows and trows[0][0]:
+            coupon = await coupon_service.get_coupon_by_code(db, trows[0][0])
+    if not coupon:
+        for d in (obj.get("discounts") or []):
+            pid = d.get("promotion_code")
+            if isinstance(pid, str):
+                coupon = await coupon_service.get_coupon_by_promotion_code_id(db, pid)
+                if coupon:
+                    break
+    if not coupon:
+        return
+    amount_disc = (obj.get("total_details") or {}).get("amount_discount")
+    new_redemption = await coupon_service.record_redemption(
+        db, coupon=coupon, user_id=user_id, transaction_id=tx_id,
+        amount_discounted_agorot=amount_disc, promotion_code=coupon["code"], commit=False,
+    )
+    if new_redemption:
+        if tx_id:
+            await db.execute(
+                "UPDATE payment_transactions SET coupon_code = COALESCE(coupon_code, ?) WHERE id = ?",
+                (coupon["code"], tx_id),
+            )
+        await db.execute(
+            """INSERT INTO subscription_events (user_id, event_type, transaction_id, metadata_json, created_at)
+               VALUES (?, 'coupon_redeemed', ?, ?, ?)""",
+            (user_id, tx_id, json.dumps({"code": coupon["code"], "amount_discounted": amount_disc}),
+             _now().isoformat()),
+        )
+
+
 async def _on_checkout_completed(db: aiosqlite.Connection, obj: dict) -> None:
     """checkout.session.completed → activate, store Stripe ids, issue the first document."""
     md = obj.get("metadata") or {}
@@ -452,7 +516,16 @@ async def _on_checkout_completed(db: aiosqlite.Connection, obj: dict) -> None:
            WHERE internal_id=?""",
         (now.isoformat(), next_at, customer_id, subscription_id, now.isoformat(), user_id),
     )
-    await _issue_document_and_receipt(db, user_id, tx_id, amount_agorot, plan or old_tier, commit=False)
+    # Coupon redemption sync (AC3) + zero-amount tax-doc gate (D-S8/AC7): a 100%-coupon
+    # first charge (amount 0) activates a real subscription but issues NO tax document.
+    await _sync_coupon_redemption(db, user_id, tx_id, obj)
+    if (amount_agorot or 0) > 0:
+        await _issue_document_and_receipt(db, user_id, tx_id, amount_agorot, plan or old_tier, commit=False)
+    else:
+        await _audit_no_document(db, user_id, tx_id, "checkout")
+    # Apply any banked referral credits now that this user is a paying customer (AC6).
+    from backend.core import referral_service
+    await referral_service.apply_banked_credits(db, user_id, plan or old_tier, commit=False)
     await db.commit()
     logger.info("checkout.session.completed: active user=%s plan=%s", user_id, plan)
 
@@ -474,12 +547,20 @@ async def _on_invoice_paid(db: aiosqlite.Connection, obj: dict) -> None:
         )
 
     billing_reason = obj.get("billing_reason")
+    amount_agorot = obj.get("amount_paid") or 0
+
+    # Referral reward trigger (D-S7): the referred user's FIRST invoice.paid with amount>0,
+    # any billing_reason. A 100%-coupon first month is amount 0 and does NOT trigger (the
+    # reward fires on their first genuinely paid invoice, which may be month 2). Idempotent.
+    if amount_agorot > 0:
+        from backend.core import referral_service
+        await referral_service.grant_reward_for_referred(db, user_id, commit=False)
+
     if billing_reason == "subscription_create":
         await db.commit()  # first charge already documented at checkout
         return
 
     invoice_id = obj.get("id")
-    amount_agorot = obj.get("amount_paid") or 0
     # Idempotent per invoice id (UNIQUE stripe_reference): a duplicate paid event is a no-op.
     existing = await db.execute_fetchall(
         "SELECT id FROM payment_transactions WHERE stripe_reference = ?", (invoice_id,)
@@ -519,7 +600,12 @@ async def _on_invoice_paid(db: aiosqlite.Connection, obj: dict) -> None:
            dunning_next_retry_at=NULL, suspended_at=NULL WHERE internal_id=?""",
         (now.isoformat(), next_at, user_id),
     )
-    await _issue_document_and_receipt(db, user_id, tx_id, amount_agorot, tier, commit=False)
+    # Zero-total recurring invoice (fully covered by a referral balance credit) issues NO
+    # tax document (D-S8/AC7); amount>0 path is unchanged.
+    if amount_agorot > 0:
+        await _issue_document_and_receipt(db, user_id, tx_id, amount_agorot, tier, commit=False)
+    else:
+        await _audit_no_document(db, user_id, tx_id, "invoice")
     await db.commit()
     logger.info("invoice.paid: recurring charge user=%s amount=%s", user_id, amount_agorot)
 

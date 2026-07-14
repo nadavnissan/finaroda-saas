@@ -344,3 +344,79 @@ async def send_subscription_canceled_email(
 ) -> bool:
     subject, html, text = render_subscription_canceled(first_name, access_until)
     return await _send_or_log(to_email, subject, html, text)
+
+
+# ── Stage 4 referral flows (D-S9) — product-email category ────────────────────
+# Sent to the REFERRER only. Nothing new to the referred user. Amounts rendered as
+# final VAT-inclusive shekels. No em-dash anywhere.
+
+def render_referral_reward_earned(
+    first_name: str | None, amount_agorot: int, banked: bool
+) -> tuple[str, str, str]:
+    """Referrer earned a free month because a friend they invited made their first paid
+    charge (D-S7). `banked` = the credit is held until the referrer next has a paid plan."""
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
+    amount = format_agorot_ils(amount_agorot) if amount_agorot else "one month"
+    if banked:
+        body = (
+            f"<p>{greeting}</p><p>Good news: a friend you invited just started a paid plan, "
+            f"so you have earned a free month on FINARODA. We have banked it for you and it "
+            f"will apply automatically the next time you are on a paid plan.</p>"
+        )
+        text = (
+            f"{greeting}\n\nA friend you invited just started a paid plan, so you have earned "
+            f"a free month on FINARODA. We banked it and it applies automatically the next "
+            f"time you are on a paid plan.\n{get_frontend_url()}/profile"
+        )
+    else:
+        body = (
+            f"<p>{greeting}</p><p>Good news: a friend you invited just started a paid plan, "
+            f"so you have earned a free month on FINARODA. We have applied a credit of "
+            f"<strong>{amount}</strong> to your account. It comes off your upcoming "
+            f"invoices automatically.</p>"
+        )
+        text = (
+            f"{greeting}\n\nA friend you invited just started a paid plan, so you have earned "
+            f"a free month on FINARODA. We applied a credit of {amount} to your account. It "
+            f"comes off your upcoming invoices automatically.\n{get_frontend_url()}/profile"
+        )
+    subject = "You earned a free month on FINARODA"
+    html = _wrap("You earned a free month", body, f"{get_frontend_url()}/profile", "View your account")
+    return subject, html, text
+
+
+def render_referral_credit_applied(
+    first_name: str | None, amount_agorot: int
+) -> tuple[str, str, str]:
+    """A previously-banked referral credit was applied when the referrer went paid (D-S9)."""
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
+    amount = format_agorot_ils(amount_agorot) if amount_agorot else "one month"
+    subject = "Your referral credit is now active"
+    html = _wrap(
+        "Your referral credit is active",
+        f"<p>{greeting}</p><p>Welcome to your paid plan. We have applied your banked referral "
+        f"credit of <strong>{amount}</strong> to your account. It comes off your upcoming "
+        f"invoices automatically.</p>",
+        f"{get_frontend_url()}/profile",
+        "View your account",
+    )
+    text = (
+        f"{greeting}\n\nWelcome to your paid plan. We applied your banked referral credit of "
+        f"{amount} to your account. It comes off your upcoming invoices automatically.\n"
+        f"{get_frontend_url()}/profile"
+    )
+    return subject, html, text
+
+
+async def send_referral_reward_email(
+    to_email: str, first_name: str | None, amount_agorot: int, banked: bool
+) -> bool:
+    subject, html, text = render_referral_reward_earned(first_name, amount_agorot, banked)
+    return await _send_or_log(to_email, subject, html, text)
+
+
+async def send_referral_credit_applied_email(
+    to_email: str, first_name: str | None, amount_agorot: int
+) -> bool:
+    subject, html, text = render_referral_credit_applied(first_name, amount_agorot)
+    return await _send_or_log(to_email, subject, html, text)

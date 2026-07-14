@@ -42,8 +42,12 @@ export async function apiFetch<T = unknown>(
 }
 
 export const api = {
-  requestMagicLink: (email: string) =>
-    apiFetch("/api/auth/magic-link", { method: "POST", body: JSON.stringify({ email }) }),
+  // referralCode: bound once at signup from a /r/<code> visit (D-S6). Harmless on login.
+  requestMagicLink: (email: string, referralCode?: string | null) =>
+    apiFetch("/api/auth/magic-link", {
+      method: "POST",
+      body: JSON.stringify(referralCode ? { email, referral_code: referralCode } : { email }),
+    }),
   verify: (token: string) =>
     apiFetch(`/api/auth/verify?token=${encodeURIComponent(token)}`, { method: "GET" }),
   me: () => apiFetch("/api/auth/me", { method: "GET" }),
@@ -51,8 +55,12 @@ export const api = {
   joinWaitlist: (email: string) =>
     apiFetch("/api/waitlist", { method: "POST", body: JSON.stringify({ email }) }),
   // Start a Stripe Checkout session (returns { redirect_url } to the hosted checkout).
-  initiateCheckout: (plan: string) =>
-    apiFetch("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan }) }),
+  // promotionCode is validated our-side for the plan before the session is created (D-S1).
+  initiateCheckout: (plan: string, promotionCode?: string | null) =>
+    apiFetch("/api/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify(promotionCode ? { plan, promotion_code: promotionCode } : { plan }),
+    }),
   startTrial: () => apiFetch("/api/billing/trial", { method: "POST" }),
   getPlans: () => apiFetch("/api/plans", { method: "GET" }),
   // Cancel at period end (D-B6). Returns { access_until, message }.
@@ -60,4 +68,16 @@ export const api = {
   // Persist the onboarding S9 call-sign (identity) to the profile.
   saveCallSign: (callSign: string) =>
     apiFetch("/api/profile/settings", { method: "PUT", body: JSON.stringify({ call_sign: callSign }) }),
+  // Stage 4 — referral + coupons.
+  getReferral: () => apiFetch("/api/referral", { method: "GET" }),
+  validateCoupon: (code: string, plan: string) =>
+    apiFetch("/api/billing/coupon/validate", { method: "POST", body: JSON.stringify({ code, plan }) }),
+  adminListCoupons: () => apiFetch("/api/admin/coupons", { method: "GET" }),
+  adminCreateCoupon: (body: unknown) =>
+    apiFetch("/api/admin/coupons", { method: "POST", body: JSON.stringify(body) }),
+  adminDeactivateCoupon: (id: number) =>
+    apiFetch(`/api/admin/coupons/${id}/deactivate`, { method: "POST" }),
+  adminListReferrals: () => apiFetch("/api/admin/referrals", { method: "GET" }),
+  adminVoidReferral: (id: number, note: string) =>
+    apiFetch(`/api/admin/referrals/${id}/void`, { method: "POST", body: JSON.stringify({ note }) }),
 };

@@ -638,6 +638,29 @@
 - **TC-R3-12 — no Cardcom in live code + no live-key pattern (AC7):** grep asserts zero `cardcom` (case-insensitive) across backend core/api/models/app/scripts + config + frontend/src, and zero live secret-key pattern in code. ✅ auto.
 - **TC-R3-13 — manual (browser):** subscribe -> Stripe hosted checkout -> success page; BillingBanner states from webhook-driven state at 390px + 1280px; cancel + churn survey. ⬜ manual (Nadav, needs a Stripe test account).
 
+### TC-S4 — Stage 4: Coupons + Referral (Stripe-native) (v0.17.0)
+> Coupons = Stripe Coupon + Promotion Code (percent OR fixed ILS, duration once = first charge only). Referral = permanent per-user code; a referred friend's first PAID charge earns the referrer one free month (Stripe customer balance credit, or banked for trial/free referrers). XP untouched in every direction (AC8). All Stripe calls mocked, zero network. File: `backend/tests/test_stage4_coupons_referral.py` (18 cases) + frontend `tests/promotions.unit.test.ts` (7 cases).
+- **TC-S4-01 — migration 036 reshape (C1):** dormant coupons/coupon_applications/referrals reshaped into the Stripe-native schema (coupons mirror cols, coupon_redemptions ledger, referrals binding+reward cols, referral_credits banked ledger); coupon_applications is gone; legacy tables were empty (STOP S3 not triggered). ✅ auto.
+- **TC-S4-02 — coupon param mapping DEV (percent+fixed):** create percent -> percent_off set, amount NULL, duration once, DEV fake ids `coupon_dev_/promo_dev_`; create fixed -> amount_off_agorot set; duplicate code -> 409; percent out of 1..100 -> 400. ✅ auto.
+- **TC-S4-03 — coupon create drives Stripe (mocked live, AC1):** Coupon.create receives percent_off + duration once (no currency); fixed -> amount_off + currency ils; PromotionCode.create receives the code + max_redemptions + expires_at (unix). ✅ auto.
+- **TC-S4-04 — plan-restriction rejected our-side (AC2):** `validate_coupon_for_plan` returns WRONG_PLAN for a pro-only code on basic; `initiate_checkout(plan=basic, promotion_code=proonly)` raises 400 BEFORE any session/transaction is created. ✅ auto.
+- **TC-S4-05 — admin coupon endpoints + 403 (AC1):** non-admin POST /api/admin/coupons -> 403; admin create -> mirror row, list shows it, deactivate -> active=false. ✅ auto.
+- **TC-S4-06 — redemption sync + idempotent (AC3):** a checkout.session.completed with a discount increments redeemed_count by exactly one; a second event id for the same (coupon,user) is a no-op (one redemption row). ✅ auto.
+- **TC-S4-07 — expiry + max_redemptions + status enforced our-side (AC3):** validate returns EXPIRED / MAX_REDEEMED / INACTIVE / NOT_FOUND appropriately. ✅ auto.
+- **TC-S4-08 — referral bind once, immutable, self-block (AC4):** self-referral by id blocked; a friend binds once; a second bind is a no-op; unknown/empty code is a no-op (never breaks signup). ✅ auto.
+- **TC-S4-09 — referral bind at signup (/r/<code>, AC4):** POST /api/auth/magic-link with referral_code on a NEW account sets referred_by_user_id to the referrer. ✅ auto.
+- **TC-S4-10 — reward = balance credit on first paid, idempotent (AC5):** referred friend's first amount>0 invoice.paid -> referrer rewarded, reward_type balance_credit, amount = one month of the referrer's current plan (14900 for pro), DEV cbt id; two invoice.paid events -> exactly one reward + one bell. ✅ auto.
+- **TC-S4-11 — reward banked for trial/free referrer (AC5):** a trial referrer's reward is banked (referral_credits status banked, referrals.reward_type banked, reward_amount NULL). ✅ auto.
+- **TC-S4-12 — 100%-coupon month does not trigger (AC5):** referred friend's amount 0 first invoice (subscription_create) -> referral stays bound; a later amount>0 invoice -> rewarded. ✅ auto.
+- **TC-S4-13 — banked credit applies on checkout + stacks (AC6):** two banked credits both resolve to the plan bought (basic 5900) and go to status applied on the referrer's first paid checkout. ✅ auto.
+- **TC-S4-14 — void with compensating tx (D-S10):** an applied balance credit voids with reversed_agorot = amount + referral status void; a banked-not-applied credit voids with reversed 0; a second void is idempotent. ✅ auto.
+- **TC-S4-15 — zero-amount invoice: no tax document (D-S8/AC7):** a checkout with amount_total 0 activates the user, issues NO billing_documents row, and writes a `zero_amount_invoice_no_document` audit row. ✅ auto.
+- **TC-S4-16 — zero XP writes (AC8):** xp_events count is unchanged across a full referral reward flow. ✅ auto.
+- **TC-S4-17 — endpoints: /api/referral summary + /api/billing/coupon/validate:** referral summary returns an 8-char code inside the share link + counts; coupon validate returns valid+percent_off for the right plan, WRONG_PLAN for the wrong one. ✅ auto.
+- **TC-S4-18 — C2: webhook verify via the SDK (AC9):** `verify_and_parse` accepts a validly-signed body (via stripe.Webhook.construct_event) and rejects a tampered/empty signature. ✅ auto.
+- **TC-S4-19 — frontend unit (invite + coupon views):** `formatCouponDiscount` percent+fixed; `couponIsRedeemable` inactive/max/expired; `couponReasonMessage` per reason; `inviteSummaryLine` pluralization + rewards + banked; REFERRAL_KEY constant. ✅ auto (7 tests).
+- **TC-S4-20 — manual (browser):** admin Coupons create/deactivate + Referrals void at 390px + 1280px; /r/<code> stores the code and signup binds it; profile invite card copy button + counts; Stripe hosted promotion-code field at checkout (needs a Stripe test account). ⬜ manual (Nadav).
+
 ---
 
 ## ATR (Acceptance Test Reports)

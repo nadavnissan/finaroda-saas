@@ -126,6 +126,8 @@ _ACTIVE_7D = ("(SELECT COUNT(DISTINCT date(se.scanned_at)) FROM scan_events se "
 _ACTIVE_30D = ("(SELECT COUNT(DISTINCT date(se.scanned_at)) FROM scan_events se "
                "WHERE se.user_id=u.internal_id AND date(se.scanned_at) >= date('now','-29 days'))")
 _CHURN_FLAG = "EXISTS(SELECT 1 FROM churn_reasons cr WHERE cr.user_id=u.internal_id)"
+# Stage 4: real referral count (friends this user has referred). Goes live now (D-S10).
+_REFERRALS = "(SELECT COUNT(*) FROM referrals rf WHERE rf.referrer_id=u.internal_id)"
 
 
 def _user_filters(
@@ -173,7 +175,7 @@ def _user_select(where: list[str], limit: int) -> str:
                {_LAST_ACTIVE} AS last_active, s.call_sign,
                {_XP} AS xp, {_SCANS_TOTAL} AS scans_total, {_SCANS_WEEK} AS scans_week,
                {_ACTIVE_7D} AS active_days_7d, {_ACTIVE_30D} AS active_days_30d,
-               {_CHURN_FLAG} AS churn_flag
+               {_CHURN_FLAG} AS churn_flag, {_REFERRALS} AS referrals
           FROM users u LEFT JOIN user_settings s ON s.user_id=u.internal_id
          WHERE {' AND '.join(where)}
          ORDER BY last_active DESC, u.internal_id DESC
@@ -192,7 +194,7 @@ def _shape_user(r: dict) -> dict:
         "xp": xp, "rank_level": rank["level"], "rank_name": rank["name"],
         "scans_total": r["scans_total"], "scans_week": r["scans_week"],
         "active_days_7d": r["active_days_7d"], "active_days_30d": r["active_days_30d"],
-        "referrals": 0,  # placeholder — referral logic is Stage 4 (blocked)
+        "referrals": r["referrals"] or 0,  # live referral count (Stage 4, D-S10)
         "churn_survey": bool(r["churn_flag"]),
     }
 

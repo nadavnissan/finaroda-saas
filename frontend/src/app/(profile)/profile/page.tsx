@@ -9,6 +9,7 @@ import { C } from "@/lib/onboarding/types";
 import { levelFor, RANKS, two } from "@/lib/onboarding/xp";
 import { useMe } from "@/lib/app/session";
 import type { ProfileResponse } from "@/lib/app/types";
+import { inviteSummaryLine, type ReferralSummary } from "@/lib/app/promotions";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -26,13 +27,29 @@ export default function ProfilePage() {
   const router = useRouter();
   const { me, loading } = useMe();
   const [p, setP] = useState<ProfileResponse | null>(null);
+  const [invite, setInvite] = useState<ReferralSummary | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!me) return;
     void apiFetch<ProfileResponse>("/api/profile").then((r) => {
       if (r.ok && r.data) setP(r.data);
     });
+    void apiFetch<ReferralSummary>("/api/referral").then((r) => {
+      if (r.ok && r.data) setInvite(r.data);
+    });
   }, [me]);
+
+  async function copyLink() {
+    if (!invite) return;
+    try {
+      await navigator.clipboard.writeText(invite.share_link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked — the link is shown in full for manual copy.
+    }
+  }
 
   async function signOut() {
     await api.logout();
@@ -97,6 +114,21 @@ export default function ProfilePage() {
           ))}
           <div style={{ font: `400 9px/1.5 ${MONO}`, color: C.muted }}>Never from outcomes. Re-scans earn nothing.</div>
         </Card>
+
+        {/* Invite a friend (referral). A friend's first paid charge earns you one free month. */}
+        {invite && (
+          <Card>
+            <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>INVITE A FRIEND · ONE FREE MONTH PER PAID SIGNUP</span>
+            <div style={{ font: `400 10px/1.6 ${MONO}`, color: C.muted }}>
+              Share your link. When a friend you invite makes their first paid charge, you get one free month. If you are not on a paid plan yet, we bank it for you.
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input readOnly value={invite.share_link} onFocus={(e) => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 10px", font: `400 10px ${MONO}`, color: C.fg }} />
+              <button type="button" onClick={copyLink} style={{ flex: "none", background: copied ? "rgba(31,178,134,.12)" : C.green, color: copied ? C.green : C.bg, border: copied ? `1px solid ${C.green}` : "none", borderRadius: 6, padding: "8px 12px", font: `600 9px ${MONO}`, letterSpacing: 1, cursor: "pointer" }}>{copied ? "COPIED" : "COPY"}</button>
+            </div>
+            <div style={{ font: `400 9px ${MONO}`, color: C.muted }}>{inviteSummaryLine(invite)}</div>
+          </Card>
+        )}
 
         <div style={{ padding: "16px 16px 0" }}>
           <button type="button" onClick={signOut} style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "11px", font: `600 11px ${MONO}`, color: C.muted, cursor: "pointer" }}>SIGN OUT</button>
