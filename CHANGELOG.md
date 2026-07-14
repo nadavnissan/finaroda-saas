@@ -4,6 +4,24 @@
 
 ---
 
+## [VALIDATION-V1 / Full ATP + Fix Round] - 2026-07-14
+- GOAL: Pre-Stage-8 quality gate. Build a full-product Acceptance Test Procedure (v0.10.x-v0.17.0) at CI/CD depth with DEDICATED red-line invariant suites, execute it on a fresh environment (clean venv + clean install + production build), fix everything below standard, and ship a signed validation report as the audit trail — the ATP as CODE so it runs on every future stage.
+- SOLUTION:
+  - **ATP as code (6 new test files, +36 backend checks):** `test_v1_redline_reveal.py` (9 — reveal-gating: unrevealed status/r_result/resolved_at never serialize to journal/scan/history/notifications/emails/breadcrumbs/admin-tickets; sanitizer allowlist; email renderers content-free), `test_v1_redline_xp.py` (7 — closed 5-source list via a STATIC guard over all backend, no spend/mutation path, exact locked amounts 300/50/100/25, idempotency schema, rank ladder 0/1000/3000/8000), `test_v1_redline_entitlements.py` (7 — 401-without-session sweep, 403 non-admin sweep incl. Stage-4 promos, plan matrix buys breadth only, state machine collapses to Free, academy dual-gate + trial=Pro, suspended-account block), `test_v1_redline_money.py` (6 — integer-agorot: static float-guard over money files, integer-exact formatter, int plan prices, INTEGER DB columns), `test_v1_redline_lint.py` (2 — no committed secret-key material, zero Cardcom in live code), `test_v1_e2e.py` (4 — onboarding->scan->reveal->academy XP=475; subscribe DEV->webhook activate->cancel->churn->admin; referral bind->paid->reward->bell->read; coupon admin-create->validate->wrong-plan-reject).
+  - **FINDING-1 (P1, fixed):** admin `suspend` set `suspended_at`/`active=0` but no endpoint enforced it -> a suspended account kept full access (moderation-control no-op). Fixed in `core/auth.py` `get_current_user`: read `suspended_at`, raise `403 ACCOUNT_SUSPENDED` at the single auth chokepoint (covers all authenticated endpoints); `unsuspend` restores. Regression = TC-V1-ENT-09. Not a reveal/XP/money leak (flagged top-of-report per S2).
+  - **em-dash guard hardened (pre-approved):** `test_content_copy.py` now strips `/* */` + JSX `{/* */}` + `//` comments before scanning frontend copy, with a meta-test proving it ignores comments and catches real copy (fixes the known JSX false-positive; the lint is now trustworthy).
+- FILES CREATED: validation/ATP_V1.md, validation/VALIDATION_REPORT_2026-07-14.md, backend/tests/test_v1_redline_reveal.py, backend/tests/test_v1_redline_xp.py, backend/tests/test_v1_redline_entitlements.py, backend/tests/test_v1_redline_money.py, backend/tests/test_v1_redline_lint.py, backend/tests/test_v1_e2e.py.
+- FILES MODIFIED: backend/core/auth.py (suspend enforcement), backend/tests/test_content_copy.py (em-dash guard + meta-test), frontend/src/lib/version.ts.
+- DB CHANGES: none.
+- CONFIG ADDED: none.
+- VALIDATION: pytest **182/182** (was 146; +36) in the project venv AND in a fresh clean venv (`python -m venv` + `pip install -r requirements.txt`); tsc clean; eslint clean; frontend unit **58/58**; `next build` OK (21 routes). Red-lines: RVL 9 · XP 7 · ENT 7 · MON 6 · LINT 2 · copy 4; E2E 4. No P0. 1 P1 found+fixed. 2 P2-debt registered (require_active_trial latent; hardening rate-limit), DEBT-2 email-em-dash investigated+closed.
+- ATP: TC-V1-RVL-01..06, TC-V1-XP-01..07, TC-V1-ENT-01..09, TC-V1-MON-01..06, TC-V1-LINT-01..02, TC-V1-E2E-01..04 (added to ATP.md); coverage matrix maps every Stage 3R/4/5/6/7 + v0.10.x + onboarding AC to >=1 check (validation/ATP_V1.md §3).
+- VERSION: v0.17.1
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: A suspended account is now actually locked out (was a silent no-op). The em-dash copy lint is trustworthy. The product now has a runnable, red-line-first acceptance procedure that gates every future stage.
+- DECISIONS: Honest count over vanity (S3) — 240 automated test cases (182 backend + 58 frontend), coverage proven by matrix not raw number. `require_active_trial` wiring left as escalated debt (product-flow decision, not decided unilaterally).
+
 ## [UPGRADE-STAGE4 / Coupons + Referral (Stripe-native)] - 2026-07-14
 - GOAL: Ship coupons + referral, redesigned Stripe-native on top of Stage 3R. Coupons = Stripe Coupon + Promotion Code (percent OR fixed ILS, first charge only), admin-managed from our console (drives the Stripe API, mirror row our side). Referral = permanent per-user code + share link; a referred friend's FIRST PAID charge earns the referrer one free month (Stripe customer balance credit, banked for trial/free referrers). XP is involved in NO direction (XP_ECONOMY untouched; asserted). Housekeeping: C1 reshape the dead 003/004 tables, C2 replace hand-rolled webhook crypto with the official SDK.
 - STOP POINTS (all checked, none halted, all reported):

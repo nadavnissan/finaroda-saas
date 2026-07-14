@@ -8,11 +8,32 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** UPGRADE-STAGE4 (v0.17.0) — Coupons + Referral, **Stripe-native** (see the Stage-4 section below). Built on Stage 3R. Runs in DEV/mock until Nadav wires the live Stripe account.
-- **Validation:** ✅ **pytest 146/146** (+18 TC-S4), tsc clean, eslint clean (`next lint`), frontend unit **58/58** (+7 promotions), shared **14/14**, em-dash guard clean. All Stripe calls mocked, zero network (AC8); zero XP writes in the new paths (AC8, asserted). ⚠ `next build` still NOT verified locally — Windows `.next/trace` EPERM lock / cold-build timeout (environment, not a code error). Recommend a clean `pnpm install` + `pnpm build` on a fresh checkout before the dev→main merge.
-- **⚠ Backend dependency (from Stage 3R):** `stripe>=9,<13` in `backend/requirements.txt`. NOTE: the local `.venv` currently has stripe **14.4.1** (newer than the pin); `stripe.Webhook.construct_event` (used by the C2 verify) is stable across 9..14, so not a blocker, but the pin and the venv drifted — align before deploy if desired.
-- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.17.0) is **dev only** — Nadav merges to main manually.
-- **NEXT RUN:** open. Candidates: Stripe Customer Portal (D-R5, deferred), the live-account GO-LIVE loop, or the Israeli tax-invoice provider wiring (all in the boxes below).
+- **Last commit (dev):** VALIDATION-V1 (v0.17.1) — full-product ATP + fix round (pre-Stage-8 quality gate). Built on Stage 4. See the Validation-V1 section directly below.
+- **Validation:** ✅ **pytest 182/182** (+36 red-line/E2E V1 checks) in the project venv AND in a **fresh clean venv** (`python -m venv` + `pip install -r requirements.txt`), tsc clean, eslint clean, frontend unit **58/58**, shared **14/14**, em-dash guard clean (now JSX-comment-trustworthy). ✅ **`next build` now verified GREEN** (21 routes) — the earlier Windows EPERM lock did not recur this run. All Stripe/email mocked, zero network.
+- **Fix shipped this run (FINDING-1, P1):** admin `suspend` was a silent no-op — `get_current_user` never checked `suspended_at`, so a suspended account kept full access. Fixed with a single `403 ACCOUNT_SUSPENDED` chokepoint + regression TC-V1-ENT-09. Not a reveal/XP/money leak.
+- **⚠ Backend dependency (from Stage 3R):** `stripe>=9,<13` in `backend/requirements.txt`; local `.venv` has stripe **14.4.1** (SDK verify stable across 9..14, not a blocker). The fresh clean venv installed the pinned range cleanly.
+- **main:** = `1338a26` (P2 scorer). Everything since (v0.4.2–v0.17.1) is **dev only** — Nadav merges to main manually.
+- **NEXT RUN:** open. Product is validation-gated. Candidates: Stage 8, the live-account GO-LIVE loop, or the Israeli tax-invoice provider wiring. First resolve the manual-only checklist below + DEBT-1 (see Validation-V1 section).
+
+## Validation V1 (pre-Stage-8 quality gate) — SHIPPED (v0.17.1, 2026-07-14)
+- **What shipped:** the Acceptance Test Procedure as CODE — **dedicated red-line invariant suites** + E2E journeys that run on every future stage. Files: `backend/tests/test_v1_redline_{reveal,xp,entitlements,money,lint}.py` + `test_v1_e2e.py`; procedure + full coverage matrix in `validation/ATP_V1.md`; signed run in `validation/VALIDATION_REPORT_2026-07-14.md`.
+- **Final numbers:** ATP **240 automated test cases** (182 backend pytest + 58 frontend), **1 P0 fixed = 0** (no P0), **1 P1 fixed** (suspend enforcement), **2 P2 debt** registered, **suite GREEN** on fresh venv + production build.
+- **Red-line status (S2):** no reveal-leak, no XP spend path, no money-float, no plan/rank entitlement bypass in shipped code. One entitlement-STATE gap (suspend no-op) found + fixed — flagged so it is on record.
+- **P2-debt (escalated, not decided unilaterally):**
+  - **DEBT-1:** `require_active_trial` is defined but wired to no endpoint. Trial expiry is already handled by the daily cron → Free + `effective_tier`. Wiring it to `/billing/*` would 402 an expired-trial user mid-flow — a product-flow decision for Nadav.
+  - **DEBT-3:** no rate-limit on `/api/market/proxy` + auth endpoints (slowapi is a dep, not yet applied) — hardening-phase item.
+  - **DEBT-2 (closed):** the reported Stage-5 email em-dash drift was investigated — backend rendered copy uses hyphens; the em-dashes are in Python comment dividers/docstrings (not user-facing). No fix needed.
+- **⬜ MANUAL-ONLY checklist for the founder (cannot be honestly automated — rendering judgement / real devices / live third parties):**
+  - [ ] S5→S6 onboarding: no stale pre-scan frame flashes (fresh incognito user).
+  - [ ] All 12 onboarding screens + 1a branch + tooltips at 390px & 1280px.
+  - [ ] Academy card grid / search / lazy video / locked-card reason.
+  - [ ] Admin filters / CSV / ticket breadcrumbs / responsive master-detail.
+  - [ ] Bell open/mark-read, 5 Settings toggles, broadcast preview.
+  - [ ] TRIAL chip on /scan; SEE PLANS→back restores results; Free currency selector.
+  - [ ] (live-gated) Real Stripe test account: /subscribe → hosted checkout → webhook → BillingBanner; coupon create/deactivate + referral void; hosted promotion-code field.
+  - [ ] (live-gated) Live Resend send (needs finaroda.com verified); Sentry activation on built frontend; arrival sound/vibration on a real device.
+- **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, XP_ECONOMY, reveal-gating semantics, main branch.
+- **Ready for founder review; NOT merged to main (CLAUDE.md §1).**
 
 ## Stage 4 (Coupons + Referral, Stripe-native) — SHIPPED (v0.17.0, 2026-07-14)
 - **What shipped:** (A) **Coupons** = Stripe Coupon + Promotion Code (percent OR fixed ILS, `duration=once` = first charge only). Admin console (`/api/admin/coupons`, new Coupons section) drives Stripe (create/list/deactivate, 403 + audited); a mirror row our side (code, params, stripe ids, redeemed_count) lists/audits without a Stripe round-trip; redemptions sync from the checkout webhook. (B) **Referral** = permanent per-user 8-char code + `/r/<code>` share link, bound once at signup (immutable, self-referral blocked by id + email). A referred friend's FIRST amount>0 `invoice.paid` earns the referrer ONE FREE MONTH: a Stripe customer balance credit of one month of the referrer's current plan, or **banked** (`referral_credits`) if the referrer is trial/free and applied on their first paid checkout (resolved to the plan they buy; credits stack, Stripe consumes across invoices). Reward is idempotent (single bound->rewarded transition; duplicate/out-of-order webhooks grant once). A 100%-coupon first month (amount 0) does NOT trigger the reward. Admin Referrals section lists referrer/referred/status/reward + void (removes a banked credit or posts a compensating balance transaction, audited). (C) **Housekeeping:** C1 mig 036 reshaped the empty dormant 003/004 tables in place; C2 the webhook verify now uses the official `stripe.Webhook.construct_event`.

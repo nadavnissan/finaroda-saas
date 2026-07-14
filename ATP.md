@@ -661,6 +661,52 @@
 - **TC-S4-19 — frontend unit (invite + coupon views):** `formatCouponDiscount` percent+fixed; `couponIsRedeemable` inactive/max/expired; `couponReasonMessage` per reason; `inviteSummaryLine` pluralization + rewards + banked; REFERRAL_KEY constant. ✅ auto (7 tests).
 - **TC-S4-20 — manual (browser):** admin Coupons create/deactivate + Referrals void at 390px + 1280px; /r/<code> stores the code and signup binds it; profile invite card copy button + counts; Stripe hosted promotion-code field at checkout (needs a Stripe test account). ⬜ manual (Nadav).
 
+### TC-V1 — Validation V1: full-product red-line ATP + E2E (v0.17.1)
+> The dedicated red-line invariant suites + E2E journeys built in the pre-Stage-8 quality gate. Files under `backend/tests/test_v1_*.py`. Full procedure + coverage matrix (every Stage 3R/4/5/6/7 + v0.10.x + onboarding AC -> >=1 check) in `validation/ATP_V1.md`; signed run in `validation/VALIDATION_REPORT_2026-07-14.md`.
+
+**Reveal-gating (`test_v1_redline_reveal.py`):**
+- **TC-V1-RVL-01 — sanitizer strips outcome keys:** breadcrumb allowlist keeps only {type,path,status_code,...}; status/r_result/outcome/pnl/direction/entry/sl/tp/score dropped. ✅ auto.
+- **TC-V1-RVL-02 — sanitizer caps + malformed input:** non-list -> []; 20-item cap; 200-char cap; dict/list values dropped. ✅ auto.
+- **TC-V1-RVL-03 — journal withholds every resolved status:** win/loss/save/expired resolved-but-unrevealed -> status/r_result/resolved_at absent, value never in the serialized blob, badge is a bare count, view is 409. ✅ auto (4 cases).
+- **TC-V1-RVL-04 — stored scan detail has no outcome:** scan-event + history rows carry setup geometry only, never status/r_result/resolved_at. ✅ auto.
+- **TC-V1-RVL-05 — ticket breadcrumbs write->admin-read clean:** a smuggled outcome in client breadcrumbs never reaches the admin ticket payload. ✅ auto.
+- **TC-V1-RVL-06 — email renderers content-free:** reveal teaser + trial reminder carry no outcome words/numbers. ✅ auto.
+
+**XP economy (`test_v1_redline_xp.py`):**
+- **TC-V1-XP-01 — only 5 known files write xp_events (static):** any new writer fails the guard (potential new source). ✅ auto.
+- **TC-V1-XP-02 — no spend/mutation path (static):** no UPDATE/DELETE of xp_events anywhere in backend. ✅ auto.
+- **TC-V1-XP-03 — award constants are locked positives:** 50/100/25/300, all > 0, no negated amount at an insert. ✅ auto.
+- **TC-V1-XP-04 — idempotency schema:** UNIQUE(user_id,source,ref) + partial ux_xp_onboarding_once. ✅ auto.
+- **TC-V1-XP-05 — closed source list + exact amounts (runtime):** onboarding/scan/academy/admin_grant flows -> sources subset of the closed list, amounts exact. ✅ auto.
+- **TC-V1-XP-06 — global closed-list invariant:** no xp_events row in the DB has a source outside the locked list. ✅ auto.
+- **TC-V1-XP-07 — rank ladder thresholds:** 0/1000/3000/8000 -> Apprentice/Risk Manager/Regime Reader/Master Strategist. ✅ auto.
+
+**Entitlements (`test_v1_redline_entitlements.py`):**
+- **TC-V1-ENT-01 — 401 without session:** 10 protected GETs require auth. ✅ auto.
+- **TC-V1-ENT-02 — 403 for non-admin:** 11 admin GETs + 2 mutations (incl. Stage-4 coupons/referrals). ✅ auto.
+- **TC-V1-ENT-03 — plan matrix buys breadth only:** free/basic/pro coins/layers/scans exact; entitlements never carry a threshold/score/verdict key. ✅ auto.
+- **TC-V1-ENT-04 — scan gating enforced:** free coin-limit 403 + daily-cap 429. ✅ auto.
+- **TC-V1-ENT-05 — state machine laws:** none/expired collapse to Free; entitled states keep tier; legal/illegal transitions. ✅ auto.
+- **TC-V1-ENT-06 — academy dual-gate:** free locked (403, body/video withheld); trial = Pro access. ✅ auto.
+- **TC-V1-ENT-09 — suspended account blocked (FINDING-1 regression):** an existing session loses access the moment an admin suspends the account. ✅ auto (was RED pre-fix).
+
+**Money (`test_v1_redline_money.py`):**
+- **TC-V1-MON-01..03 — money files: no float() cast, no Decimal/Fraction import, no float literal (static).** ✅ auto.
+- **TC-V1-MON-04 — agorot formatter integer-exact:** divmod, no float math (0/99/100/5900/14900/100000). ✅ auto.
+- **TC-V1-MON-05 — plan prices are int agorot:** basic 5900, pro 14900. ✅ auto.
+- **TC-V1-MON-06 — money DB columns are INTEGER:** amount_ils / amount_agorot / amount_off_agorot / amount_discounted_agorot / reward_amount_agorot / applied_amount_agorot. ✅ auto.
+
+**Lint / hygiene (`test_v1_redline_lint.py`):**
+- **TC-V1-LINT-01 — no committed secret-key material:** sk_live/sk_test/whsec/rk_live/pk_live + value absent from live code. ✅ auto.
+- **TC-V1-LINT-02 — zero Cardcom in live code.** ✅ auto.
+- (Copy em-dash guard lives in `test_content_copy.py`, now JSX-comment-trustworthy + meta-tested.)
+
+**E2E journeys (`test_v1_e2e.py`):**
+- **TC-V1-E2E-01 — new-user XP journey:** onboarding(+300) -> first scan(+50) -> reveal view(+25) -> academy lesson(+100) = 475, rank Apprentice. ✅ auto.
+- **TC-V1-E2E-02 — subscribe -> cancel -> churn:** DEV fake session -> webhook activate (active/pro) -> cancel (cancelled) -> churn survey -> admin sees it. ✅ auto.
+- **TC-V1-E2E-03 — referral -> bell -> read:** friend's first paid invoice -> referrer rewarded + referral_reward bell (no outcome value) -> mark all read -> unread 0. ✅ auto.
+- **TC-V1-E2E-04 — coupon validate + reject:** admin creates a pro-restricted coupon -> user validates (pro ok, basic WRONG_PLAN) -> wrong-plan checkout rejected 400. ✅ auto.
+
 ---
 
 ## ATR (Acceptance Test Reports)

@@ -60,7 +60,8 @@ async def get_current_user(
 
     rows = await db.execute_fetchall(
         """SELECT internal_id, email, auth_provider, is_admin, tier,
-                  subscription_status, created_at, last_login_at, onboarding_completed_at
+                  subscription_status, created_at, last_login_at, onboarding_completed_at,
+                  suspended_at
            FROM users WHERE internal_id = ?""",
         (user_id,),
     )
@@ -68,6 +69,13 @@ async def get_current_user(
         raise credentials_exception
 
     row = dict(rows[0])
+    # A suspended account (admin moderation action) is server-authoritatively blocked from
+    # every protected endpoint — without this the suspend control is a silent no-op.
+    if row.get("suspended_at"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "ACCOUNT_SUSPENDED", "message": "Account suspended"},
+        )
     # Attach the user id (only — no PII) to the Sentry scope when monitoring is on.
     from backend.core.monitoring import set_request_user
 
