@@ -26,7 +26,7 @@
 - ATP: TC-B3-01..09 (state matrix incl. illegal, agorot, documents + inert coupon/referral, webhook sig+idempotency, recurring double-run, dunning ladder + recovery, cancel end-of-period + double-cancel + trial-cancel, billing cron auth, no-live-terminal).
 - VERSION: v0.14.0
 - BRANCH: dev
-- COMMIT: TBD
+- COMMIT: 24e5097
 - IMPACT: לולאת חיוב מלאה עובדת מקצה-לקצה מול sandbox/mock — checkout, חיוב חוזר, dunning, ביטול, מסמכים — עם הרשאות שרתיות. אין טרמינל אמיתי מחובר; go-live = משימת נדב.
 - DECISIONS: (1) מכונת-המצבים על אוצר-המילים הקיים של ה-DB (S2, בלי rename/מיגרציית ערכים). (2) מיילי receipt + dunning מכבדים `email_product` (Stage-5 discipline). (3) dunning schedule config-driven (+24h/+48h ⇒ +24h/+72h מהכשל הראשון). (4) offline document = MOCK מסומן ברור, אף פעם לא מסמך פיסקלי אמיתי.
 
