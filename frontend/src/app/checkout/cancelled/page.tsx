@@ -1,4 +1,4 @@
-// checkout/cancelled — Cardcom FailedRedirectUrl target (SPEC §9).
+// checkout/cancelled — Stripe Checkout cancel_url target (Stage 3R).
 export default function CheckoutCancelledPage() {
   return (
     <main>

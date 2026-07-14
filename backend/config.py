@@ -3,7 +3,8 @@ backend/config.py — Authoritative configuration for FINARODA SaaS.
 Reads all values from environment variables (loaded from .env / .env.local).
 All module-level constants are exported for use across the backend.
 
-Scope: infra only. Career/Agent/RAG/Morning/Stripe config NOT inherited (SPEC §3.3).
+Scope: infra only. Career/Agent/RAG/Morning config NOT inherited (SPEC §3.3).
+Payment provider is Stripe (Checkout + Billing) as of Stage 3R (2026-07-14); prior PSP retired.
 """
 import os
 import logging
@@ -104,25 +105,34 @@ CRON_SECRET = os.getenv("CRON_SECRET", "")
 TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "14"))
 TRIAL_REMINDER_LEAD_DAYS: int = int(os.getenv("TRIAL_REMINDER_LEAD_DAYS", "3"))
 
-# ── Billing (Stage 3 — recurring + dunning) ──────────────────────────────────
-# Recurring period between charges (days). Dunning retry cadence (D-B5): on a failed
-# recurring charge the subscription goes past_due and is retried at +24h then +72h
-# (two retries, expressed as hours-after-each-failure: 24 then 48). After the second
-# retry fails the subscription expires and entitlements drop to Free. All idempotent.
+# ── Billing (Stage 3R — Stripe Billing owns recurring + dunning) ─────────────
+# Fallback recurring period in days, used only to compute a display "renews on" date
+# when a webhook does not carry the subscription's current_period_end (e.g. DEV mode).
+# The authoritative period boundary comes from Stripe (subscription.current_period_end).
+# Dunning (retries) is Stripe Smart Retries now — the homegrown +24h/+72h scheduler was
+# deleted in Stage 3R. Our failure/recovery emails still fire from the Stripe webhook.
 BILLING_PERIOD_DAYS: int = int(os.getenv("BILLING_PERIOD_DAYS", "30"))
-DUNNING_RETRY_OFFSETS_HOURS: list[int] = [
-    int(x) for x in os.getenv("DUNNING_RETRY_OFFSETS_HOURS", "24,48").split(",") if x.strip()
-]
 
-# ── Cardcom v11 (sole payment provider for V1 — SPEC §9) ─────────────────────
-FEATURE_CARDCOM_LIVE: bool = os.getenv("FEATURE_CARDCOM_LIVE", "false").lower() == "true"
-CARDCOM_TERMINAL_ID: str = os.getenv("CARDCOM_TERMINAL_ID", "")
-CARDCOM_TEST_TERMINAL: str = os.getenv("CARDCOM_TEST_TERMINAL", "1000")
-CARDCOM_API_NAME: str = os.getenv("CARDCOM_API_NAME", "")
-CARDCOM_API_PASSWORD: str = os.getenv("CARDCOM_API_PASSWORD", "")
-CARDCOM_WEBHOOK_SECRET: str = os.getenv("CARDCOM_WEBHOOK_SECRET", "")
-CARDCOM_BASE_URL: str = os.getenv("CARDCOM_BASE_URL", "https://secure.cardcom.solutions/api/v11")
-CARDCOM_REDIRECT_RETURN_URL: str = os.getenv("CARDCOM_REDIRECT_RETURN_URL", "")
+# ── Stripe (Checkout + Billing — sole PSP since Stage 3R, 2026-07-14) ─────────
+# ⚠️ TEST by default: FEATURE_STRIPE_LIVE=false and/or an empty STRIPE_SECRET_KEY put
+# the layer in DEV fallback (checkout returns a dev-mode fake session, no network — the
+# same pattern as DEV_RETURN_MAGIC_LINK). Going live is a manual step by Nadav on the
+# LTD's Stripe account (see the GO-LIVE box in SESSION_HANDOFF). Never commit a live key.
+FEATURE_STRIPE_LIVE: bool = os.getenv("FEATURE_STRIPE_LIVE", "false").lower() == "true"
+STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+# Post-checkout redirect targets (Stripe appends its own session id to the success URL).
+STRIPE_SUCCESS_PATH: str = os.getenv("STRIPE_SUCCESS_PATH", "/checkout/success")
+STRIPE_CANCEL_PATH: str = os.getenv("STRIPE_CANCEL_PATH", "/checkout/cancelled")
+
+# ── Israeli tax-invoice provider (Stage 3R) ──────────────────────────────────
+# The provider that issues the legal Israeli tax-invoice-receipt per successful charge.
+# 'mock' (default) writes a clearly-marked offline document (zero network) so the whole
+# flow stays testable. Real providers (green_invoice | icount | ezcount) are a documented
+# interface in core/invoice_provider.py — NOT chosen yet. Stripe's own invoices are NOT
+# Israeli tax documents and are never presented as such.
+INVOICE_PROVIDER: str = os.getenv("INVOICE_PROVIDER", "mock").lower()
 
 # ── Scan engine (FINARODA core — SPEC §6) ────────────────────────────────────
 # Bybit public market endpoint (no API key). Default fetch is client-side; this is

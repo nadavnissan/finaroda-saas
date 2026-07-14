@@ -1,10 +1,15 @@
-"""Billing cron tasks — open a DB connection and delegate to cardcom_service."""
+"""Billing cron tasks (Stage 3R). Open a DB connection and delegate to stripe_service.
+
+Stripe Billing owns recurring charges + retries now, so the homegrown renewal/dunning
+batch is gone. Only the non-Stripe sweeps remain here: expire our card-free trials, and a
+safety-net drop of cancelled subscriptions whose period has ended (covers cancelled trials
+and any missed webhook). The day-11 trial reminder also lives here."""
 import logging
 
 import aiosqlite
 
 from backend.config import DATABASE_URL
-from backend.core import cardcom_service
+from backend.core import stripe_service
 
 log = logging.getLogger(__name__)
 
@@ -14,36 +19,25 @@ def _db_path() -> str:
 
 
 async def expire_trials_task() -> dict:
-    """Mark trials whose end date has passed as expired."""
+    """Mark trials whose end date has passed as Free (D1/D2). No charge, no Stripe."""
     async with aiosqlite.connect(_db_path()) as db:
         db.row_factory = aiosqlite.Row
-        result = await cardcom_service.expire_trials(db)
+        result = await stripe_service.expire_trials(db)
     log.info("expire_trials_task: %s", result)
     return result
 
 
-async def subscription_renewal_task() -> dict:
-    """Charge subscriptions due for billing (dry-run unless FEATURE_CARDCOM_LIVE)."""
-    async with aiosqlite.connect(_db_path()) as db:
-        db.row_factory = aiosqlite.Row
-        result = await cardcom_service.run_renewal_batch(db)
-    log.info("subscription_renewal_task: %s", result)
-    return result
-
-
 async def billing_batch_task() -> dict:
-    """Stage-3 billing cron (D-B9): one pass over the whole subscription lifecycle.
+    """Stage-3R billing cron: the non-Stripe lifecycle sweeps in one pass.
 
-    Order matters: expire lapsed trials, drop cancelled subs whose period ended, then
-    charge/renew + walk dunning. Idempotent and safe to run twice (a second run in-window
-    finds nothing due). Runs on one DB connection. Trial expiry + cancel drops run in any
-    mode; the charge step is a dry-run no-op unless FEATURE_CARDCOM_LIVE."""
+    Order: expire lapsed trials, then drop cancelled subs whose period ended. Both are
+    idempotent and safe to run twice. Recurring charges + dunning are Stripe's job now, so
+    there is no charge step here — the webhook drives active/past_due/expired transitions."""
     async with aiosqlite.connect(_db_path()) as db:
         db.row_factory = aiosqlite.Row
-        expired = await cardcom_service.expire_trials(db)
-        dropped = await cardcom_service.drop_cancelled_to_free(db)
-        renewal = await cardcom_service.run_renewal_batch(db)
-    result = {"expire_trials": expired, "cancel_drop": dropped, "renewal": renewal}
+        expired = await stripe_service.expire_trials(db)
+        dropped = await stripe_service.drop_cancelled_to_free(db)
+    result = {"expire_trials": expired, "cancel_drop": dropped}
     log.info("billing_batch_task: %s", result)
     return result
 
@@ -54,7 +48,7 @@ async def trial_ending_soon_task() -> dict:
     UNIQUE(notif_type, ref); a re-run inside the daily window sends zero. Each first send
     creates a bell row (respecting inapp_enabled) and a reminder email (respecting
     email_product). No charge — the reminder only prompts an active choice."""
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone  # noqa: F401 (kept for parity with callers)
 
     from backend.config import TRIAL_REMINDER_LEAD_DAYS
     from backend.core import notifications as notif

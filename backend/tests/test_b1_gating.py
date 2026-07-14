@@ -143,11 +143,11 @@ def test_trial_start_no_card():
     """B2 — start the no-card Pro trial; a second attempt is rejected (409)."""
     with TestClient(app) as client:
         _login(client, "trial_b2@example.com")
-        r = client.post("/api/cardcom/trial")
+        r = client.post("/api/billing/trial")
         assert r.status_code == 200
         assert r.json()["subscription_status"] == "trial"
         assert r.json()["tier"] == "pro"
-        again = client.post("/api/cardcom/trial")
+        again = client.post("/api/billing/trial")
         assert again.status_code == 409
 
 
@@ -181,11 +181,11 @@ async def test_trial_expires_to_free():
     """An elapsed trial is moved to Free (never charged, never blocked)."""
     from datetime import datetime, timedelta, timezone
 
-    from backend.core import cardcom_service
+    from backend.core import stripe_service
 
     with TestClient(app) as client:
         _login(client, "trial_expire@example.com")
-        assert client.post("/api/cardcom/trial").status_code == 200
+        assert client.post("/api/billing/trial").status_code == 200
         # Force the trial end into the past, then run the expiry job.
         past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
         async with aiosqlite.connect(cfg.DATABASE_URL) as db:
@@ -194,9 +194,9 @@ async def test_trial_expires_to_free():
                 "UPDATE users SET trial_ends_at=? WHERE email=?", (past, "trial_expire@example.com")
             )
             await db.commit()
-            result = await cardcom_service.expire_trials(db)
+            result = await stripe_service.expire_trials(db)
         assert result["moved_to_free"] >= 1
-        status = client.get("/api/cardcom/status").json()
+        status = client.get("/api/billing/status").json()
         assert status["tier"] == "free"
         assert status["subscription_status"] == "none"
 

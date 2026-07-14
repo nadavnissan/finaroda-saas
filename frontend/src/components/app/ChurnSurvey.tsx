@@ -1,9 +1,9 @@
 "use client";
 
-// Exit / churn survey (D-A5) + real cancel (Stage 3, D-B6). Surfaced from Settings as
+// Exit / churn survey (D-A5) + real cancel (Stage 3R, D-B6). Surfaced from Settings as
 // "Cancel plan or leave". One required question + optional free text, skippable. When the
 // user holds a paid/trial subscription, Submit performs the end-of-period cancel
-// (POST /api/cardcom/cancel: access retained until the paid-through date, then Free) and
+// (POST /api/billing/cancel: access retained until the paid-through date, then Free) and
 // then records the survey (POST /api/churn/survey). A Free user with no subscription just
 // records the survey. Cancelling twice is safe (the endpoint is idempotent).
 import { useState } from "react";

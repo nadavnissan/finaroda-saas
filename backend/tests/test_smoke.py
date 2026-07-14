@@ -97,8 +97,8 @@ def test_health_endpoint():
     assert body["version"] == "0.2.0"
 
 
-def test_cardcom_initiate_requires_auth():
-    """Cardcom initiate is auth-protected (P1): no cookie → 401."""
+def test_billing_checkout_requires_auth():
+    """Billing checkout is auth-protected (P1): no cookie → 401."""
     with TestClient(app) as client:
-        resp = client.post("/api/cardcom/initiate", json={"plan": "basic"})
+        resp = client.post("/api/billing/checkout", json={"plan": "basic"})
     assert resp.status_code == 401

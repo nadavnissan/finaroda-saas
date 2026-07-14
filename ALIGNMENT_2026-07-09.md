@@ -47,4 +47,14 @@
 | E6 | רטט בלחיצת SCAN | ✅ navigator.vibrate עם fallback שקט (iOS Safari — אין תמיכה, לא ירטוט) |
 | E7 | גרף חי + שכבות הסבר לכל מטבע שנסרק | ✅ מאושר; gating: Free = גרף+EMA200 · בתשלום = כל השכבות (EMA7, רמות Blueprint). נכנס להיקף Design |
 | E8 | באנר טיקר רץ (מטבעות/מדדים/סחורות) | ❌ נדחה — סותר trust-not-engagement + בעיית רישוי דאטה למדדים/סחורות. החלופה: שורת marketContext סטטית פר-סריקה (קיימת). פתיחה מחדש = רק ככבוי-כברירת-מחדל בהגדרות |
+| E7b | **גרף גם למטבעות שלא עברו** (11/07) | ✅ מאושר, ממתין לשליחה ל-Design אחרי B7 — לחיצה על מטבע שלא עבר פותחת את אותו גרף (שכבות לפי פלאן) + שורת "why not" שמציינת את הבדיקה החוסמת בשפה פשוטה, עם ה-Concept Tooltip שלה. כל דילוג הופך לשיעור. אותו gating כמו E7. **נדחה במפורש:** גרף מתעדכן-לייב — מזמין בהייה, נגד "מבט אחד ביום"; snapshot + timestamp הוא הנכון |
 | E9 | **Horizon selector** במסך הסריקה (11/07) | ✅ מאושר — `SWING (1–7 days)` פעיל מ-v1 · `POSITION (weeks+)` מוצג נעול. קופי הנעילה (מאושר, קצר וטהור): **"In validation. Unlocks when it earns it."** + tooltip: "Our position-trading engine is being validated against live outcomes across market regimes. We don't ship what we haven't proven." נפתח רק בעמידה ברף 30+/2+ משטרים; מועמד לפיצ'ר Pro |
+
+## F. החלטת PSP (Stripe), 14/07/2026
+
+> **Stage 3R (2026-07-14, v0.16.0): PSP switched from Cardcom to Stripe (Stripe Checkout + Billing). The prior Cardcom design is superseded. Israeli tax documents are issued by a provider-agnostic invoice layer (`INVOICE_PROVIDER`), not by Stripe.**
+
+| # | נושא | הכרעה |
+|---|---|---|
+| F1 | ספק תשלום (PSP) | ✅ **Stripe** (Stripe Checkout, hosted session per plan, הכרטיס לא נוגע בשרתים שלנו) + Stripe Billing / Smart Retries לחיוב חוזר ולניסיונות. הפעלה **דרך webhook חתום בלבד**, לא דרך redirect. ביטול = `cancel_at_period_end` (גישה עד תום התקופה + churn survey). ה-scheduler הביתי הישן ל-dunning (+24h/+72h) נמחק; מיילי כשל/התאוששות/ביטול עדיין שלנו (מה-webhook). מכונת-המצבים הפנימית שורדת כמקור-אמת יחיד להרשאות, מוזנת כעת רק מ-Stripe (נוסף מעבר active→expired). ה-trial נשאר שלנו (ללא כרטיס), **לא** trial של Stripe (cron לפקיעה). |
+| F2 | מסמכי מס ישראליים | ✅ שכבת `core/invoice_provider.py` (`INVOICE_PROVIDER`, `mock` כברירת מחדל) מנפיקה מסמך מס ישראלי אחד לכל חיוב מוצלח; ממשק מוכן ל-Green Invoice / iCount / EZcount (**הספק טרם נבחר**). ברירת מחדל document type = `tax_invoice_receipt`. חשבוניות Stripe עצמן **אינן** מסמכי מס ישראליים. ישות מפעילה = בע"מ ישראלית (בהקמה), עוסק מורשה במע"מ. Endpoints עברו ל-`/api/billing/*`; כסף = agorot ints, ILS, כולל VAT (ללא שינוי). |

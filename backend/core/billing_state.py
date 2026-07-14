@@ -14,13 +14,32 @@ already covers D-B4 one-to-one (only spelling differs: D-B4 "trialing"->`trial`,
 "canceled"->`cancelled`). No schema rename — the mapping is documented, not migrated.
 
     none      no subscription (Free)
-    trial     14-day trial (D-B4 "trialing"), card-free (D1)
+    trial     14-day trial (D-B4 "trialing"), card-free (D1) — OURS, not a Stripe trial
     active    paid, current
-    past_due  a recurring charge failed; in the dunning grace window (D-B5)
+    past_due  a recurring charge failed; in the grace window (Stripe Smart Retries)
     cancelled user cancelled; keeps access until period end (D-B6)
-    expired   dunning exhausted; entitlements dropped to Free (D-B5)
+    expired   dunning exhausted / involuntary end; entitlements dropped to Free
 
-Money is never touched here (that is cardcom_service); this module only moves state.
+Money is never touched here (that is stripe_service); this module only moves state.
+
+Stage 3R (Stripe) — webhook -> internal-state mapping (the machine is now fed only by
+Stripe webhooks; our trial is the one non-Stripe state, expired by a cron):
+
+    checkout.session.completed         -> ACTIVE   (from none/trial/expired/cancelled)
+    invoice.paid (recurring)           -> ACTIVE   (self-loop renew, or past_due recovery)
+    invoice.payment_failed             -> PAST_DUE (active->past_due; past_due repeats = no-op)
+    customer.subscription.updated
+        cancel_at_period_end=true      -> CANCELLED (active->cancelled)
+        cancel reverted / recovered    -> ACTIVE
+        status=past_due                -> PAST_DUE
+    customer.subscription.deleted
+        local == cancelled (voluntary) -> NONE      (drop to Free, our end-of-period drop)
+        else (involuntary / dashboard) -> EXPIRED    (needs the ACTIVE->EXPIRED edge below)
+
+The single matrix change for Stage 3R is adding EXPIRED to ACTIVE's allowed set: an
+involuntary `customer.subscription.deleted` can arrive while we are still `active`
+(e.g. an immediate cancel in the Stripe dashboard, or Smart Retries off) without ever
+passing through `past_due`. No state is added or removed (S2 not triggered).
 """
 import json
 from datetime import datetime, timezone
@@ -47,7 +66,9 @@ ENTITLED_STATES = frozenset({TRIAL, ACTIVE, PAST_DUE, CANCELLED})
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     NONE: frozenset({TRIAL, ACTIVE}),                 # start trial | direct paid checkout
     TRIAL: frozenset({ACTIVE, CANCELLED, NONE}),      # convert | cancel | trial_ended_to_free
-    ACTIVE: frozenset({ACTIVE, PAST_DUE, CANCELLED}), # renew (self) | charge fail | user cancel
+    # ACTIVE->EXPIRED added in Stage 3R: an involuntary customer.subscription.deleted can
+    # arrive while still active (immediate dashboard cancel / Smart Retries off).
+    ACTIVE: frozenset({ACTIVE, PAST_DUE, CANCELLED, EXPIRED}),
     PAST_DUE: frozenset({ACTIVE, EXPIRED, CANCELLED}),# retry ok | dunning exhausted | cancel
     CANCELLED: frozenset({NONE, ACTIVE}),             # period-end drop | reactivate
     EXPIRED: frozenset({ACTIVE, TRIAL, NONE}),        # resubscribe | (fresh) | idle

@@ -2,8 +2,7 @@
 FINARODA SaaS — FastAPI application entry point.
 Start with: uvicorn backend.main:app --reload --port 8000
 
-P0 scope: clean skeleton. Only health + Cardcom placeholder are wired.
-Scan / dashboard / admin / academy / auth routers arrive in later phases (SPEC §11).
+Full app: health + auth + scan + billing (Stripe) + admin + academy + cron routers.
 """
 import sys
 from pathlib import Path
@@ -138,8 +137,8 @@ from backend.api.academy import router as academy_router
 from backend.api.admin import router as admin_router
 from backend.api.admin_academy import router as admin_academy_router
 from backend.api.auth import router as auth_router
+from backend.api.billing import router as billing_router
 from backend.api.broadcasts import router as broadcasts_router
-from backend.api.cardcom import router as cardcom_router
 from backend.api.churn import router as churn_router
 from backend.api.cron import router as cron_router
 from backend.api.email import router as email_router
@@ -155,7 +154,7 @@ from backend.api.waitlist import router as waitlist_router
 
 app.include_router(auth_router)
 app.include_router(waitlist_router)
-app.include_router(cardcom_router, prefix="/api")
+app.include_router(billing_router, prefix="/api")
 app.include_router(scan_router)
 app.include_router(market_proxy_router)
 app.include_router(onboarding_router)

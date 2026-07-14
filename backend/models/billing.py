@@ -1,23 +1,24 @@
-"""Cardcom payment models. Amounts in agorot (1/100 ILS). FINARODA plans."""
+"""Billing models (Stage 3R — Stripe). Amounts in agorot (1/100 ILS). FINARODA plans."""
 from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel
 
 
-class CardcomInitiateRequest(BaseModel):
-    """Initiate a Cardcom checkout for a FINARODA plan."""
+class CheckoutInitiateRequest(BaseModel):
+    """Start a Stripe Checkout Session for a FINARODA plan."""
     plan: Literal["basic", "pro"]
     is_upgrade: bool = False
 
 
-class CardcomInitiateResponse(BaseModel):
-    redirect_url: str
+class CheckoutInitiateResponse(BaseModel):
+    redirect_url: str            # hosted Stripe Checkout URL (or a DEV success-page URL)
     transaction_id: int
     expires_at: datetime
+    dev_mode: bool = False
 
 
-class CardcomCancelResponse(BaseModel):
+class SubscriptionCancelResponse(BaseModel):
     cancelled_at: datetime
     access_until: Optional[datetime]
     message: str

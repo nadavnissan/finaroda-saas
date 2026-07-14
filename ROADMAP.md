@@ -41,7 +41,7 @@
 P4 מסחרי (S3) ──┐
 Design סבב 2 (X1)├──→ P5 מנהל (S4) ──┐
 LEGAL עו"ד (L1) ─┘                    ├──→ PRODUCTION DEPLOY (D2) ──→ לקוחות ✓
-Cardcom LIVE (C1) ───────────────────┤
+Stripe LIVE (C1) ────────────────────┤
 דומיין finaroda.com (I3) ────────────┘
 ```
 
@@ -49,7 +49,7 @@ Cardcom LIVE (C1) ───────────────────┤
 
 ## 3. מסלול A — STAGING (יומיים, לשחק, אתה בלבד)
 
-> מטרה: מערכת חיה בענן שאתה יכול לשחק בה. **לא** דורש עו"ד / Cardcom live / כל המסכים.
+> מטרה: מערכת חיה בענן שאתה יכול לשחק בה. **לא** דורש עו"ד / Stripe live / כל המסכים.
 
 | ID | שלב | תלות | חוסם | פרטים |
 |---|---|---|---|---|
@@ -58,7 +58,7 @@ Cardcom LIVE (C1) ───────────────────┤
 | **I2** | Railway deploy (staging) | S1 | 🟡 | deploy מ-dev/staging, env vars, Litestream→R2, subdomain זמני של Railway |
 | **D1** | **STAGING LIVE** | S1+I1+I2 | 🟡 | אתה נכנס דרך subdomain של Railway, סורק, רואה Blueprint אמיתי. **← היעד ליומיים** |
 
-**מה לא צריך ל-staging:** דומיין finaroda.com (subdomain של Railway מספיק), Cardcom live (test mode בסדר — פשוט לא תבדוק תשלום אמיתי), עו"ד, מסכי admin/paywall מלאים.
+**מה לא צריך ל-staging:** דומיין finaroda.com (subdomain של Railway מספיק), Stripe live (test mode בסדר — פשוט לא תבדוק תשלום אמיתי), עו"ד, מסכי admin/paywall מלאים.
 
 ---
 
@@ -83,7 +83,7 @@ Cardcom LIVE (C1) ───────────────────┤
 | ID | שלב | תלות | חוסם | פרטים |
 |---|---|---|---|---|
 | **I3** | דומיין finaroda.com | — | 🔴 | רכישה, DNS, SSL, חיבור ל-Railway |
-| **C1** | Cardcom LIVE | S3 | 🔴 | credentials אמיתיים, FEATURE_CARDCOM_LIVE=true, webhook production, בדיקת חיוב אמיתי אחת |
+| **C1** | Stripe LIVE | S3 | 🔴 | Stripe live keys + webhook secret, `FEATURE_STRIPE_LIVE=true`, chosen `INVOICE_PROVIDER`, seed live Stripe Prices, webhook production, בדיקת חיוב אמיתי אחת |
 | **I4** | Railway production | S3,S4,I3 | 🔴 | deploy מ-main (branch gate!), env vars production, Litestream→R2, scaling |
 
 ### 4.4 משפטי + QA
@@ -102,7 +102,7 @@ Cardcom LIVE (C1) ───────────────────┤
 
 - [ ] **S3** P4 מסחרי (פלאנים/trial/paywall)
 - [ ] **X1** מסכים חסרים (Design סבב 2)
-- [ ] **C1** Cardcom LIVE (credentials + הפעלה)
+- [ ] **C1** Stripe LIVE (live keys + webhook secret + chosen `INVOICE_PROVIDER` + הפעלה)
 - [ ] **I1** Resend production (DNS מאומת)
 - [ ] **I3** דומיין finaroda.com + SSL
 - [ ] **I4** Railway production (deploy מ-main)
@@ -121,7 +121,7 @@ Cardcom LIVE (C1) ───────────────────┤
 | **רכוש finaroda.com** | מיידי, זול, נחוץ ל-production |
 | **אמת דומיין ב-Resend** (DNS) | נחוץ אפילו ל-staging (login) |
 | **אמת מחירים מול רו"ח** | 50/100/150 — לפני P4 |
-| **Cardcom production credentials** | תהליך פתיחה מול Cardcom לוקח זמן |
+| **Stripe account + live keys** | פתיחת חשבון Stripe + live keys/webhook secret; ובחירת ספק חשבוניות ישראלי (`INVOICE_PROVIDER`: Green Invoice / iCount / EZcount, טרם נבחר) |
 
 ---
 
@@ -138,11 +138,11 @@ Cardcom LIVE (C1) ───────────────────┤
 **אחרי staging → production:**
 5. X1 Design סבב 2 + S3 P4 מסחרי (במקביל)
 6. S4 P5 מנהל
-7. C1 Cardcom live + I4 Railway production
+7. C1 Stripe live + I4 Railway production
 8. Q1 QA
 9. → **D2 PRODUCTION LIVE** ✓
 
-**מה שיישאר אחרון (כדבריך):** עו"ד + Cardcom live — שני החוסמים ה"אנושיים", לא הטכניים.
+**מה שיישאר אחרון (כדבריך):** עו"ד + Stripe live — שני החוסמים ה"אנושיים", לא הטכניים.
 
 ---
 

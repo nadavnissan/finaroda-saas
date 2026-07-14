@@ -79,7 +79,7 @@ export default function ScanPage() {
       if (r.ok && r.data) setXp(r.data.total);
     });
     // Trial chip (Bug 4): show TRIAL in the header while the no-card trial is active.
-    void apiFetch<{ subscription_status: string }>("/api/cardcom/status").then((r) => {
+    void apiFetch<{ subscription_status: string }>("/api/billing/status").then((r) => {
       if (r.ok && r.data) setOnTrial(r.data.subscription_status === "trial");
     });
     // Bug 5: restore the last scan so returning from /subscribe (SEE PLANS) lands back

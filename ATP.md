@@ -608,8 +608,9 @@
 - **TC-AC6-13 — unit (frontend):** `filterLessons` שילובי type×state×search (AND); `lessonState` locked/completed/open; `videoEmbed` YouTube poster / Vimeo / unknown. ✅ auto (8 בדיקות).
 - **TC-AC6-14 — manual (browser):** Academy ב-390px+1280px: כרטיסים ב-grid (טור אחד בטלפון, מרובה במסך רחב), חיפוש+פילטרים מיידיים, נגן וידאו נטען בלחיצה (lazy), שיעור נעול מציג סיבה בשפה פשוטה, admin create/edit/reorder/archive. ⬜ manual (Nadav).
 
-### TC-B3 — Stage 3: Live Billing (Cardcom) (v0.14.0)
-> מכונת-מצבים שרתית אחת (`core/billing_state.py`, D-B4) על אוצר-המילים הקיים של `subscription_status`. כל קריאות Cardcom mocked, אפס רשת (AC8). כסף = agorot ints (D-B10). אין טרמינל אמיתי מחובר (`FEATURE_CARDCOM_LIVE=false`).
+### TC-B3 — Stage 3: Live Billing (Cardcom) (v0.14.0) [SUPERSEDED by TC-R3, v0.16.0]
+> **NOTE: historical.** The PSP moved from Cardcom to Stripe in v0.16.0 (Stage 3R). The live billing suite is now **TC-R3** below. The Cardcom cases here are kept as a record; the Cardcom code + tests were deleted.
+> מכונת-מצבים שרתית אחת (`core/billing_state.py`, D-B4) על אוצר-המילים הקיים של `subscription_status`. כסף = agorot ints (D-B10).
 - **TC-B3-01 — state machine matrix incl. illegal:** כל מעבר חוקי (none→trial/active, trial→active/cancelled/none, active→active/past_due/cancelled, past_due→active/expired/cancelled, cancelled→none/active, expired→active/trial/none) → `can_transition=true`; כל לא-חוקי (none→past_due, active→expired, cancelled→expired, expired→past_due ועוד) → `false` ו-`assert_transition` זורק `IllegalTransition`; `apply_transition` על לא-חוקי לא משנה שורה. `effective_tier`: active/trial/past_due/cancelled שומרים tier בתשלום, expired/none→free. ✅ auto.
 - **TC-B3-02 — agorot arithmetic (AC7/D-B10):** `format_agorot_ils` (backend) + `formatAgorotIls` (frontend): 5900→59.00, 14900→149.00, 99→0.99, 100→1.00, 0→0.00; מחירי פלאן ב-`system_settings` int (5900/14900). ✅ auto.
 - **TC-B3-03 — documents + inert coupon/referral (D-B3/D-B7):** `issue_document` offline → MOCK doc (`MOCK-...`), idempotent per-tx; סוג ברירת-מחדל `receipt`; `coupon_code`/`referral_source` קיימים ב-charges+documents, נישאים למסמך אך המחיר לא משתנה (inert). ✅ auto.
@@ -620,6 +621,22 @@
 - **TC-B3-08 — billing cron auth (D-B9):** `POST /api/cron/billing` ללא secret→403/422, secret שגוי→403, נכון→200 עם `{expire_trials,cancel_drop,renewal}`. ✅ auto.
 - **TC-B3-09 — no live terminal (AC8):** `FEATURE_CARDCOM_LIVE=false`, `CARDCOM_TERMINAL_ID` ריק, `.env.example` שומר על שניהם. ✅ auto.
 - **TC-B3-10 — manual (browser):** BillingBanner ב-390px+1280px למצבי past_due/cancelled/expired ב-scan+settings; cancel dialog מבצע ביטול+survey+access-until; מחירי ₪ + הערת VAT ב-Subscribe. ⬜ manual (Nadav).
+
+### TC-R3 — Stage 3R: PSP migration Cardcom -> Stripe (v0.16.0)
+> Payment layer on **Stripe** (Checkout + Billing). `core/billing_state.py` survives as the entitlement source of truth, fed only by Stripe webhooks. All Stripe calls mocked, zero network (AC8). Money = agorot ints, ILS, VAT-inclusive. Tax documents issued by `core/invoice_provider.py` (MOCK default). File: `backend/tests/test_stage3r_stripe.py`.
+- **TC-R3-01 — state machine matrix (with the new edge):** every legal transition (incl. the new **active -> expired** for an involuntary subscription.deleted) -> `can_transition=true`; illegals (none->past_due, active->trial/none, cancelled->expired, expired->past_due, ...) -> `false` and `assert_transition` raises `IllegalTransition`. `effective_tier`: active/trial/past_due/cancelled keep the paid tier, expired/none -> free. ✅ auto.
+- **TC-R3-02 — agorot arithmetic (D-B10):** `format_agorot_ils` 5900->59.00, 14900->149.00, 99->0.99, 0->0.00; plan prices int (5900/14900). ✅ auto.
+- **TC-R3-03 — MOCK invoice provider (Israeli tax doc):** `invoice_provider.issue_document` offline -> MOCK doc (`MOCK-...`), idempotent per-tx; document_type default `tax_invoice_receipt` (VAT LTD); amount unchanged. ✅ auto.
+- **TC-R3-04 — webhook signature valid + tampered + idempotent (AC1/AC2/AC3):** a Stripe-signed `checkout.session.completed` -> active + tier + stripe_customer_id + stripe_subscription_id + next_billing + one document; a duplicate event id -> processed once (one document, tx=success); a tampered signature -> no activation (none/free). ✅ auto.
+- **TC-R3-05 — invoice.paid recurring, idempotent by event AND invoice (AC3):** a recurring `invoice.paid` -> one recurring tx + one tax document + next_billing refreshed; a new event id with the SAME invoice id -> no second charge/document. ✅ auto.
+- **TC-R3-06 — payment_failed -> past_due -> recovery (AC4):** `invoice.payment_failed` -> past_due (access kept) + our dunning email + bell; a later `invoice.paid` -> active, failure count reset. ✅ auto.
+- **TC-R3-07 — subscription.deleted involuntary -> expired -> Free (AC4):** a `customer.subscription.deleted` while active -> expired + tier=free + stripe_subscription_id cleared (exercises the new active->expired edge). ✅ auto.
+- **TC-R3-08 — cancel at period end + drop (AC5):** `customer.subscription.updated` with cancel_at_period_end=true -> cancelled (access retained, pending_at set); a later `customer.subscription.deleted` -> none/free. Our `cancel_subscription` (DEV mode, no Stripe call) sets cancelled + access-until; a second cancel is idempotent ("already"). ✅ auto.
+- **TC-R3-09 — DEV fallback checkout is zero-network:** with no live key, `initiate_checkout` returns `dev_mode=true` + a `session_id=cs_dev_...` success URL, no Stripe call. ✅ auto.
+- **TC-R3-10 — seed script idempotent:** `seed_stripe_prices` (mocked Stripe) creates exactly one Price per plan; a second run creates nothing (reads the stored price id). ✅ auto.
+- **TC-R3-11 — billing cron shape (no charge step):** `POST /api/cron/billing` auth (no/ bad secret -> 403/422, good -> 200) returns `{expire_trials, cancel_drop}` with NO `renewal` key (Stripe owns recurring). ✅ auto.
+- **TC-R3-12 — no Cardcom in live code + no live-key pattern (AC7):** grep asserts zero `cardcom` (case-insensitive) across backend core/api/models/app/scripts + config + frontend/src, and zero live secret-key pattern in code. ✅ auto.
+- **TC-R3-13 — manual (browser):** subscribe -> Stripe hosted checkout -> success page; BillingBanner states from webhook-driven state at 390px + 1280px; cancel + churn survey. ⬜ manual (Nadav, needs a Stripe test account).
 
 ---
 

@@ -36,9 +36,10 @@ async def run_notification_sweeps(
 async def run_billing_batch(
     x_cron_secret: str | None = Header(default=None),
 ) -> dict:
-    """Stage-3 billing cron (D-B9): expire trials, drop cancelled-at-period-end subs,
-    and charge/renew + dunning. Idempotent; safe to run twice. Railway wiring is a
-    manual step (see SESSION_HANDOFF)."""
+    """Stage-3R billing cron: expire card-free trials + drop cancelled-at-period-end subs
+    (the non-Stripe sweeps). Recurring charges + dunning are Stripe's job now, driven by
+    webhooks — there is no charge step here. Idempotent; safe to run twice. Railway wiring
+    is a manual step (see SESSION_HANDOFF)."""
     _authorize(x_cron_secret)
     result = await billing_batch_task()
     log.info("cron_billing", **result)

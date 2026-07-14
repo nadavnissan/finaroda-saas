@@ -1,36 +1,37 @@
 """
-Cardcom v11 REST — sole payment provider (SPEC §9). Wired in TEST/SANDBOX mode:
-all charges gated by FEATURE_CARDCOM_LIVE (default false). No Morning/Stripe/legacy.
+Billing API (Stage 3R) — Stripe Checkout + Billing (sole PSP; replaces the prior provider).
 
-Endpoints: initiate (checkout), webhook (HMAC), status, cancel.
+Endpoints (mounted at /api/billing): checkout, trial, webhook, status, cancel.
+Checkout runs in DEV mode (fake session, zero network) until a live key is set. Activation
+happens ONLY through the signature-verified webhook, never the browser redirect (AC2).
 """
 import aiosqlite
 import structlog
 from fastapi import APIRouter, Depends, Header, Request
 
-from backend.core import cardcom_service
+from backend.core import stripe_service
 from backend.core.auth import get_current_user
 from backend.core.database import get_db_connection
 from backend.models.auth import CurrentUser
-from backend.models.cardcom import (
-    CardcomCancelResponse,
-    CardcomInitiateRequest,
-    CardcomInitiateResponse,
+from backend.models.billing import (
+    CheckoutInitiateRequest,
+    CheckoutInitiateResponse,
+    SubscriptionCancelResponse,
     SubscriptionStatusResponse,
 )
 
-router = APIRouter(prefix="/cardcom", tags=["payments"])
+router = APIRouter(prefix="/billing", tags=["payments"])
 log = structlog.get_logger(__name__)
 
 
-@router.post("/initiate", response_model=CardcomInitiateResponse)
-async def initiate(
-    body: CardcomInitiateRequest,
+@router.post("/checkout", response_model=CheckoutInitiateResponse)
+async def checkout(
+    body: CheckoutInitiateRequest,
     user: CurrentUser = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db_connection),
-) -> CardcomInitiateResponse:
-    """Start a Cardcom checkout for a plan (503 in test mode until a terminal is wired)."""
-    return await cardcom_service.initiate_checkout(
+) -> CheckoutInitiateResponse:
+    """Create a Stripe Checkout Session for a plan (DEV fake session until a live key)."""
+    return await stripe_service.initiate_checkout(
         user_id=user.internal_id, plan=body.plan, db=db, is_upgrade=body.is_upgrade
     )
 
@@ -40,19 +41,19 @@ async def start_trial(
     user: CurrentUser = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db_connection),
 ) -> dict:
-    """Start the 14-day Pro trial WITHOUT a card (D1). 409 if already used."""
-    return await cardcom_service.start_trial(db=db, user_id=user.internal_id, plan="pro")
+    """Start the 14-day Pro trial WITHOUT a card (D-R2). 409 if already used."""
+    return await stripe_service.start_trial(db=db, user_id=user.internal_id, plan="pro")
 
 
 @router.post("/webhook")
 async def webhook(
     request: Request,
-    x_cardcom_signature: str = Header(default=""),
+    stripe_signature: str = Header(default=""),
     db: aiosqlite.Connection = Depends(get_db_connection),
 ) -> dict:
-    """Cardcom payment webhook (HMAC-verified). Always returns 200 (idempotent)."""
+    """Stripe webhook (signature-verified, idempotent by event id). Always 200."""
     raw_body = await request.body()
-    await cardcom_service.handle_webhook(raw_body, x_cardcom_signature, db)
+    await stripe_service.handle_webhook(raw_body, stripe_signature, db)
     return {"received": True}
 
 
@@ -78,10 +79,10 @@ async def status(
     )
 
 
-@router.post("/cancel", response_model=CardcomCancelResponse)
+@router.post("/cancel", response_model=SubscriptionCancelResponse)
 async def cancel(
     user: CurrentUser = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db_connection),
-) -> CardcomCancelResponse:
-    """Cancel the active subscription at period end."""
-    return await cardcom_service.cancel_subscription(user_id=user.internal_id, db=db)
+) -> SubscriptionCancelResponse:
+    """Cancel the active subscription at period end (Stripe cancel_at_period_end)."""
+    return await stripe_service.cancel_subscription(user_id=user.internal_id, db=db)

@@ -50,12 +50,13 @@ export const api = {
   logout: () => apiFetch("/api/auth/logout", { method: "POST" }),
   joinWaitlist: (email: string) =>
     apiFetch("/api/waitlist", { method: "POST", body: JSON.stringify({ email }) }),
+  // Start a Stripe Checkout session (returns { redirect_url } to the hosted checkout).
   initiateCheckout: (plan: string) =>
-    apiFetch("/api/cardcom/initiate", { method: "POST", body: JSON.stringify({ plan }) }),
-  startTrial: () => apiFetch("/api/cardcom/trial", { method: "POST" }),
+    apiFetch("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan }) }),
+  startTrial: () => apiFetch("/api/billing/trial", { method: "POST" }),
   getPlans: () => apiFetch("/api/plans", { method: "GET" }),
   // Cancel at period end (D-B6). Returns { access_until, message }.
-  cancelSubscription: () => apiFetch("/api/cardcom/cancel", { method: "POST" }),
+  cancelSubscription: () => apiFetch("/api/billing/cancel", { method: "POST" }),
   // Persist the onboarding S9 call-sign (identity) to the profile.
   saveCallSign: (callSign: string) =>
     apiFetch("/api/profile/settings", { method: "PUT", body: JSON.stringify({ call_sign: callSign }) }),

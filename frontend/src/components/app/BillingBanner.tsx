@@ -1,7 +1,7 @@
 "use client";
 
-// In-app billing banner (Stage 3, D-B5/D-B6). Server-authoritative: reads
-// /api/cardcom/status and shows a banner only for a state that needs attention
+// In-app billing banner (Stage 3R, D-B5/D-B6). Server-authoritative: reads
+// /api/billing/status and shows a banner only for a state that needs attention
 // (past_due / cancelled / expired). Healthy states render nothing. The CTA routes to
 // /subscribe (update card or re-subscribe). Access itself is enforced server-side; this
 // is the visible signal.
@@ -38,7 +38,7 @@ export function BillingBanner() {
 
   useEffect(() => {
     let alive = true;
-    void apiFetch<StatusResponse>("/api/cardcom/status").then((r) => {
+    void apiFetch<StatusResponse>("/api/billing/status").then((r) => {
       if (!alive || !r.ok || !r.data) return;
       setModel(billingBanner(r.data.subscription_status, fmtDate(r.data.cancelled_pending_at)));
     });
