@@ -27,7 +27,7 @@
 - ATP: TC-R3-01..12 (state matrix incl new edge, agorot, MOCK invoice provider, webhook sig valid/tampered, event-id + invoice idempotency, checkout-completed, invoice.paid recurring, payment_failed -> past_due -> recovery, subscription.deleted -> expired, cancel-at-period-end + drop, DEV zero-network checkout, seed idempotency, cron shape, AC7 no-cardcom/no-live-key grep).
 - VERSION: v0.16.0
 - BRANCH: dev
-- COMMIT: (recorded in a follow-up commit, per repo convention)
+- COMMIT: adb1e44
 - IMPACT: The whole payment layer now runs on Stripe. Checkout is Stripe-hosted (no card on our servers), activation is webhook-only, recurring + retries are Stripe Billing / Smart Retries, cancel is cancel_at_period_end. Israeli tax documents are issued by a provider-agnostic invoice layer (MOCK until a provider is chosen). Nothing charges until Nadav completes the Stripe GO-LIVE box (LTD account, live keys, webhook endpoint, invoice provider + credentials, FEATURE_STRIPE_LIVE=true + lawyer clearance).
 - DECISIONS: (1) webhook signature verified by a hand-rolled HMAC (Stripe's documented scheme) so the verify boundary needs no SDK and is testable offline; the official SDK is used for outbound Checkout/Subscription/Price calls (D-R1). (2) subscription.deleted maps to `none` for a voluntary local cancel and to `expired` for an involuntary end; drop_cancelled_to_free stays as a safety net for cancelled trials (no Stripe sub). (3) document-type default flipped to tax_invoice_receipt (VAT-registered LTD). (4) seed script seeds basic+pro (the shipped paid plans, mig 029); D-R3 wording "pro / advanced-dormant" reflects an older plan set (advanced retired) and is reported, not blocking.
 
