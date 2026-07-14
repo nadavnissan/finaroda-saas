@@ -109,8 +109,10 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
 | Trading Blueprint מלא | ✓ | ✓ | ✓ |
 | דאשבורד "מה היה קורה" | 7 ימים אחרונים | ✓ | ✓ |
 | ייצוא תוצאות | — | ✓ | ✓ |
-| Academy (וידאו) | בסיסי | מלא | מלא |
+| Academy (טקסט/וידאו) | בסיסי | מלא | מלא |
 | (V2) Copy-to-LLM | — | — | ✓ |
+
+> **Academy 2.0 (Stage 6, v0.13.0):** ספריית האקדמיה עברה מרשימה ל-**card grid** רספונסיבי (טור אחד ב-390px, מרובה-טורים ב-1280px). כל כרטיס: כותרת, תיאור קצר, משך, תג-סוג (טקסט/וידאו), מצב-נעילה, מצב-הושלם. **חיפוש+פילטרים** בצד-לקוח (כותרת/תיאור/tags · סוג · נעול/פתוח/הושלם, מיידי). **שיעורי וידאו** עם נגן embed נטען-בלחיצה (lazy). **שיעור נעול** מציג מטא-דאטה + סיבה בשפה פשוטה ("Unlocks at <rank>" / "Available on <plan> plan") — "show the door, name the key", כמו E7b why-not ו-POSITION horizon lock; התוכן עצמו נשלט-שרת. deep-link מ-Concept Tooltip (`/academy#<slug>`) עדיין מדגיש. ניהול השיעורים (create/edit/reorder/archive/video/tags/gating) בקונסולת האדמין (סקשן "academy").
 
 > כל המספרים נשלטים מהאדמין בלי קוד. הטבלה היא ברירת מחדל מוצעת — לאישור נדב.
 > **Free tier (D2, נדב 2026-07-09):** מסלול חינמי קבוע — סריקה 1/יום, 2 מטבעות, Blueprint מלא, F3 מוגבל ל-7 ימים, ללא ייצוא, academy בסיסי. במסך paywall/פיצול — אפשרות משנית **"Continue on Free"**.

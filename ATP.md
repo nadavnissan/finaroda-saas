@@ -591,6 +591,23 @@
 - **TC-A7-13 — unit (frontend):** filters↔URL round-trip; `userRow` עמודות v1.1; ring buffer overflow ב-20; `shouldInitSentry` gating (DSN + non-test). ✅ auto (7 בדיקות).
 - **TC-A7-14 — manual (browser):** אדמין ב-390px+1280px: פילטרים משנים URL + נשמרים ב-refresh; טבלה רחבה גוללת אופקית; EXPORT CSV מוריד; טיקט מציג breadcrumbs timeline; Settings "Cancel plan or leave" שולח survey. ⬜ manual (Nadav).
 
+### TC-AC6 — Stage 6: Academy 2.0 (v0.13.0)
+> מנוע: `academy_lessons` (mig 033, DB-backed) מחליף את רשימת `_MODULES` הקשיחה של B6. השלמה/XP נשארים ב-`xp_events` (source=`academy_lesson`, ref=`slug`), ללא נגיעה — S3 בטוח.
+- **TC-AC6-01 — seed = 12 lessons + backward-compat (AC7/AC8):** `GET /api/academy` מחזיר בדיוק 12 שיעורים; כל שורה נושאת גם aliases ישנים (`id`==`slug`, `minutes`==`duration_minutes`) וגם שדות 2.0 (content_type/description/tags/min_plan/min_rank). ✅ auto.
+- **TC-AC6-02 — migration preserves completion by slug (AC7/S3):** רשומת השלמה שנכתבה תחת ה-module id הישן (==slug) עדיין נקראת `completed=true`; replay של complete מעניק 0 (idempotent, אין XP כפול). ✅ auto.
+- **TC-AC6-03 — dual-gate matrix (AC4/D-AC1):** free-plan/no-rank → פתוח ל-free; basic-plan lesson → נעול ל-free עם `lock_reason`="Available on Basic plan"; bonus (min_rank 1000) → נעול עם "Unlocks at Risk Manager"; שדרוג ל-basic פותח את שער הפלאן אך לא את שער הדרגה; מענק 1000 XP פותח את הדרגה (STATUS-based, לא הוצאה). ✅ auto.
+- **TC-AC6-04 — trial = full library (AC4):** `subscription_status='trial'` → שיעורי plan-full פתוחים (גישת Pro). ✅ auto.
+- **TC-AC6-05 — server-authoritative gated content (AC4/D-AC7):** `GET /api/academy/{slug}` על שיעור פתוח → 200 עם body; על שיעור נעול → **403** ו-`body`/`video_url` אינם ב-payload. ✅ auto.
+- **TC-AC6-06 — completion XP uniqueness (AC5):** complete ראשון → +100/`completed=true`; שני → +0. ✅ auto.
+- **TC-AC6-07 — seed stub awards nothing (AC5):** `volume_basics` (`awards_xp=0`) → `{xp_awarded:0, completed:false}` (זהות התנהגותית ל-stub של B6). ✅ auto.
+- **TC-AC6-08 — admin auth on every mutation (AC6):** non-admin על list/create/update/archive/restore/reorder של `/api/admin/academy/*` → 403. ✅ auto.
+- **TC-AC6-09 — admin video create + invalid URL (AC3):** YouTube watch-URL → 200 + `video_url` מנורמל ל-`youtube.com/embed/{id}`; URL לא-YouTube/Vimeo → 400 `INVALID_VIDEO_URL`. ✅ auto.
+- **TC-AC6-10 — archive hides from users + restore (AC6/D-AC6):** יצירה→נראה למשתמש; archive→נעלם מספריית המשתמש אך נשאר באדמין עם `archived=true`; restore→חוזר. ✅ auto.
+- **TC-AC6-11 — archive never revokes XP (D-AC6):** משתמש משלים שיעור (+100), אדמין מארכב → שורת `xp_events` שורדת (XP לא נשלל). ✅ auto.
+- **TC-AC6-12 — admin reorder (D-AC5):** POST reorder עם רשימת ids הפוכה → sort_index נכתב לפי מיקום; החזרה מסודרת בהתאם. ✅ auto.
+- **TC-AC6-13 — unit (frontend):** `filterLessons` שילובי type×state×search (AND); `lessonState` locked/completed/open; `videoEmbed` YouTube poster / Vimeo / unknown. ✅ auto (8 בדיקות).
+- **TC-AC6-14 — manual (browser):** Academy ב-390px+1280px: כרטיסים ב-grid (טור אחד בטלפון, מרובה במסך רחב), חיפוש+פילטרים מיידיים, נגן וידאו נטען בלחיצה (lazy), שיעור נעול מציג סיבה בשפה פשוטה, admin create/edit/reorder/archive. ⬜ manual (Nadav).
+
 ---
 
 ## ATR (Acceptance Test Reports)

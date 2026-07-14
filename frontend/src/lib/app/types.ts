@@ -56,21 +56,62 @@ export interface ProfileResponse {
   settings: ProfileSettings;
 }
 
-export interface AcademyModule {
-  id: string;
+// Academy 2.0 (Stage 6): DB-backed lessons, flat card grid, dual gating, text/video.
+export interface AcademyLesson {
+  slug: string;
   title: string;
-  minutes: number;
-  term_count: number;
-  has_lesson: boolean;
-  tier: string;
-  rank_unlock?: number | null;
+  description: string;
+  content_type: "text" | "video";
+  duration_minutes: number;
+  tags: string[];
+  min_plan: "free" | "basic" | "pro";
+  min_rank: number;
+  sort_index: number;
   unlocked: boolean;
   completed: boolean;
+  awards_xp: boolean;
+  lock_reason?: string | null;
+  // Backward-compatible aliases (== slug / duration_minutes).
+  id: string;
+  minutes: number;
 }
 
+// The list endpoint keeps the key `modules` for backward compatibility.
 export interface AcademyResponse {
-  modules: AcademyModule[];
+  modules: AcademyLesson[];
   xp_total: number;
+}
+
+// Full gated content from GET /api/academy/{slug} (403 when locked).
+export interface LessonContent {
+  slug: string;
+  title: string;
+  description: string;
+  content_type: "text" | "video";
+  duration_minutes: number;
+  tags: string[];
+  body: string;
+  video_url?: string | null;
+  completed: boolean;
+  awards_xp: boolean;
+}
+
+// Admin lesson row (create/edit/reorder/archive).
+export interface AdminLesson {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  content_type: "text" | "video";
+  body: string;
+  video_url?: string | null;
+  duration_minutes: number;
+  tags: string[];
+  min_plan: "free" | "basic" | "pro";
+  min_rank: number;
+  sort_index: number;
+  awards_xp: boolean;
+  archived: boolean;
 }
 
 export interface Me {

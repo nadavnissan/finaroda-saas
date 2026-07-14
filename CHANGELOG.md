@@ -4,6 +4,31 @@
 
 ---
 
+## [UPGRADE-STAGE6 / Academy 2.0] — 2026-07-14
+- GOAL: בניית האקדמיה מחדש (4 deliverables בריצה אחת): (A) card grid במקום רשימה, (B) חיפוש+פילטרים צד-לקוח, (C) שיעורי וידאו (embed), (D) ניהול שיעורים באדמין (create/edit/reorder/archive/video/tags/gating). תוכן השיעורים עצמו = משימת נדב (נשלח עם 12 שיעורים קיימים + מבנה-seed מוכן). OUT OF SCOPE: שינוי כללי XP (נעול), payments, referral, push/PWA, community.
+- STOP POINTS (כולם נבדקו, אף אחד לא חסם):
+  - **S1 (מבנה מתנגש) — לא נדרשה עצירה:** האקדמיה המשווקת (B6, PRD F6) שטוחה (12 מודולים), ותואמת card grid. הטבלאות `academy_bundles`/`academy_episodes` (mig 009, מבנה bundle→episode דו-שכבתי מה-template) קיימות אך **רדומות** — אף קוד חי לא קורא/כותב אליהן (רק test_smoke בודק קיום). זהו legacy מת, לא "הרשימה הנוכחית". המשכתי שטוח ומדווח.
+  - **S2 (עמימות פלאן) — לא נדרשה עצירה:** בקוד `tier IN (free,basic,advanced,pro)` אך `advanced` רדום (mig 029 מיגר ל-basic, נסבל ב-CHECK). 3 מסלולים פעילים (free/basic/pro). min_plan={free,basic,pro}; `advanced` מטופל כ-paid(>=basic); `trial`=גישת Pro. אין עמימות אמיתית.
+  - **S3 (סיכון מיגרציה) — לא נדרשה עצירה:** ההשלמות חיות כולן ב-`xp_events` (source=`academy_lesson`, ref=`module_id`). המיגרציה **purely additive** (יוצרת טבלה, אפס נגיעה ב-`xp_events`), וזורעת את 12 השיעורים עם `slug`==module_id הישן — כל השלמה+XP נשמרת לפי אותו slug. count-match מובטח.
+- SOLUTION:
+  - **Backend — מנוע DB (mig 033 `academy_lessons`):** מחליף את רשימת `_MODULES` הקשיחה של B6. `slug` (מפתח השלמה) · title/description · content_type(text/video) · body · video_url · duration · tags(JSON) · **min_plan + min_rank** (D-AC1) · sort_index · awards_xp(0 ל-stubs) · archived_at (archive-not-delete).
+  - **שער-כפול (`core/academy_gate.py`):** `is_unlocked = plan_ok AND rank_ok`. rank = STATUS (‏`xp_total>=min_rank`), לא הוצאת XP. `lock_reason` בשפה פשוטה (דרגה נקראת ראשונה). `validate_video_url` — YouTube/Vimeo בלבד, מנרמל ל-embed URL, דוחה אחר (400).
+  - **תוכן נשלט-שרת (D-AC7):** `GET /api/academy` = מטא-דאטה+lock_reason בלבד (ללא body/video). `GET /api/academy/{slug}` = תוכן מלא רק אם פתוח, אחרת **403** (נבדק שאין דליפת body/video). `POST /{slug}/complete` = +100 חד-פעמי (unique), awards_xp=0→0.
+  - **Admin (`api/admin_academy.py`, admin-only→403, audited ל-`admin_events`):** `GET/POST /lessons`, `PUT /lessons/{id}`, `POST /{id}/archive|restore`, `POST /reorder` (ordered_ids, up/down — D-AC5). auto-slug ייחודי, ולידציית וידאו/gates.
+  - **Frontend:** `academy/page.tsx` = card grid רספונסיבי (maxWidth 1040 + grid auto-fill) + search + פילטרי type/state (‏`lib/app/academy.ts` — `filterLessons`/`lessonState`/`videoEmbed`, טהור, unit-tested). `academy/[moduleId]/page.tsx` = fetch תוכן gated, render טקסט/וידאו, mark-complete. `components/academy/VideoEmbed.tsx` = נגן lazy (iframe רק בלחיצה, poster ל-YouTube). `components/admin/AcademyAdmin.tsx` = ניהול מלא, מחובר כסקשן "academy" ב-admin. types + APP_VERSION→0.13.0.
+- FILES CREATED: `backend/migrations/033_academy_lessons.py`, `backend/core/academy_gate.py`, `backend/api/admin_academy.py`, `backend/tests/test_academy_v2.py`, `frontend/src/lib/app/academy.ts`, `frontend/src/components/academy/VideoEmbed.tsx`, `frontend/src/components/admin/AcademyAdmin.tsx`, `frontend/tests/academy.unit.test.ts`.
+- FILES MODIFIED: `backend/api/academy.py` (rewrite DB-backed), `backend/models/academy.py` (rewrite), `backend/main.py` (register admin_academy_router), `frontend/src/app/(academy)/academy/page.tsx` + `[moduleId]/page.tsx` (rewrite), `frontend/src/app/(admin)/admin/page.tsx` (academy section), `frontend/src/lib/app/types.ts`, `frontend/src/lib/version.ts`, docs (PRD F6 / SPEC §3.1+§5.12 / UX / ATP / VERSIONS / SESSION_HANDOFF).
+- DB CHANGES: mig 033 (`academy_lessons` + index + 12-lesson seed). `xp_events` **לא נגעתי** (השלמות נשמרות).
+- CONFIG ADDED: אין.
+- VALIDATION: pytest **112/112** (100 + 12 חדש), tsc clean, eslint clean (`next lint`), frontend unit **45/45** (37 + 8 חדש, כולל viewport.regression), shared 14/14 (untouched).
+- ATP: TC-AC6-01..14 (13 auto + 1 manual browser).
+- VERSION: v0.13.0
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: האקדמיה עברה ל-card grid עם חיפוש/פילטרים ווידאו; אדמין מנהל שיעורים בלי קוד; gating עבר לשער-כפול plan+rank נשלט-שרת. כל ההשלמות/XP הקיימות נשמרו. אין שינוי במסלול המשתמש להשלמה (+100 חד-פעמי).
+- DECISIONS: (1) min_rank מאוחסן כסף-XP int (0/1000/3000/8000), ישיר להשוואה מול xp_total. (2) `awards_xp` boolean per-lesson שומר התנהגות B6 stub (3 seeds=0) → כל הבדיקות הקיימות נשארות ירוקות. (3) reorder = כפתורי up/down ששולחים סדר מלא (D-AC5). (4) body נזרע מ-concept JSON (guarded read, fallback ריק) לשימור תוכן קיים בשליטת-שרת. (5) locked-content = 403 עם reason (לא 404).
+- AC9 (em-dash lint report): ראה SESSION_HANDOFF — הממצא מ-Stage 7 דווח במלואו.
+
 ## [UPGRADE-STAGE7 / Admin v1.1 + Sentry + Ticket Breadcrumbs] — 2026-07-14
 - GOAL: (A) שדרוג טבלת משתמשים באדמין (עמודות עשירות, פילטרים צד-שרת, CSV, churn survey), (B) Sentry backend+frontend env-gated, (C) breadcrumbs לכל טיקט. + drift-fix מאושר: הסרת em-dashes מתבניות welcome/beta email (דווח ב-Stage 5). OUT OF SCOPE: לוגיקת referral (עמודה placeholder 0), payments (Stage 3 חסום), Academy, כל שינוי XP.
 - STOP POINTS: **S1** — אין קונפליקט: SPEC F9/B7 מגדיר churn=שיעור+סיבת-עזיבה-משאלון, tickets, MRR; D-A2/D-A3 מוסיפים פירוט (XP/scans/active-days) בלי לסתור. לא נדרשה עצירה. **S2** — breadcrumbs לא נוגעים ב-reveal-gating: sanitizer allowlist בצד-שרת מוודא שאף ערך תוצאה לא נכנס; הלקוח ממילא לא מחזיק ערכים לא-חשופים. לא נדרשה עצירה.

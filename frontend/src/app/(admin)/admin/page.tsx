@@ -14,12 +14,13 @@ import {
   userRow,
   type UserFilters,
 } from "@/lib/adminFilters";
+import { AcademyAdmin } from "@/components/admin/AcademyAdmin";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
 
-type Section = "overview" | "users" | "tickets" | "broadcast" | "settings" | "notifications";
-const SECTIONS: Section[] = ["overview", "users", "tickets", "broadcast", "settings", "notifications"];
+type Section = "overview" | "users" | "tickets" | "broadcast" | "academy" | "settings" | "notifications";
+const SECTIONS: Section[] = ["overview", "users", "tickets", "broadcast", "academy", "settings", "notifications"];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -618,6 +619,7 @@ export default function AdminPage() {
         {section === "users" && <Users />}
         {section === "tickets" && <Tickets />}
         {section === "broadcast" && <Broadcast />}
+        {section === "academy" && <AcademyAdmin />}
         {section === "settings" && <Settings />}
         {section === "notifications" && <Notifications />}
       </div>

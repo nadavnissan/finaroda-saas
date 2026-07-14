@@ -1,22 +1,27 @@
-"""B6 Academy shell API (F6).
+"""Academy 2.0 user API (F6): flat lesson list (card grid), server-authoritative gated
+content, completion XP. Lessons are DB-backed (mig 033). Completion/XP stays in xp_events
+(source='academy_lesson', ref=slug), idempotent per lesson (+100 first time only,
+XP_ECONOMY §1) — unchanged from B6, so no completion or XP is lost in the rebuild.
 
-The 12 modules map 1:1 to the `academy` ids in concept_tooltips_content.json. This
-phase seeds each module from its terms' plain-language `what` content (rendered by the
-frontend from the same bundled JSON) — no invented lessons. Completion XP (+100, once
-per lesson, XP_ECONOMY §1) is awarded ONLY for modules with real content (>= 3 terms);
-stub modules (volume/positioning/regime-transitions) award nothing.
-
-Plan gating (F7): 'basic' modules are open to all plans; 'full' modules need Advanced+
-or an active Pro trial. Two modules are rank-unlocked BONUS content (Spike Autopsies at
-1,000 XP, Regime Transitions at 3,000 XP) — orthogonal to plan gates (XP_ECONOMY §3).
+Gating (D-AC1): each lesson carries min_plan (free/basic/pro) + min_rank (0/1000/3000/8000);
+both must pass (STATUS-based, never XP-as-currency). Locked lessons show metadata + a
+plain-language lock reason; their CONTENT is never sent (D-AC7): GET /{slug} returns 403.
 """
+import json
+
 import aiosqlite
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
+from backend.core.academy_gate import is_unlocked, lock_reason
 from backend.core.auth import get_current_user
 from backend.core.database import get_db_connection
-from backend.models.academy import AcademyModule, AcademyResponse, LessonResult
+from backend.models.academy import (
+    AcademyLesson,
+    AcademyResponse,
+    LessonContent,
+    LessonResult,
+)
 from backend.models.auth import CurrentUser
 
 router = APIRouter(prefix="/api/academy", tags=["academy"])
@@ -24,99 +29,108 @@ log = structlog.get_logger(__name__)
 
 ACADEMY_LESSON_SOURCE = "academy_lesson"
 ACADEMY_LESSON_XP = 100
-LESSON_MIN_TERMS = 3  # a module needs >= this many seed terms to be a real lesson
-
-# id -> (title[no em dash], minutes, term_count, tier, rank_unlock)
-# term_count mirrors concept_tooltips_content.json's grouping by `academy`.
-_MODULES: list[dict] = [
-    {"id": "regime_ema200", "title": "The 200-day average: reading regime", "minutes": 10, "term_count": 3, "tier": "basic", "rank_unlock": None},
-    {"id": "ema7_timing", "title": "EMA7 timing: the verified slope", "minutes": 12, "term_count": 4, "tier": "basic", "rank_unlock": None},
-    {"id": "closed_candle_scoring", "title": "Closed-candle scoring: why we wait for the close", "minutes": 8, "term_count": 3, "tier": "basic", "rank_unlock": None},
-    {"id": "methodology_overview", "title": "The Trading Blueprint: PASS, WATCH, and the score", "minutes": 14, "term_count": 8, "tier": "basic", "rank_unlock": None},
-    {"id": "smart_skip", "title": "Smart-skip: the discipline curriculum", "minutes": 18, "term_count": 4, "tier": "full", "rank_unlock": None},
-    {"id": "momentum_basics", "title": "Momentum basics: RSI and exhaustion", "minutes": 11, "term_count": 3, "tier": "full", "rank_unlock": None},
-    {"id": "risk_geometry", "title": "R and risk geometry: one number to rule sizing", "minutes": 15, "term_count": 9, "tier": "full", "rank_unlock": None},
-    {"id": "structure_levels", "title": "Structure and levels: support, resistance, gaps", "minutes": 13, "term_count": 4, "tier": "full", "rank_unlock": None},
-    {"id": "volume_basics", "title": "Volume: confirmation, not prediction", "minutes": 6, "term_count": 1, "tier": "basic", "rank_unlock": None},
-    {"id": "positioning_basics", "title": "Positioning: funding and isolation", "minutes": 7, "term_count": 2, "tier": "full", "rank_unlock": None},
-    {"id": "spike_anatomy", "title": "Anatomy of a spike: why most fade", "minutes": 12, "term_count": 3, "tier": "full", "rank_unlock": 1000},
-    {"id": "regime_transitions", "title": "Regime transitions: reading the turn", "minutes": 9, "term_count": 2, "tier": "full", "rank_unlock": 3000},
-]
-_MODULE_IDS = {m["id"] for m in _MODULES}
 
 
-def _has_lesson(m: dict) -> bool:
-    return m["term_count"] >= LESSON_MIN_TERMS
+async def _xp_total(db: aiosqlite.Connection, uid: int) -> int:
+    rows = await db.execute_fetchall(
+        "SELECT COALESCE(SUM(amount), 0) FROM xp_events WHERE user_id = ?", (uid,)
+    )
+    return rows[0][0] if rows else 0
 
 
-def _is_pro_access(user: CurrentUser) -> bool:
-    """Paid plans (Basic/Pro), or an active Pro trial (trial = full library, B6b).
-    Basic inherits the old Advanced full-library access (Decision A, mig 029)."""
-    return user.tier in ("basic", "pro") or user.subscription_status == "trial"
-
-
-def _is_unlocked(m: dict, user: CurrentUser, xp_total: int) -> bool:
-    if m["rank_unlock"] is not None:
-        return xp_total >= m["rank_unlock"]        # bonus content, plan-agnostic
-    if m["tier"] == "basic":
-        return True
-    return _is_pro_access(user)                     # 'full' → Advanced+ or Pro trial
+async def _completed_slugs(db: aiosqlite.Connection, uid: int) -> set:
+    rows = await db.execute_fetchall(
+        "SELECT ref FROM xp_events WHERE user_id = ? AND source = ?",
+        (uid, ACADEMY_LESSON_SOURCE),
+    )
+    return {r[0] for r in rows}
 
 
 @router.get("", response_model=AcademyResponse)
-async def list_modules(
+async def list_lessons(
     user: CurrentUser = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db_connection),
 ) -> AcademyResponse:
-    xp_rows = await db.execute_fetchall(
-        "SELECT COALESCE(SUM(amount), 0) FROM xp_events WHERE user_id = ?", (user.internal_id,)
+    xp_total = await _xp_total(db, user.internal_id)
+    completed = await _completed_slugs(db, user.internal_id)
+    rows = await db.execute_fetchall(
+        """SELECT slug, title, description, content_type, duration_minutes, tags,
+                  min_plan, min_rank, sort_index, awards_xp
+           FROM academy_lessons WHERE archived_at IS NULL
+           ORDER BY sort_index, id"""
     )
-    xp_total = xp_rows[0][0] if xp_rows else 0
-
-    done_rows = await db.execute_fetchall(
-        "SELECT ref FROM xp_events WHERE user_id = ? AND source = ?",
-        (user.internal_id, ACADEMY_LESSON_SOURCE),
-    )
-    completed = {r[0] for r in done_rows}
-
-    modules = [
-        AcademyModule(
-            id=m["id"], title=m["title"], minutes=m["minutes"], term_count=m["term_count"],
-            has_lesson=_has_lesson(m), tier=m["tier"], rank_unlock=m["rank_unlock"],
-            unlocked=_is_unlocked(m, user, xp_total), completed=m["id"] in completed,
+    lessons = [
+        AcademyLesson(
+            slug=slug, id=slug, title=title, description=desc, content_type=ctype,
+            duration_minutes=dur, minutes=dur, tags=json.loads(tags or "[]"),
+            min_plan=min_plan, min_rank=min_rank, sort_index=sort_index,
+            awards_xp=bool(awards_xp),
+            unlocked=is_unlocked(user, xp_total, min_plan, min_rank),
+            completed=slug in completed,
+            lock_reason=lock_reason(user, xp_total, min_plan, min_rank),
         )
-        for m in _MODULES
+        for (slug, title, desc, ctype, dur, tags, min_plan, min_rank, sort_index, awards_xp)
+        in rows
     ]
-    return AcademyResponse(modules=modules, xp_total=xp_total)
+    return AcademyResponse(modules=lessons, xp_total=xp_total)
 
 
-@router.post("/{module_id}/complete", response_model=LessonResult)
+@router.get("/{slug}", response_model=LessonContent)
+async def lesson_content(
+    slug: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> LessonContent:
+    rows = await db.execute_fetchall(
+        """SELECT slug, title, description, content_type, duration_minutes, tags, body,
+                  video_url, min_plan, min_rank, awards_xp
+           FROM academy_lessons WHERE slug = ? AND archived_at IS NULL""",
+        (slug,),
+    )
+    if not rows:
+        raise HTTPException(404, "unknown lesson")
+    (slug, title, desc, ctype, dur, tags, body, video_url, min_plan, min_rank, awards_xp) = rows[0]
+    xp_total = await _xp_total(db, user.internal_id)
+    if not is_unlocked(user, xp_total, min_plan, min_rank):
+        # D-AC7: content is server-authoritative — never leak a locked lesson's body/video.
+        raise HTTPException(
+            403,
+            {"code": "LESSON_LOCKED",
+             "reason": lock_reason(user, xp_total, min_plan, min_rank)},
+        )
+    completed = slug in await _completed_slugs(db, user.internal_id)
+    return LessonContent(
+        slug=slug, title=title, description=desc, content_type=ctype, duration_minutes=dur,
+        tags=json.loads(tags or "[]"), body=body, video_url=video_url,
+        completed=completed, awards_xp=bool(awards_xp),
+    )
+
+
+@router.post("/{slug}/complete", response_model=LessonResult)
 async def complete_lesson(
-    module_id: str,
+    slug: str,
     user: CurrentUser = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db_connection),
 ) -> LessonResult:
-    """Award +100 XP once per real lesson. Stub / locked modules award nothing."""
-    m = next((x for x in _MODULES if x["id"] == module_id), None)
-    if m is None:
-        raise HTTPException(404, "unknown module")
-
-    xp_rows = await db.execute_fetchall(
-        "SELECT COALESCE(SUM(amount), 0) FROM xp_events WHERE user_id = ?", (user.internal_id,)
+    """Award +100 XP once per lesson. Locked lessons 403; non-XP (seed stub) lessons 0."""
+    rows = await db.execute_fetchall(
+        "SELECT min_plan, min_rank, awards_xp FROM academy_lessons WHERE slug = ? AND archived_at IS NULL",
+        (slug,),
     )
-    xp_total = xp_rows[0][0] if xp_rows else 0
-
-    if not _is_unlocked(m, user, xp_total):
-        raise HTTPException(403, "module locked for this plan/rank")
-    if not _has_lesson(m):
-        # Honest: a stub with no real lesson content grants no XP.
+    if not rows:
+        raise HTTPException(404, "unknown lesson")
+    min_plan, min_rank, awards_xp = rows[0]
+    xp_total = await _xp_total(db, user.internal_id)
+    if not is_unlocked(user, xp_total, min_plan, min_rank):
+        raise HTTPException(403, "lesson locked for this plan/rank")
+    if not awards_xp:
+        # Honest: a seed reference lesson with no XP grants nothing (B6 stub parity).
         return LessonResult(xp_awarded=0, completed=False)
-
-    xp_cur = await db.execute(
+    cur = await db.execute(
         """INSERT OR IGNORE INTO xp_events (user_id, source, ref, amount)
            VALUES (?, ?, ?, ?)""",
-        (user.internal_id, ACADEMY_LESSON_SOURCE, module_id, ACADEMY_LESSON_XP),
+        (user.internal_id, ACADEMY_LESSON_SOURCE, slug, ACADEMY_LESSON_XP),
     )
-    awarded = xp_cur.rowcount == 1
+    awarded = cur.rowcount == 1
     await db.commit()
     return LessonResult(xp_awarded=ACADEMY_LESSON_XP if awarded else 0, completed=True)
