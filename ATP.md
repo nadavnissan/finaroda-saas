@@ -709,6 +709,22 @@
 
 ---
 
+## FIX ROUND — Founder validation (v0.17.2, 2026-07-15)
+
+- **TC-FX1-01 — new user routed into onboarding:** a freshly signed-in user (allowlist + magic-link/DEV SIGN-IN) has `onboarding_completed=false` on their first `/api/auth/me`; the client routes such a user to `/onboarding`, not `/scan` (`login`/`verify` via `routeAfterAuth`, `/scan` safety-net guard). ✅ auto (backend signal: `test_p3_onboarding.py::test_new_user_me_reports_onboarding_incomplete`) + ⬜ manual (browser routing).
+- **TC-FX1-02 — completing onboarding grants 300 XP exactly once:** `POST /api/onboarding/complete` flips the flag and grants 300; replays grant 0 (idempotent). ✅ auto (existing + FX1 regression).
+- **TC-FX2-01 — second Free scan shows the 429 quota screen:** a Free user's second same-day scan returns `429 DAILY_SCAN_LIMIT` (scans_per_day=1); the client renders the dedicated limit screen (SEE PLANS / VIEW JOURNAL). ✅ auto (`test_b1_gating.py::test_daily_scan_cap_free_blocks_second`) + ⬜ manual (screen render).
+- **TC-FX2-02 — always a route back to /scan:** the FINARODA wordmark routes to `/scan`; the hamburger drawer includes an explicit "Scan" entry. ✅ auto (frontend `viewport.regression` — nav check).
+- **TC-FX3-01 — scan detail forbidden-term absence:** SL / TP / ENTRY appear in NO user-facing frontend copy (comment-stripped grep over `frontend/src`). ✅ auto (`test_content_copy.py::test_no_forbidden_trade_terms_in_ui`).
+- **TC-FX3-02 — scan detail presentation parity:** the past-scan detail renders the Trading Blueprint (BlueprintChart + 4 canonical calculated levels + Risk:Reward + TIMING VERIFIED/WATCH header), matching the live scan card; setup-time levels only (reveal/outcome stays gated). ✅ auto (frontend `viewport.regression` — canonical-terms + chart check) + ⬜ manual (visual parity).
+- **TC-FX4-01 — coin-identity gating (INVESTIGATION):** per-plan coin-IDENTITY gating (which specific coins) is **NOT specified** in PRD/SPEC/UX — only coin COUNT (Free 2 / Basic 5 / Pro 10). Per FX4 rule: not invented; reported to founder. No code. ⬜ founder-definition-needed.
+- **TC-FX5-01 — Settings has Plan & Billing:** Settings shows CURRENT PLAN, TRIAL state, a `/subscribe` link, and the existing cancel action (data from `/api/profile`). ✅ manual (render).
+- **TC-FX5-02 — Settings load not serialized:** profile + prefs fetch fires in parallel with `/me` (no waterfall); profile/prefs endpoints are single indexed queries (no N+1/missing index). ✅ auto (tsc/lint) + ⬜ manual (perceived load).
+- **TC-FX6-01 — app-shell anchor:** scan/dashboard/settings/profile/academy/history columns set `minHeight:100vh` so short screens do not collapse; Academy filter row wraps (never cut off). ✅ auto (frontend `viewport.regression` — shell check).
+- **TC-FX7-01 — hamburger unread hint:** a green dot shows on the ≡ icon when unread notifications exist and clears when the bell panel opens. ✅ auto (frontend `viewport.regression` — header/bell event) + ⬜ manual (visual).
+
+---
+
 ## ATR (Acceptance Test Reports)
 מיוצרים בהרצה, נשמרים כ-ATR-{date}.md. לא בקובץ זה.
 

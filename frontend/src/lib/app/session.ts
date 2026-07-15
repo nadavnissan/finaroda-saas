@@ -39,3 +39,14 @@ export function useMe(guard: Guard = "any"): { me: Me | null; loading: boolean }
 
   return { me, loading };
 }
+
+// Where to send a just-authenticated user (FX1). A user who has NOT completed the
+// F13 onboarding must land in it, not on /scan — onboarding is where signup was meant
+// to happen, so a user who signed in via /login or /verify (bypassing the in-flow
+// signup) would otherwise never see it. Completion is server-authoritative
+// (users.onboarding_completed_at) and grants the 300 XP once (idempotent).
+export async function routeAfterAuth(): Promise<string> {
+  const r = await apiFetch<{ data: Me }>("/api/auth/me");
+  if (r.ok && r.data?.data && r.data.data.onboarding_completed === false) return "/onboarding";
+  return "/scan";
+}

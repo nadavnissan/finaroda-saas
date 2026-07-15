@@ -315,7 +315,7 @@ CREATE TABLE academy_lessons (
 |---|---|
 | `GET /api/scan/entitlements` | binding gating config לפי tier → `{tier, coins_per_scan, chart_layers, scans_per_day}` (‏`core/entitlements.py`). |
 | `POST /api/scan/events` | דוחה סריקה מעל מכסת המטבעות (403 `PLAN_COIN_LIMIT`); **אוכף מגבלת סריקות/יום (BUG 3, v0.10.0): 429 `DAILY_SCAN_LIMIT`** (Free=1/יום, בתשלום=unlimited, admin-editable דרך `scans_per_day_*`); מזכה first-scan-of-day XP (+50, idempotent per day, `daily_first_scan`). |
-| `GET /api/scan/history` · `GET /api/scan/history/{id}` | **read-only (Decision B, v0.10.0):** רשימת סריקות אחרונות (זמן/מטבעות/passes) + תצוגת תוצאה שמורה, נגזר מ-`score_log`/`scan_events`. **אין** דאטת reveal/outcome. |
+| `GET /api/scan/history` · `GET /api/scan/history/{id}` | **read-only (Decision B, v0.10.0):** רשימת סריקות אחרונות (זמן/מטבעות/passes) + תצוגת תוצאה שמורה, נגזר מ-`score_log`/`scan_events`. **אין** דאטת reveal/outcome. **v0.17.2 (FX3):** תצוגת הפירוט מרנדרת את ה-Trading Blueprint המלא (BlueprintChart + 4 רמות מחושבות במינוח קנוני Mathematical Trigger Point/Calculated Risk Level/Dynamic Risk Level/Calculated Target Level + Risk:Reward), ערכי setup-time בלבד (כבר-הוצגו, לא outcome). המילים SL/TP/ENTRY אסורות מול-משתמש (guard `test_content_copy.py::test_no_forbidden_trade_terms_in_ui`). |
 | `GET /api/plans` | public: שלושת המסלולים (Free/Basic/Pro, אחרי Decision A) עם price/coins/scans/chart_layers מ-`system_settings`. |
 | `GET /api/journal/badge` | ספירת תוצאות לא-חשופות בלבד (reveal badge). |
 | `GET /api/profile` · `PUT /api/profile/settings` | פרופיל + call-sign + סולם דרגות; שמירת Lens/Risk Style. |

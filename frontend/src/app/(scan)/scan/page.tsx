@@ -71,6 +71,17 @@ export default function ScanPage() {
   const ctxRef = useRef<MarketContext>({ coinChanges: {}, meanChange: 0, stdChange: 0 });
   const idRef = useRef<Map<string, number>>(new Map());
 
+  // FX1 safety net: a signed-in user who never finished onboarding (e.g. reached /scan
+  // by direct navigation) is routed into it. The primary entry paths (/login, /verify)
+  // already route via routeAfterAuth; this catches the rest.
+  useEffect(() => {
+    void apiFetch<{ data: { onboarding_completed?: boolean } }>("/api/auth/me").then((r) => {
+      if (r.ok && r.data?.data && r.data.data.onboarding_completed === false) {
+        router.replace("/onboarding");
+      }
+    });
+  }, [router]);
+
   useEffect(() => {
     setLensState(getLens());
     setRiskStyleState(getRiskStyle());

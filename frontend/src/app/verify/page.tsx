@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { routeAfterAuth } from "@/lib/app/session";
 
-// /verify?token=... — target of the magic-link email. Verifies then routes to /scan.
+// /verify?token=... — target of the magic-link email. Verifies then routes the user:
+// into onboarding if they have not completed it (FX1), otherwise to /scan.
 export default function VerifyPage() {
   const [state, setState] = useState<"verifying" | "ok" | "error">("verifying");
   const [message, setMessage] = useState("Verifying your link…");
@@ -16,12 +18,13 @@ export default function VerifyPage() {
       setMessage("Missing token.");
       return;
     }
-    api.verify(token).then((res) => {
+    api.verify(token).then(async (res) => {
       if (res.ok) {
         setState("ok");
         setMessage("Signed in. Redirecting…");
+        const dest = await routeAfterAuth();
         setTimeout(() => {
-          window.location.href = "/scan";
+          window.location.href = dest;
         }, 800);
       } else {
         setState("error");

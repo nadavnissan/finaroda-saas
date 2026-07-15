@@ -152,6 +152,13 @@ Pre-scan the user sets a light, remembered controls row: **Horizon** (SWING 1–
   - **Recent scans (Decision B, v0.10.0 shipped 2026-07-13):** עמוד היסטוריה **קריא-בלבד**: זמן, מטבעות שנסרקו, כמה עברו, הקשה לתוך תצוגת תוצאה שמורה (מ-`GET /api/scan/history` + `/history/{id}`). **אין** דאטת reveal/outcome (זו נשארת ביומן F3). זו אפורדנס היסטוריה, לא יומן.
   - **Profile ו-Settings הם כעת מסכים נפרדים (v0.10.0):** Profile = זהות (call-sign, דרגה, ותק); Settings = הגדרות הסריקה הנשמרות (Analysis Lens, Risk Style, מטבעות מועדפים).
   - **לוגו FINARODA לחיץ (v0.10.0):** הקשה על הלוגו ב-header מנווטת ל-`/scan` למשתמשים מאומתים.
+  - **סבב תיקונים v0.17.2 (ולידציית מייסד):**
+    - **FX1 · אונבורדינג לכל משתמש חדש:** משתמש שהתחבר (מגיע גם ל-allowlist + DEV SIGN-IN) ולא סיים אונבורדינג מנותב ל-`/onboarding`, לא ל-`/scan`. הניתוב נגזר מ-`onboarding_completed` ב-`/api/auth/me` (חוסם ב-login/verify + safety-net ב-`/scan`). השלמה מזכה 300 XP פעם אחת.
+    - **FX2 · אין מבוי סתום מהסריקה:** הלוגו מנווט ל-`/scan` (קיים) + **כניסת "Scan" מפורשת נוספה לתפריט ההמבורגר** (ראשונה ברשימה). ניסיון סריקה שנייה ב-Free מציג את מסך ה-429/מכסה הייעודי (SEE PLANS / VIEW JOURNAL).
+    - **FX3 · תצוגת סריקה שמורה:** ראו F3b — Blueprint מלא + גרף במינוח קנוני, ללא SL/TP/ENTRY.
+    - **FX5 · Settings → "PLAN & BILLING":** מציג plan נוכחי, מצב TRIAL (יום/סה"כ), כפתור ל-`/subscribe`, ופעולת הביטול הקיימת. בנוסף: טעינת ה-Settings הואצה (הבקשות רצות במקביל ל-`/me` במקום בטור).
+    - **FX6 · עוגן layout:** מסכי האפליקציה (scan/dashboard/settings/profile/academy/history) מקבעים עמודת `maxWidth` עם `minHeight:100vh` כדי שמסכים קצרים לא יתכווצו; שורת הפילטרים ב-Academy עוברת ל-`flexWrap` כדי לא להיחתך.
+    - **FX7 · רמז נוטיפיקציות:** נקודה ירוקה על אייקון ההמבורגר כשיש התראות שלא נקראו; מתנקה בפתיחת פאנל הפעמון (event `finaroda:notifications-read`).
 - **CTA שדרוג:** נוכח אך לא אגרסיבי (trust-not-engagement).
 - מצבי ריק: "No setups pass right now" מעוצב כהישג, לא כשגיאה.
 - **Dashboard "How is R measured?" explainer (v0.10.0 shipped 2026-07-13):** מסביר את מודל ה-what-if: trigger fill → target / risk, פקיעה אחרי 7 ימים, ה-trailing אינו מסומלץ. חינוכי בלבד, לא נוגע בציון/סף.

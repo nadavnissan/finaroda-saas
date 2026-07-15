@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
 import { REFERRAL_KEY } from "@/lib/app/promotions";
+import { routeAfterAuth } from "@/lib/app/session";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -78,7 +79,8 @@ export default function LoginPage() {
     setDevBusy(true);
     const res = await api.verify(devToken);
     if (res.ok) {
-      router.push("/scan");
+      // FX1: a user who hasn't finished onboarding goes into it, not straight to /scan.
+      router.push(await routeAfterAuth());
     } else {
       setDevBusy(false);
       setStatus("error");

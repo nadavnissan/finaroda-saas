@@ -62,6 +62,42 @@ def test_no_em_dash_in_product_copy():
     assert not violations, "em dashes in product copy: " + ", ".join(violations)
 
 
+# FX3 red line: the raw trade words SL / TP / ENTRY are forbidden in user-facing copy.
+# The canonical calculator terminology replaces them (Mathematical Trigger Point /
+# Calculated Risk Level / Dynamic Risk Level / Calculated Target Level, PRD §3.5.1).
+# Uppercase whole-word match over comment-stripped source keeps false positives out
+# (lowercase code identifiers like `sl`/`tp`/`entry` and words like SLOPE/HTTP are safe).
+_FORBIDDEN_TRADE_TERMS = re.compile(r"\b(ENTRY|SL|TP)\b")
+
+
+def forbidden_trade_term_violations(src_dir: Path) -> list[str]:
+    """Files:line where a forbidden trade word appears in rendered TS/TSX (comments out)."""
+    violations: list[str] = []
+    for f in src_dir.rglob("*"):
+        if f.suffix not in (".ts", ".tsx"):
+            continue
+        cleaned = _strip_comments(f.read_text(encoding="utf-8"))
+        for i, line in enumerate(cleaned.splitlines(), 1):
+            if _FORBIDDEN_TRADE_TERMS.search(line):
+                violations.append(f"{f.relative_to(ROOT)}:{i}")
+    return violations
+
+
+def test_no_forbidden_trade_terms_in_ui():
+    """FX3: SL / TP / ENTRY must not appear in user-facing frontend copy (comments out)."""
+    violations = forbidden_trade_term_violations(FRONTEND_SRC)
+    assert not violations, "forbidden trade terms (SL/TP/ENTRY) in UI copy: " + ", ".join(violations)
+
+
+def test_forbidden_trade_term_guard_ignores_comments_and_code():
+    """Meta-test: the guard flags rendered SL/TP/ENTRY but not comments or lowercase ids."""
+    assert forbidden_trade_term_violations  # symbol exists
+    assert _FORBIDDEN_TRADE_TERMS.search("<Level label=\"ENTRY\" />")   # rendered label caught
+    assert not _FORBIDDEN_TRADE_TERMS.search(_strip_comments("// note about SL / TP"))  # comment out
+    assert not _FORBIDDEN_TRADE_TERMS.search("const sl = r.sl; // slope")  # lowercase id safe
+    assert not _FORBIDDEN_TRADE_TERMS.search("EMA7 SLOPE verified")        # SLOPE not SL
+
+
 def test_em_dash_guard_ignores_comments_but_catches_copy():
     """Meta-test: the guard must NOT flag an em dash inside a JSX/block/line comment, but
     MUST flag one in rendered copy. Proves the lint is trustworthy (fixes the JSX gap)."""

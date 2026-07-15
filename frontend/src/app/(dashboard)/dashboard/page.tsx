@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: C.bg, color: C.fg, fontFamily: SANS, display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 480, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <AppHeader xp={xp} left="menu" onLeft={() => setDrawer(true)} freeBadge={me.tier === "free"} />
         <BroadcastBanner />
 

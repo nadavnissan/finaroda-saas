@@ -212,7 +212,8 @@ same verified threshold, so the base-rate stays clean and comparable.
 
 ## F3b - Recent scans (היסטוריית סריקות, read-only) - ✅ SHIPPED v0.10.0 (Decision B, shipped 2026-07-13)
 **תיאור.** עמוד היסטוריה **קריא-בלבד** נגיש מתפריט ההמבורגר: רשימת הסריקות האחרונות (זמן, מטבעות שנסרקו, כמה עברו) עם הקשה לתוך תצוגת תוצאה שמורה. **מקור:** `GET /api/scan/history` + `GET /api/scan/history/{id}` (נגזר מ-`score_log`/`scan_events`). **אין** דאטת reveal/outcome (זו נשארת ב-F3/reveal-gating בלבד), זו אפורדנס היסטוריה, לא יומן.
-**AC:** AC1: read-only, ללא כל mutation. AC2: מציג זמן/מטבעות/passes בלבד; אין חשיפת ציון/תוצאה מעבר למה שכבר הוצג. AC3: נגיש מתפריט ההמבורגר.
+**עדכון v0.17.2 (FX3):** תצוגת התוצאה השמורה מציגה כעת את **ה-Trading Blueprint המלא** — גרף Chart Standard (עם gating שכבות לפי plan, כמו כרטיס הסריקה) + ארבע הרמות המחושבות במינוח **הקנוני בלבד**: Mathematical Trigger Point / Calculated Risk Level / Dynamic Risk Level / Calculated Target Level, עם הערות שקיפות-נוסחה + Risk:Reward + כותרת TIMING VERIFIED/WATCH · score. אלו ערכי **setup-time שכבר הוצגו בעת הסריקה** (לא outcome מוסתר) ולכן מותרים; ה-reveal/outcome נשאר ב-F3 בלבד. הגרף נמשך מהשוק החי (נרות היסטוריים אינם נשמרים) עם הרמות כפי שנרשמו. **אסור לחלוטין** בכל טקסט מול-משתמש: המילים SL / TP / ENTRY (guard ב-`test_content_copy.py`).
+**AC:** AC1: read-only, ללא כל mutation. AC2: מציג זמן/מטבעות/passes + ה-Blueprint השמור (רמות setup-time + גרף) במינוח הקנוני; אין חשיפת תוצאה/reveal מעבר למה שכבר הוצג; המילים SL/TP/ENTRY נעדרות. AC3: נגיש מתפריט ההמבורגר (הכולל כעת גם כניסת "Scan" מפורשת — FX2).
 
 ## F4 — ייצוא תוצאות (בלי חשיפת המערכת)
 

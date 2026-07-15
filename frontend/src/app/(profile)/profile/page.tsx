@@ -64,7 +64,7 @@ export default function ProfilePage() {
 
   return (
     <main style={{ minHeight: "100vh", background: C.bg, color: C.fg, fontFamily: SANS, display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 480, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <AppHeader xp={p.xp_total} left="close" onLeft={() => router.push("/scan")} freeBadge={me.tier === "free"} />
 
         {/* Identity */}

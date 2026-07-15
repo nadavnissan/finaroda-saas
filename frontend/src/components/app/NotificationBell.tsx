@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { C } from "@/lib/onboarding/types";
 import { apiFetch } from "@/lib/api";
 import { addBreadcrumb } from "@/lib/breadcrumbs";
+import { NOTIF_READ_EVENT } from "@/components/scan/AppHeader";
 import type { NotificationFeed, NotificationItem, NotificationPrefs } from "@/lib/app/types";
 import {
   formatBadge,
@@ -96,6 +97,9 @@ export function NotificationBell({ onNavigate }: { onNavigate: (path: string) =>
     setOpen(next);
     if (!next) return;
     addBreadcrumb("notif_open");
+    // FX7: opening the panel clears the hamburger dot immediately (consistent with
+    // mark-read), even before the read POST resolves.
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(NOTIF_READ_EVENT));
     const ids = unreadIds(items);
     if (ids.length === 0) return;
     const r = await apiFetch<{ unread_count: number }>("/api/notifications/read", {

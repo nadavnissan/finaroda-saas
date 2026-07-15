@@ -80,7 +80,7 @@ export default function AcademyPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: C.bg, color: C.fg, fontFamily: SANS, display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 1040, display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 1040, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <AppHeader xp={xp} left="close" onLeft={() => router.push("/scan")} freeBadge={me.tier === "free"} />
 
         <div style={{ padding: "8px 20px 0" }}>
@@ -97,7 +97,8 @@ export default function AcademyPage() {
             aria-label="Search lessons"
             style={{ width: "100%", boxSizing: "border-box", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px", font: `400 12px ${SANS}`, color: C.fg }}
           />
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+          {/* FX6: wrap the filter chips so the row is never cut off at desktop widths. */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingBottom: 2 }}>
             {types.map((t) => (
               <button key={t} type="button" style={chip(filter.type === t)} onClick={() => setFilter((f) => ({ ...f, type: t }))}>
                 {t === "all" ? "All types" : t}

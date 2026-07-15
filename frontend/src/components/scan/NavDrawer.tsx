@@ -15,6 +15,7 @@ const SANS = "'Space Grotesk', system-ui, sans-serif";
 // E5 hamburger nav (B3). Four destinations + a "Report a problem" item at the foot
 // that files a support ticket (→ B7 queue). Opens over a dimmed scan screen.
 const ITEMS: { label: string; icon: string; path: string }[] = [
+  { label: "Scan", icon: "◎", path: "/scan" },
   { label: "Dashboard", icon: "◫", path: "/dashboard" },
   { label: "Recent scans", icon: "≣", path: "/history" },
   { label: "Profile", icon: "◈", path: "/profile" },

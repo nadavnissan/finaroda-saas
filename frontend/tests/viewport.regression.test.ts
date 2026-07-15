@@ -133,6 +133,49 @@ test("EpisodeChart scales to its container", () => {
   assert.match(chart, /width="100%"/, "chart svg must be width:100% (fluid)");
 });
 
+// ── FX2: a signed-in user must always have a route back to the core scan screen
+// (logo -> /scan, and an explicit "Scan" entry in the hamburger drawer). ──
+test("navigation always offers a way back to /scan", () => {
+  const drawer = read("components/scan/NavDrawer.tsx");
+  assert.match(drawer, /label:\s*"Scan"[\s\S]*?path:\s*"\/scan"/, "hamburger must include an explicit Scan entry");
+  const header = read("components/scan/AppHeader.tsx");
+  assert.match(header, /router\.push\("\/scan"\)/, "the FINARODA wordmark must route to /scan");
+});
+
+// ── FX3: the past-scan detail must present the scan result card's info (chart +
+// blueprint) using the canonical calculator terminology, never SL/TP/ENTRY. The
+// forbidden-word ABSENCE is enforced comment-aware in backend test_content_copy.py. ──
+test("scan detail uses canonical terminology and includes the chart", () => {
+  const hist = read("app/(scan)/history/page.tsx");
+  assert.match(hist, /MATHEMATICAL TRIGGER POINT/, "must use the canonical trigger term");
+  assert.match(hist, /CALCULATED RISK LEVEL/, "must use the canonical risk term");
+  assert.match(hist, /CALCULATED TARGET LEVEL/, "must use the canonical target term");
+  assert.match(hist, /BlueprintChart/, "detail must include the chart, like the scan result card");
+});
+
+// ── FX6: app-shell anchor — reading screens fill the viewport height so short pages
+// do not collapse (Disclaimer anchored to the bottom via marginTop:auto). ──
+const SHELL_ROUTES: string[] = [
+  "app/(scan)/history/page.tsx",
+  "app/(dashboard)/dashboard/page.tsx",
+  "app/(profile)/profile/page.tsx",
+  "app/(profile)/settings/page.tsx",
+  "app/(academy)/academy/page.tsx",
+];
+test("app-shell screens anchor a full-height column", () => {
+  for (const route of SHELL_ROUTES) {
+    assert.match(read(route), /minHeight:\s*"100vh"/, `${route} column must set minHeight:100vh so short screens do not collapse`);
+  }
+});
+
+// ── FX7: the hamburger shows an unread-notification dot that clears when the bell opens. ──
+test("AppHeader shows an unread hint that clears on bell open", () => {
+  const header = read("components/scan/AppHeader.tsx");
+  assert.match(header, /hasUnread/, "header must track unread notifications");
+  assert.match(header, /NOTIF_READ_EVENT/, "header must clear the dot on the read event");
+  assert.match(read("components/app/NotificationBell.tsx"), /NOTIF_READ_EVENT/, "bell must dispatch the read event on open");
+});
+
 // ── Global safety net: no horizontal page scrollbar, responsive gutter, media capped. ──
 test("globals.css guards against horizontal overflow", () => {
   const css = read("app/globals.css");

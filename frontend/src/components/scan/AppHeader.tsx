@@ -1,8 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { C } from "@/lib/onboarding/types";
+import { apiFetch } from "@/lib/api";
+
+// FX7: cross-component signal that the bell panel was opened (items marked read), so a
+// mounted AppHeader can clear its hamburger dot immediately without a shared store.
+export const NOTIF_READ_EVENT = "finaroda:notifications-read";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -24,6 +30,24 @@ export function AppHeader({
   trialBadge?: boolean;
 }) {
   const router = useRouter();
+  // FX7: unread-notification hint. Only the hamburger (menu) header carries it — the
+  // bell lives in the drawer, so the dot tells the user there is something to open.
+  // Reuses the same server-authoritative unread count the bell uses; clears when the
+  // bell panel is opened (NOTIF_READ_EVENT) or the count comes back zero.
+  const [hasUnread, setHasUnread] = useState(false);
+  useEffect(() => {
+    if (left !== "menu") return;
+    let alive = true;
+    void apiFetch<{ unread_count: number }>("/api/notifications").then((r) => {
+      if (alive && r.ok && r.data) setHasUnread(r.data.unread_count > 0);
+    });
+    const clear = () => setHasUnread(false);
+    window.addEventListener(NOTIF_READ_EVENT, clear);
+    return () => {
+      alive = false;
+      window.removeEventListener(NOTIF_READ_EVENT, clear);
+    };
+  }, [left]);
   return (
     <div
       style={{
@@ -36,10 +60,16 @@ export function AppHeader({
       <button
         type="button"
         onClick={onLeft}
-        aria-label={left === "menu" ? "Open menu" : "Close"}
-        style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, font: `400 16px ${MONO}`, padding: 0 }}
+        aria-label={left === "menu" ? (hasUnread ? "Open menu, unread notifications" : "Open menu") : "Close"}
+        style={{ position: "relative", background: "none", border: "none", cursor: "pointer", color: C.muted, font: `400 16px ${MONO}`, padding: 0 }}
       >
         {left === "menu" ? "≡" : "✕"}
+        {left === "menu" && hasUnread && (
+          <span
+            aria-hidden
+            style={{ position: "absolute", top: -2, right: -6, width: 7, height: 7, background: C.green, borderRadius: "50%", boxShadow: `0 0 6px ${C.green}` }}
+          />
+        )}
       </button>
       <button
         type="button"

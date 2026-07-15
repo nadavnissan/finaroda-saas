@@ -50,15 +50,18 @@ export default function SettingsPage() {
   const [p, setP] = useState<ProfileResponse | null>(null);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
 
+  // FX5(a): fetch in parallel with the /me guard instead of waiting for it. These
+  // endpoints self-authenticate (a 401 makes useMe redirect to /login), so gating them
+  // behind `me` only added a serial round-trip — the cause of the slow settings load.
+  // The profile/prefs endpoints are already single, indexed queries (no N+1).
   useEffect(() => {
-    if (!me) return;
     void apiFetch<ProfileResponse>("/api/profile").then((r) => {
       if (r.ok && r.data) setP(r.data);
     });
     void apiFetch<NotificationPrefs>("/api/notifications/prefs").then((r) => {
       if (r.ok && r.data) setPrefs(r.data);
     });
-  }, [me]);
+  }, []);
 
   async function saveSetting(patch: Record<string, unknown>) {
     const r = await apiFetch<ProfileResponse>("/api/profile/settings", { method: "PUT", body: JSON.stringify(patch) });
@@ -79,7 +82,7 @@ export default function SettingsPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: C.bg, color: C.fg, fontFamily: SANS, display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 480, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <AppHeader xp={p.xp_total} left="close" onLeft={() => router.push("/scan")} freeBadge={me.tier === "free"} />
 
         <BillingBanner />
@@ -130,9 +133,36 @@ export default function SettingsPage() {
           )}
         </Card>
 
-        {/* Manage plan: cancel at period end (D-B6) + exit survey (D-A5). */}
+        {/* Plan & Billing (FX5b): current plan, trial state, upgrade path (/subscribe),
+            and the existing cancel-at-period-end action (D-B6) + exit survey (D-A5). */}
         <Card>
-          <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>MANAGE PLAN</span>
+          <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 1, color: C.muted }}>PLAN & BILLING</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", font: `400 11px ${MONO}` }}>
+            <span style={{ color: C.fg }}>CURRENT PLAN</span>
+            <span style={{ color: C.green, fontWeight: 600 }}>
+              {p.trial?.active ? "PRO TRIAL" : `${p.tier.toUpperCase()} PLAN`}
+            </span>
+          </div>
+          {p.trial?.active && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", font: `400 10px ${MONO}`, color: C.muted }}>
+              <span>TRIAL</span>
+              <span>DAY {p.trial.day} OF {p.trial.total} · NO CARD</span>
+            </div>
+          )}
+          {!["none", "trial", "active"].includes(p.subscription_status) && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", font: `400 10px ${MONO}`, color: C.amber }}>
+              <span>STATUS</span>
+              <span>{p.subscription_status.toUpperCase()}</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => router.push("/subscribe")}
+            style={{ font: `600 11px ${MONO}`, color: C.bg, background: C.green, border: "none", borderRadius: 8, padding: "10px 14px", cursor: "pointer" }}
+          >
+            {p.tier === "free" && !p.trial?.active ? "SEE PLANS & UPGRADE" : "SEE PLANS"}
+          </button>
+          <div style={{ height: 1, background: "rgba(233,238,243,.08)", margin: "2px 0" }} />
           <ChurnSurvey subscriptionStatus={p.subscription_status} />
         </Card>
 

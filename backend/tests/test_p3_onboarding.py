@@ -183,3 +183,20 @@ def test_complete_marks_user_and_logs_completion():
         assert r.status_code == 200
         me = client.get("/api/auth/me").json()
     assert me["data"]["onboarding_completed"] is True
+
+
+def test_new_user_me_reports_onboarding_incomplete():
+    """FX1 regression: a brand-new signed-in user (e.g. added via allowlist + DEV SIGN-IN)
+    must report onboarding_completed=False on their first authenticated load. This is the
+    signal the client routes on — False => send them into onboarding, not straight to /scan.
+    Completing it once flips the flag and grants the 300 XP exactly once (idempotent)."""
+    with TestClient(app) as client:
+        _login(client, "fresh_fx1@example.com")
+        me = client.get("/api/auth/me").json()
+        assert me["data"]["onboarding_completed"] is False  # -> routed to /onboarding
+        assert client.get("/api/onboarding/xp").json()["total"] == 0
+        client.post("/api/onboarding/complete")
+        me2 = client.get("/api/auth/me").json()
+        xp = client.get("/api/onboarding/xp").json()
+    assert me2["data"]["onboarding_completed"] is True  # -> now routed to /scan
+    assert xp["total"] == 300 and len(xp["events"]) == 1  # granted exactly once
