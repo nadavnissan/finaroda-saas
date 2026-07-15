@@ -21,7 +21,7 @@
 - ATP: TC-FX1-01/02, TC-FX2-01/02, TC-FX3-01/02, TC-FX4-01 (investigation), TC-FX5-01/02, TC-FX6-01, TC-FX7-01.
 - VERSION: v0.17.2
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: 9bb629b
 - IMPACT: Every new user now sees onboarding; a Free user is never stranded after their scan and gets the quota screen; the past-scan detail is complete + red-line-clean (canonical terms + chart); Settings exposes billing and loads faster; screens no longer collapse on desktop; unread notifications are hinted before opening the drawer.
 - DECISIONS: FX4 not implemented (unspecified — escalated to founder, not invented). FX3 chart uses live candles + logged levels (historical candles unstored) with an honest caption. FX5 slow-load root cause was a client fetch waterfall, not a backend N+1 (endpoints are indexed) — fixed client-side.
 
