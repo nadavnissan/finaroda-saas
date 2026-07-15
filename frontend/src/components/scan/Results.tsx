@@ -1,7 +1,9 @@
 "use client";
 
 import { ConceptTooltip } from "@/components/onboarding/ConceptTooltip";
+import { MarketNarrative } from "@/components/scan/MarketNarrative";
 import { C } from "@/lib/onboarding/types";
+import type { NarrativeResult } from "@/lib/scan/narrative";
 import type { Blueprint } from "@/lib/scan/types";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -53,6 +55,7 @@ export function Results({
   onOpen,
   onOpenWhyNot,
   onNewScan,
+  narrative,
 }: {
   passers: Blueprint[];
   nonPassers: Blueprint[];
@@ -62,6 +65,7 @@ export function Results({
   onOpen: (bp: Blueprint) => void;
   onOpenWhyNot: (bp: Blueprint) => void;
   onNewScan: () => void;
+  narrative: NarrativeResult | null;
 }) {
   const single = passers.length === 1;
   const ring = passers.length <= 5;
@@ -118,6 +122,9 @@ export function Results({
         </div>
       </div>
 
+      {/* F16: Market Narrative — after the ring/list, before the Blueprint drilldown. */}
+      <MarketNarrative result={narrative} />
+
       {nonPassers.length > 0 && (
         <div style={{ padding: "0 16px 6px" }}>
           <div style={{ font: `400 9px ${MONO}`, color: C.muted, textAlign: "center", paddingBottom: 6 }}>
@@ -153,7 +160,7 @@ export function Results({
 
 // Empty state (F1b) - the skip is the edge. Positive, never a failure, no scan CTA.
 // Discipline is sourced from the user's REAL scan count (no invented skip ratio).
-export function EmptyState({ scanCount }: { scanCount: number }) {
+export function EmptyState({ scanCount, narrative }: { scanCount: number; narrative: NarrativeResult | null }) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: "0 32px", textAlign: "center" }}>
       <div style={{ width: 64, height: 64, borderRadius: "50%", border: `1.5px solid ${C.green}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.green, fontSize: 26, fontWeight: 600 }}>
@@ -168,6 +175,10 @@ export function EmptyState({ scanCount }: { scanCount: number }) {
         The market moves - re-check when it does.
         <br />
         Precision, not habit.
+      </div>
+      {/* F16: Market Narrative for a no-pass scan (S1/S2/S3/S5). Free = paid. */}
+      <div style={{ width: "100%", maxWidth: 440, textAlign: "left" }}>
+        <MarketNarrative result={narrative} />
       </div>
     </div>
   );

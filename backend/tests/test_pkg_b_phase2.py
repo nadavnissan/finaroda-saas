@@ -49,7 +49,7 @@ async def _resolve_latest_pass(email: str, status: str, r: float) -> int:
     return sid
 
 
-def _pass_scan(coin: str = "BTCUSDT") -> dict:
+def _pass_scan(coin: str = "LINKUSDT") -> dict:
     return {"coins_scanned": 1, "coins_passed": 1, "threshold": 85, "coins": [
         {"coin": coin, "direction": "short", "profile": "momentum", "score": 86,
          "passed_threshold": 1, "entry": 100.0, "sl": 110.0, "tp": 74.0},
@@ -68,7 +68,7 @@ async def test_journal_withholds_outcome_until_reveal():
     email = "reveal_hold@example.com"
     with TestClient(app) as client:
         _login(client, email)
-        client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
+        client.post("/api/scan/events", json=_pass_scan("LINKUSDT"))
         await _resolve_latest_pass(email, "win", 2.60)  # resolved server-side, NOT revealed
 
         r = client.get("/api/journal")
@@ -100,7 +100,7 @@ async def test_next_scan_reveals_outcome():
     with TestClient(app) as client:
         _login(client, email)
         await _set_user(email, tier="pro")  # unlimited scans/day so the reveal 2nd scan lands same day
-        client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
+        client.post("/api/scan/events", json=_pass_scan("LINKUSDT"))
         sid = await _resolve_latest_pass(email, "win", 2.60)
 
         # The reveal event IS the next scan.
@@ -120,7 +120,7 @@ async def test_journal_view_awards_25_xp_once():
     with TestClient(app) as client:
         _login(client, email)
         await _set_user(email, tier="pro")  # unlimited scans/day so the reveal 2nd scan lands same day
-        client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
+        client.post("/api/scan/events", json=_pass_scan("LINKUSDT"))
         sid = await _resolve_latest_pass(email, "win", 3.0)
         client.post("/api/scan/events", json=_pass_scan("ETHUSDT"))  # reveal
 
@@ -142,7 +142,7 @@ def test_watch_is_never_a_scenario_and_skip_is_recorded():
 def test_cannot_view_unrevealed_scenario():
     with TestClient(app) as client:
         _login(client, "view_guard@example.com")
-        client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
+        client.post("/api/scan/events", json=_pass_scan("LINKUSDT"))
         body = client.get("/api/journal").json()
         sid = next(s["id"] for s in body["scenarios"] if s["type"] == "pass")
         # Not resolved / not revealed → no outcome to view.

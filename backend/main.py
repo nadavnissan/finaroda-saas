@@ -136,6 +136,7 @@ async def health_check():
 from backend.api.academy import router as academy_router
 from backend.api.admin import router as admin_router
 from backend.api.admin_academy import router as admin_academy_router
+from backend.api.admin_coin_access import router as admin_coin_access_router
 from backend.api.admin_promotions import router as admin_promotions_router
 from backend.api.auth import router as auth_router
 from backend.api.billing import router as billing_router
@@ -167,6 +168,7 @@ app.include_router(profile_router)
 app.include_router(academy_router)
 app.include_router(admin_router)
 app.include_router(admin_academy_router)
+app.include_router(admin_coin_access_router)
 app.include_router(admin_promotions_router)
 app.include_router(referral_router)
 app.include_router(broadcasts_router)

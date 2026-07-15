@@ -8,8 +8,28 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** FIX-ROUND-FOUNDER (v0.17.2) — the founder's pre-Stage-8 manual-validation P0+P1 findings. Built on Validation-V1. See the fix-round section directly below.
-- **Validation:** ✅ **pytest 185/185** (+3: forbidden-term guard + meta-test + FX1 new-user regression) in the project venv, tsc clean, eslint clean, frontend unit **62/62** (+4 FX structural checks), shared **14/14**, em-dash guard clean, new SL/TP/ENTRY guard green. All Stripe/email mocked, zero network. (`next build` not re-run — no route/config change; only page bodies + tests + docs touched. Recommend a clean `pnpm build` before the founder click-through.)
+- **Last commit (dev):** UPGRADE-FX4-F16 (v0.18.0) — coin-identity gating + Market Narrative. Built on FIX-ROUND-FOUNDER (v0.17.2). See the UPGRADE section directly below.
+- **Validation:** ✅ **pytest 203/203** (+18: 12 FX4 gating/admin + 6 narrative-governance), tsc clean, eslint clean, frontend unit **73/73** (+11 F16 resolver), shared **14/14**, red-line suites GREEN. All Stripe/email mocked, zero network. (`next build` not re-run — recommend a clean `pnpm build` before the founder click-through since new routes/components were added.)
+
+## UPGRADE — FX4 Coin Gating + F16 Market Narrative (v0.18.0, 2026-07-15) — SHIPPED (dev)
+- **FX4 (founder-approved; was the v0.17.2 escalation).** Per-plan coin **identity** allowlist on top of the existing COUNT limits.
+  - **Storage choice (reported):** a **dedicated `coin_access` table** (mig 037: `plan` PK + `coins` JSON + `wildcard` flag), founder-selected over system_settings JSON keys — cleaner for the Pro-wildcard semantics and the audited admin section. Read **per-request** (no cache) → live without a deploy. Seed: free=[LINK,AVAX], basic=[LINK,AVAX,SOL,ADA,DOGE], pro=wildcard. Trial=Pro (`effective_plan`).
+  - **Enforcement:** `record_scan` → **403 `COIN_GATED`** `{code,message,blocked,plan}`, AFTER the COUNT gate, BEFORE the daily cap. **Universe-only rule:** only `SCAN_UNIVERSE_BASE` coins are identity-gated; unknown symbols pass (count/daily still apply) — this is why the red-line entitlements suite (synthetic C{i}USDT) stays green untouched.
+  - **Separate endpoint:** `GET /api/scan/coin-access` (NOT folded into `/entitlements`, to preserve its red-line 4-key shape).
+  - **FX4 ADMIN WALKTHROUGH:** Admin console → **"coin access"** section. Per plan: a checklist of the 10 universe coins (toggle to allow/deny) + a **wildcard** checkbox (Pro = all, auto-includes future coins). Click **SAVE** per plan. Backend `PUT /api/admin/coin-access/{plan}` validates coins are in-universe, writes the row, and audits to `admin_events` (`coin_access_update`). Effect is immediate on the next scan (no restart). To add a new coin to the platform: add it to BOTH `frontend/src/lib/scan/bybit.ts SCAN_UNIVERSE` and `backend/core/coin_access.py SCAN_UNIVERSE_BASE`; Pro picks it up automatically via the wildcard.
+- **F16 (proposed 15/07, mentor-amended).** Deterministic Market Narrative card, DRAFT copy.
+  - **B3 field map (resolver reads ONLY these existing payload fields; no new computation):**
+    - S1 `regime_blocked_spike` ← `passLabel`, `whyNotCheckId==="regime"` (all coins), `change24h` (>+3%).
+    - S2 `no_setups_quiet` (fallback) ← `passLabel`; optional `unrevealed` ← `/api/journal/badge`.
+    - S3 `transition_flicker` ← `passLabel`, `ema7SlopePct>0`, `whyNotCheckId==="regime"`.
+    - S4 `pass_with_context` ← `passLabel==="PASS"`, `score`, `riskReward`.
+    - S5 `watch_only` ← `passLabel==="WATCH"`, `score`.
+    - S6 `daily_limit_reached` ← the quota state; rendered inside the 429 screen (B2).
+  - **DEGRADATION (report per B3/STOP-S1):** **S3** — the payload has **no reversal / short-EMA-reclaim flag** (Blueprint carries `ema7SlopePct` slope, not the EMA7 value). Per B3 the "price reclaimed the short EMA" trigger is **degraded to a positive `ema7SlopePct`** (short-average turning up) while regime fails. All other states use exact fields; STOP-S1 not triggered (every state has a payload-backed condition).
+  - **change24h note:** S1's spike uses `MarketData.change24h`, which is **already computed** by `fetchMarketData` (Bybit ticker `price24hPcnt`); the resolver reads it (threaded from the page's md map) — not a new computation.
+  - **Copy governance:** `market_narratives.json` (root + `frontend/src/lib/scan/` byte-identical), locked-file flow. DRAFT copy is qualitative (no numeric historical claims), so `EPISODES_AND_VERIFIED_NUMBERS.md` needed no new rows; `_source_ref` fields mark where the final mentor copy may cite figures. Final copy swap = later content-only change.
+- **FOUNDER RULING applied (red-line vs seed):** the free-seed gates BTC-on-free, but `test_v1_redline_reveal` (TC-V1-RVL-03/04) and `test_v1_redline_xp` scanned BTC on a free user. Founder ruled: **swap the incidental coin BTCUSDT→LINKUSDT** in those two suites (allowlisted free coin); every reveal/XP law and assertion preserved. Same swap applied to 4 non-red-line scan tests (p2_scan/p2_scorer/pkg_b_phase2).
+- **Untouched:** COUNT limits (2/5/10), scans/day quota, scoring engine/scorer, 85/82 threshold, XP economy, reveal-gating, RED LINE, main branch.
 
 ## FIX ROUND — Founder validation (v0.17.2, 2026-07-15) — SHIPPED
 - **What shipped (P0+P1+one P2; content-quality/product-iteration items deferred as instructed):**
@@ -18,7 +38,7 @@
   - **FX3 (P0) — Recent-scans detail rebuilt to spec.** Removed the forbidden ENTRY/SL/TP labels; now shows the full Trading Blueprint in canonical terms (Mathematical Trigger Point / Calculated Risk Level / Dynamic Risk Level / Calculated Target Level + Risk:Reward + TIMING VERIFIED/WATCH) + BlueprintChart (plan-gated). Setup-time levels only (already-shown, not withheld); reveal/outcome stays on F3.
   - **FX5 (P1) — Settings.** Added PLAN & BILLING (plan/trial/subscribe/cancel); parallelized the profile+prefs fetch (removed the `/me` waterfall). Endpoints were already indexed (no N+1) — the waterfall was the cause.
   - **FX6 (P1) — layout anchor** (minHeight:100vh columns + maxWidth 480; Academy filter wraps). **FX7 (P2) — hamburger unread green dot** (clears on bell open via `finaroda:notifications-read`).
-- **⚠ FX4 (P1) — FOUNDER DECISION NEEDED (investigation result):** per-plan **coin-IDENTITY** gating (which specific coins a plan may scan, e.g. Free = LINK+AVAX, BTC = Pro) is **NOT specified** anywhere in PRD/SPEC/UX. Only coin **COUNT** is specified (Free 2 / Basic 5 / Pro 10) and it IS enforced server-side; the founder's sketch matches nothing in the docs, and E2 ("coins beyond the validated universe") is explicitly V2. Per FX4's own rule I did **not** invent the mapping. **If you want identity gating, define the per-plan allowlist and I'll enforce it server-side (403 on a gated coin) + a locked-coin UI (show-the-door).**
+- **✅ FX4 (P1) — RESOLVED in v0.18.0:** the founder defined the allowlist (free=[LINK,AVAX], basic=[LINK,AVAX,SOL,ADA,DOGE], pro=wildcard) and it is now enforced server-side (403 `COIN_GATED`) with a show-the-door locked-coin UI + admin editor. See the UPGRADE section at the top of this handoff.
 - **Untouched (as required):** Free 1-scan/day quota, Academy content, XP economy, reveal-gating semantics + the RED LINE, scoring engine/scorer, 85/82 threshold, main branch.
 - **Prior-run fix still in place (FINDING-1, V1, P1):** admin `suspend` was a silent no-op — `get_current_user` never checked `suspended_at`. Fixed with a single `403 ACCOUNT_SUSPENDED` chokepoint + regression TC-V1-ENT-09. Not a reveal/XP/money leak.
 - **⚠ Backend dependency (from Stage 3R):** `stripe>=9,<13` in `backend/requirements.txt`; local `.venv` has stripe **14.4.1** (SDK verify stable across 9..14, not a blocker). The fresh clean venv installed the pinned range cleanly.

@@ -42,6 +42,19 @@ class EntitlementsResponse(BaseModel):
     scans_per_day: int  # 0 = unlimited
 
 
+class CoinAccessResponse(BaseModel):
+    """Per-plan coin allowlist for the current user (FX4). Served separately from
+    EntitlementsResponse to keep that payload's breadth-only shape untouched (RED LINE).
+    `coins` are base symbols allowed for this user (ignored when wildcard=True); `universe`
+    is every managed base symbol; `locked` maps each locked base symbol to the plan name
+    that unlocks it (for the 'Available on <plan>' lock UI)."""
+    plan: str
+    coins: list[str]
+    wildcard: bool
+    universe: list[str]
+    locked: dict[str, str]
+
+
 class ScanHistoryItem(BaseModel):
     """One row in the read-only Recent Scans list (Decision B)."""
     scan_event_id: int

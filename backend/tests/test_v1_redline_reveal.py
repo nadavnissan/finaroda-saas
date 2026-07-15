@@ -72,7 +72,7 @@ async def _resolve_latest_pass(email: str, status: str, r: float) -> int:
     return sid
 
 
-def _pass_scan(coin: str = "BTCUSDT") -> dict:
+def _pass_scan(coin: str = "LINKUSDT") -> dict:
     return {"coins_scanned": 1, "coins_passed": 1, "threshold": 85, "coins": [
         {"coin": coin, "direction": "short", "profile": "momentum", "score": 86,
          "passed_threshold": 1, "entry": 100.0, "sl": 110.0, "tp": 74.0}]}
@@ -119,7 +119,7 @@ async def test_journal_withholds_all_statuses(status, r, leak_num):
     email = f"rvl_{status}@example.com"
     with TestClient(app) as client:
         _login(client, email)
-        client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
+        client.post("/api/scan/events", json=_pass_scan("LINKUSDT"))
         await _resolve_latest_pass(email, status, r)  # resolved server-side, NOT revealed
 
         resp = client.get("/api/journal")
@@ -148,7 +148,7 @@ async def test_scan_history_detail_has_no_outcome():
     email = "rvl_hist@example.com"
     with TestClient(app) as client:
         _login(client, email)
-        ev = client.post("/api/scan/events", json=_pass_scan("BTCUSDT"))
+        ev = client.post("/api/scan/events", json=_pass_scan("LINKUSDT"))
         # The scan-event response itself carries no outcome.
         for k in _FORBIDDEN_KEYS:
             assert k not in ev.text or k == "status"  # 'status' substring may appear in unrelated keys

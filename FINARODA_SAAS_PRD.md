@@ -342,6 +342,35 @@ same verified threshold, so the base-rate stays clean and comparable.
 - AC4: תיוג "Analysis, not financial advice." נשמר.
 **UX:** ראו UX §3. **Design:** סבב 2 (ROADMAP X1).
 
+## FX4 — Coin Access (per-plan coin allowlist) — ✅ SHIPPED v0.18.0
+> **מומש v0.18.0.** גייטינג **זהות-מטבע** לכל פלאן, **בנוסף** למגבלת ה-COUNT הקיימת (2/5/10, לא השתנתה ונאכפת בנפרד). אושר ע"י נדב (הועלה כ-FX4 ב-v0.17.2).
+
+**תיאור.** לכל פלאן רשימת-מטבעות מותרת, נשמרת ב-DB (`coin_access`, mig 037) ונערכת מהאדמין **בלי deploy** (נקרא per-request). Seed מאושר-נדב: `free=[LINK,AVAX]`, `basic=[LINK,AVAX,SOL,ADA,DOGE]`, `pro=wildcard` (כל היקום, כולל מטבעות שיתווספו בעתיד). **Trial = Pro access** (חוק קיים).
+
+**AC:**
+- AC1: server-authoritative — סריקת מטבע מיקום-המערכת מחוץ ל-allowlist נדחית ב-**403 COIN_GATED** (‏`/api/scan/events`), אותו דפוס entitlements כמו שיעורים נעולים. אכיפה **אחרי** מגבלת COUNT, **לפני** מכסת היום.
+- AC2: **universe-only** — הגייטינג חל רק על מטבעות `SCAN_UNIVERSE_BASE`; סמלים מחוץ ליקום אינם ניתנים-לבחירה ואינם מגודרים-זהות (מגבלות COUNT/יום עדיין חלות). כך חוק ה-COUNT (הנבדק על C{i}USDT) נשאר אורתוגונלי ולא-נגוע.
+- AC3: UI **show-the-door** — מטבעות נעולים **גלויים** בבורר עם 🔒 + "Available on <plan>"; הקשה מנתבת ל-/subscribe, לעולם לא שגיאה שקטה. עקבי עם שיעורים נעולים ונעילת POSITION.
+- AC4: אדמין — סקשן "Coin access" (checklist לכל פלאן + wildcard toggle ל-Pro), admin-only (403), audited ל-`admin_events`, תקף בלי restart (`GET/PUT /api/admin/coin-access`).
+- AC5: **רגרסיה** — יומנים/היסטוריה של משתמשים קיימים לא מושפעים; הגייטינג חל על סריקות **חדשות** בלבד; סריקות עבר של מטבע שגודר מאז עדיין נרנדרות.
+- **RED LINE:** coin access = breadth (אילו מהמטבעות שלנו פלאן סורק), לעולם לא verdict/score/threshold שונה. ה-payload של `/entitlements` **לא שונה** (coin-access מוגש בנקודת-קצה נפרדת, `/api/scan/coin-access`).
+
+## F16 — Market Narrative — ✅ SHIPPED v0.18.0 (DRAFT copy)
+> **סטטוס:** proposed 15/07, mentor-reviewed and amended 15/07 (לא pre-approved). מומש v0.18.0 עם **placeholder copy מסומן DRAFT**; החלפת ה-copy הסופי של המנטור היא שינוי תוכן-בלבד עתידי (tooltips-file flow: קובץ נעול, drift-guard, ללא em dashes, disclaimer, שפה תיאורית — לעולם לא ציווי).
+
+**תיאור.** כרטיס **נרטיב שוק** דטרמיניסטי שממפה כל תוצאת-סריקה ל**מצב אחד** מתוך 6 ומתאר אותו בשפה פשוטה. **first match wins**, fallback = S2. הכרטיס ממוקם אחרי הטבעת/רשימה, לפני ה-Blueprint. **Free = paid** (אין גייטינג על הנרטיב).
+
+**6 המצבים:** S1 `regime_blocked_spike` (spike מפתה בתוך regime שנכשל בכל המטבעות) · S2 `no_setups_quiet` (fallback — יום שקט, אין setups) · S3 `transition_flicker` (מעבר בין מצבים) · S4 `pass_with_context` (‏≥1 PASS, שם המטבע/ציון/Risk:Reward) · S5 `watch_only` (‏0 PASS אך ≥1 WATCH 82-84) · S6 `daily_limit_reached` (מרונדר **בתוך** מסך ה-429/מכסה, לא מסך שני).
+
+**AC:**
+- AC1: **B3 HARD RULE** — ה-resolver קורא **רק** שדות שכבר קיימים ב-scan payload ומבצע **אפס חישוב פיננסי חדש**. מיפוי מצב→שדה מתועד ב-SESSION_HANDOFF ו-SPEC.
+- AC2: **S3 degraded** — אין flag של reversal/short-EMA-reclaim ב-payload, לכן שיפוע ema7 חיובי משמש כ-proxy (per B3). מדווח ב-HANDOFF.
+- AC3: דטרמיניסטי per payload (unit test לכל מצב + fallback); variants מסובבים לפי תאריך (UTC dayOfYear); placeholder חסר → אותו variant מדולג.
+- AC4: **copy governance** — `market_narratives.json` נעול (root+frontend byte-identical) עם drift-guard, DRAFT markers, disclaimer לכל נרטיב, ללא em dashes, ללא פעלים בציווי (בדיקות pytest). טענות מספריות/היסטוריות רק מ-`EPISODES_AND_VERIFIED_NUMBERS.md` עם `_source_ref` (ה-DRAFT נמנע מטענות מספריות; ערכים דינמיים מהסריקה אינם טענה היסטורית).
+- AC5: מונחי-מפתח מרונדרים עם ה-Concept Tooltip שלהם; אין SL/TP/ENTRY; XP לא נגע.
+- **הערת תחזוקה (B1):** ה-state-resolver **צמוד לסמנטיקת הסריקה**. כל שינוי scoring/threshold עתידי מחייב **re-validation של מצבי ה-resolver** (הטריגרים נגזרים מ-passLabel/score/whyNot/change24h/ema7SlopePct הקיימים).
+**UX:** ראו UX §3 (מיקום הכרטיס, S6 בתוך מסך המכסה). **Design:** DRAFT, סבב מנטור עתידי.
+
 ## V2 (מתועד, לא MVP)
 "Copy to LLM" · PWA push · daylight light-mode · סבב Design למסכים שלא עוצבו · **ניתוח מטבע חופשי מעבר ליקום 10 המטבעות המאומת (E2, נדב 2026-07-11):** בפלאנים בתשלום בלבד, **אחרי** ולידציה ואישור נדב, עם **תווית חובה "Learning mode — outside the validated universe"** על כל תוצאה מחוץ ליקום. **לא v1** — היקום המאומת (10 מטבעות) נשאר הבסיס לסף ול-base-rate · **POSITION horizon (weeks+) — מימוש מודל ה-position (E9, F1c):** מנוע position-trading נפרד + סף/base-rate משלו, נפתח רק אחרי 30+ תוצאות/2+ משטרים; מועמד לפיצ'ר Pro. **בלוק v1** מציג את הבקר נעול בלבד (ראו F1c) — המנוע עצמו הוא V2+ ועשוי לעולם לא להיפתח.
 

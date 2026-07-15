@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "name": "FINARODA Market Narratives Content (F16)",
+    "version": "0.1-DRAFT",
+    "date": "2026-07-15",
+    "status": "proposed 15/07, mentor-reviewed and amended 15/07",
+    "source": "F16 state typology, mentor-amended 15/07. DRAFT placeholder copy; the final mentor copy is a later content-only swap (locked-file flow). Narratives are descriptive summaries of the current scan result, never advice.",
+    "rules": [
+      "No em dashes anywhere, use commas or colons.",
+      "Descriptive only: describe what the scan shows, never tell the user what to do. No imperative verbs.",
+      "The disclaimer line is appended to every rendered narrative.",
+      "Placeholders in {braces} are filled from the current scan payload only. A variant with a placeholder the payload cannot fill is skipped.",
+      "Concept terms are wrapped as [[tooltip_id|display text]] and render with their Concept Tooltip.",
+      "Any historical or numeric claim must be verified against EPISODES_AND_VERIFIED_NUMBERS.md and carry a _source_ref. Dynamic values filled from the live scan are not historical claims."
+    ]
+  },
+  "disclaimer": "Descriptive analysis of the current scan, not financial advice.",
+  "states": {
+    "regime_blocked_spike": {
+      "id": "S1",
+      "_source_ref": "Negative-regime fade pattern: EPISODES_AND_VERIFIED_NUMBERS.md, bear-regime trigger episodes. Final copy may cite the recorded figures; DRAFT stays qualitative.",
+      "variants": [
+        "DRAFT. A green push showed on {spike_coin} today, up {spike_pct}, while the [[regime|regime]] check still failed across all {scanned} coins. In the recorded episodes, a push like this inside a weak regime tended to fade rather than follow through.",
+        "DRAFT. All {scanned} coins sat below their [[ema200|long average]] and {spike_coin} still jumped {spike_pct} on the day. The methodology reads that as a [[spike|spike]] inside a down regime, a pattern that historically [[fade|faded]].",
+        "DRAFT. Nothing cleared the checks this scan. One name, {spike_coin}, moved {spike_pct}, yet the [[regime|regime]] stayed negative on every coin, the setting where past green candles tended to fade."
+      ]
+    },
+    "no_setups_quiet": {
+      "id": "S2",
+      "_source_ref": "Base-rate of quiet days is a general observation, no specific figure claimed in DRAFT.",
+      "variants": [
+        "DRAFT. {scanned} coins looked, none passed the checks. Most days read like this, and standing aside kept the record clean.",
+        "DRAFT. This scan found [[no_setups|no setups]] across {scanned} coins. Quiet days are the base rate, and patience is the edge the record is built on.",
+        "DRAFT. Nothing passed across {scanned} coins today. Your [[journal_reveal|journal]] still holds {unrevealed} unrevealed, resolving on your next scan."
+      ]
+    },
+    "transition_flicker": {
+      "id": "S3",
+      "_source_ref": "Transition state is descriptive of the current readings only, no historical figure claimed.",
+      "variants": [
+        "DRAFT. No coin passed, yet {flicker_count} of {scanned} showed the short average turning up while the [[regime|regime]] check still failed. That mix reads as a [[regime_transition|transition]], where neither direction is proven.",
+        "DRAFT. The scan sits between states: {flicker_count} coins ticked their short average higher, while the broader [[regime|regime]] has not confirmed. The methodology waits for that confirmation."
+      ]
+    },
+    "pass_with_context": {
+      "id": "S4",
+      "_source_ref": "All values are live scan data (coin, score, risk to reward), not historical claims.",
+      "variants": [
+        "DRAFT. {pass_coins} cleared the checks this scan, with {pass_coin} scoring {score} on the [[score|score]]. The [[risk_reward|risk to reward]] on its blueprint reads {rr}.",
+        "DRAFT. {pass_coins} passed the [[pass_watch|85 line]] this scan. {pass_coin} carried the read at a score of {score}, above the threshold every plan shares."
+      ]
+    },
+    "watch_only": {
+      "id": "S5",
+      "_source_ref": "Watch band is the public 82 to 85 range; no weight or threshold beyond the shared line is exposed.",
+      "variants": [
+        "DRAFT. No coin passed, and {watch_coin} landed in the [[pass_watch|watch band]] at {watch_score}, just under the shared 85 line.",
+        "DRAFT. The closest read this scan was {watch_coin} at {watch_score}, inside the watch range and below the [[score|85 line]]. Near the line, and still not a pass."
+      ]
+    },
+    "daily_limit_reached": {
+      "id": "S6",
+      "_source_ref": "Plan value {daily_limit} is live entitlements data, not a historical claim.",
+      "variants": [
+        "DRAFT. That is today's look on your plan, {daily_limit} per day. The [[journal_reveal|journal]] resolves with your next scan tomorrow.",
+        "DRAFT. Your plan includes {daily_limit} per day, and today's is done. One clear read a day is the discipline the journal rewards."
+      ]
+    }
+  }
+}

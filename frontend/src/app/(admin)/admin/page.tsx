@@ -15,13 +15,14 @@ import {
   type UserFilters,
 } from "@/lib/adminFilters";
 import { AcademyAdmin } from "@/components/admin/AcademyAdmin";
+import { CoinAccessAdmin } from "@/components/admin/CoinAccessAdmin";
 import { CouponsAdmin, ReferralsAdmin } from "@/components/admin/PromotionsAdmin";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
 
-type Section = "overview" | "users" | "coupons" | "referrals" | "tickets" | "broadcast" | "academy" | "settings" | "notifications";
-const SECTIONS: Section[] = ["overview", "users", "coupons", "referrals", "tickets", "broadcast", "academy", "settings", "notifications"];
+type Section = "overview" | "users" | "coupons" | "referrals" | "tickets" | "broadcast" | "academy" | "coin access" | "settings" | "notifications";
+const SECTIONS: Section[] = ["overview", "users", "coupons", "referrals", "tickets", "broadcast", "academy", "coin access", "settings", "notifications"];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -623,6 +624,7 @@ export default function AdminPage() {
         {section === "tickets" && <Tickets />}
         {section === "broadcast" && <Broadcast />}
         {section === "academy" && <AcademyAdmin />}
+        {section === "coin access" && <CoinAccessAdmin />}
         {section === "settings" && <Settings />}
         {section === "notifications" && <Notifications />}
       </div>

@@ -25,10 +25,10 @@ def test_scan_events_persists_with_null_score():
             "threshold": 85,
             "client_ip_region": "IL",
             "coins": [
-                {"coin": "BTCUSDT", "direction": "long", "score": None, "passed_threshold": 1,
+                {"coin": "LINKUSDT", "direction": "long", "score": None, "passed_threshold": 1,
                  "ema7_slope_pct": 1.2, "volume_ratio": 1.4, "price": 60000,
                  "entry": 60000, "sl": 58800, "tp": 61800, "trailing_pct": 1.5},
-                {"coin": "ETHUSDT", "direction": "short", "score": None, "passed_threshold": 0,
+                {"coin": "AVAXUSDT", "direction": "short", "score": None, "passed_threshold": 0,
                  "ema7_slope_pct": -0.5, "volume_ratio": 0.9, "price": 3000,
                  "entry": 3000, "sl": 3060, "tp": 2940, "trailing_pct": 1.5},
             ],
@@ -52,7 +52,7 @@ def test_snapshot_persists_blueprint():
         _login(client, "snap@example.com")
         r = client.post("/api/scan/events", json={
             "coins_scanned": 1, "coins_passed": 1, "threshold": 85,
-            "coins": [{"coin": "SOLUSDT", "direction": "long", "score": None,
+            "coins": [{"coin": "LINKUSDT", "direction": "long", "score": None,
                        "passed_threshold": 1, "price": 150, "entry": 150, "sl": 147, "tp": 153}],
         })
         score_log_id = r.json()["score_logs"][0]["id"]
@@ -70,7 +70,7 @@ def test_snapshot_rejects_foreign_score_log():
         _login(client, "owner@example.com")
         r = client.post("/api/scan/events", json={
             "coins_scanned": 1, "coins_passed": 1, "coins": [
-                {"coin": "BTCUSDT", "direction": "long", "score": None, "passed_threshold": 1}]})
+                {"coin": "LINKUSDT", "direction": "long", "score": None, "passed_threshold": 1}]})
         foreign_id = r.json()["score_logs"][0]["id"]
         # second user
         _login(client, "attacker@example.com")

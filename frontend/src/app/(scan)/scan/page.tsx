@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { MarketContext } from "@finaroda/scoring-engine/scorer.js";
@@ -19,6 +19,10 @@ import { C } from "@/lib/onboarding/types";
 import { buildMarketContext, fetchMarketData, SCAN_UNIVERSE } from "@/lib/scan/bybit";
 import { buildBlueprint, PASS_THRESHOLD } from "@/lib/scan/engine";
 import { fetchEntitlements, FREE_ENTITLEMENTS, type Entitlements } from "@/lib/scan/entitlements";
+import { coinLockReason, fetchCoinAccess, isCoinLocked, OPEN_ACCESS, type CoinAccess } from "@/lib/scan/coinAccess";
+import { MarketNarrative } from "@/components/scan/MarketNarrative";
+import narrativesData from "@/lib/scan/market_narratives.json";
+import { resolveDailyLimit, resolveNarrative, type NarrativeCoin, type NarrativesFile } from "@/lib/scan/narrative";
 import { recordScan, recordSnapshot, toScoreLogItems } from "@/lib/scan/persist";
 import {
   clearScanSession,
@@ -66,6 +70,8 @@ export default function ScanPage() {
   const [dailyLimit, setDailyLimit] = useState<number>(1);
   const [onTrial, setOnTrial] = useState(false);
   const [selectedCoins, setSelectedCoins] = useState<string[]>([]);
+  const [coinAccess, setCoinAccess] = useState<CoinAccess>(OPEN_ACCESS);
+  const [unrevealed, setUnrevealed] = useState(0);
 
   const mdRef = useRef<Map<string, MarketData>>(new Map());
   const ctxRef = useRef<MarketContext>({ coinChanges: {}, meanChange: 0, stdChange: 0 });
@@ -86,6 +92,11 @@ export default function ScanPage() {
     setLensState(getLens());
     setRiskStyleState(getRiskStyle());
     void fetchEntitlements().then(setEnt);
+    void fetchCoinAccess().then(setCoinAccess);
+    // F16 S2: the unrevealed-journal count enriches the quiet-day narrative when present.
+    void apiFetch<{ unrevealed: number }>("/api/journal/badge").then((r) => {
+      if (r.ok && r.data) setUnrevealed(r.data.unrevealed);
+    });
     void apiFetch<{ total: number }>("/api/onboarding/xp").then((r) => {
       if (r.ok && r.data) setXp(r.data.total);
     });
@@ -116,10 +127,13 @@ export default function ScanPage() {
   // to the first N of the universe.
   useEffect(() => {
     const n = ent.coins_per_scan;
-    const saved = getCoinPrefs().filter((c) => SCAN_UNIVERSE.includes(c));
-    const next = (saved.length > 0 ? saved : SCAN_UNIVERSE).slice(0, n);
+    // FX4: never auto-select a coin the plan cannot scan (locked coins route to /subscribe).
+    const allowed = (c: string) => !isCoinLocked(c, coinAccess);
+    const saved = getCoinPrefs().filter((c) => SCAN_UNIVERSE.includes(c) && allowed(c));
+    const pool = SCAN_UNIVERSE.filter(allowed);
+    const next = (saved.length > 0 ? saved : pool).slice(0, n);
     setSelectedCoins(next);
-  }, [ent.coins_per_scan]);
+  }, [ent.coins_per_scan, coinAccess]);
 
   function toggleCoin(coin: string) {
     setSelectedCoins((prev) => {
@@ -145,6 +159,26 @@ export default function ScanPage() {
     setRiskStyle(s);
     setRiskStyleState(s);
   }
+
+  // F16: resolve the Market Narrative for the current scan (deterministic, reads only the
+  // scan payload + the already-computed 24h change). Null before any scan completes.
+  const narrative = useMemo(() => {
+    const all = [...passers, ...nonPassers];
+    if (all.length === 0) return null;
+    const coins: NarrativeCoin[] = all.map((bp) => ({
+      coin: bp.coin,
+      passLabel: bp.passLabel,
+      score: bp.score,
+      ema7SlopePct: bp.ema7SlopePct,
+      riskReward: bp.riskReward,
+      change24h: mdRef.current.get(bp.coin)?.change24h ?? 0,
+      whyNotCheckId: bp.whyNot?.checkId ?? null,
+    }));
+    return resolveNarrative(
+      { coins, unrevealed: unrevealed > 0 ? unrevealed : undefined },
+      narrativesData as NarrativesFile,
+    );
+  }, [passers, nonPassers, unrevealed]);
 
   async function runScan() {
     vibrateScan();
@@ -185,6 +219,11 @@ export default function ScanPage() {
     if (outcome.dailyLimit) {
       setDailyLimit(outcome.dailyLimit.scans_per_day);
       setPhase("limit");
+      return;
+    }
+    // FX4: a gated coin slipped through (e.g. coin-access fetch failed). Show the door.
+    if (outcome.coinGated) {
+      router.push("/subscribe");
       return;
     }
     const rec = outcome.result;
@@ -286,28 +325,40 @@ export default function ScanPage() {
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {SCAN_UNIVERSE.map((coin) => {
-                    const on = selectedCoins.includes(coin);
+                    const locked = isCoinLocked(coin, coinAccess);
+                    const on = !locked && selectedCoins.includes(coin);
+                    // FX4 show-the-door: a locked coin stays visible with a lock + reason;
+                    // tapping it routes to /subscribe (never toggles, never errors silently).
+                    const reason = locked ? coinLockReason(coin, coinAccess) : null;
                     return (
                       <button
                         key={coin}
                         type="button"
-                        onClick={() => toggleCoin(coin)}
+                        title={reason ?? undefined}
+                        onClick={() => (locked ? router.push("/subscribe") : toggleCoin(coin))}
                         style={{
                           font: `600 9.5px ${MONO}`,
                           letterSpacing: 0.3,
-                          color: on ? C.bg : C.fg,
+                          color: on ? C.bg : locked ? C.muted : C.fg,
                           background: on ? C.green : C.panel,
                           border: `1px solid ${on ? C.green : C.border}`,
                           borderRadius: 14,
                           padding: "5px 10px",
                           cursor: "pointer",
+                          opacity: locked ? 0.7 : 1,
                         }}
                       >
+                        {locked ? "🔒 " : ""}
                         {coin.replace("USDT", "")}
                       </button>
                     );
                   })}
                 </div>
+                {SCAN_UNIVERSE.some((c) => isCoinLocked(c, coinAccess)) && (
+                  <div style={{ font: `400 8.5px ${MONO}`, color: C.muted, marginTop: 2 }}>
+                    Locked coins are available on a higher plan. Tap to see plans.
+                  </div>
+                )}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <LensSelect value={lens} onChange={chooseLens} />
@@ -337,6 +388,7 @@ export default function ScanPage() {
               onOpen={openBlueprint}
               onOpenWhyNot={openWhyNot}
               onNewScan={() => { clearScanSession(); setPhase("idle"); }}
+              narrative={narrative}
             />
             <Disclaimer />
           </>
@@ -344,7 +396,7 @@ export default function ScanPage() {
 
         {phase === "empty" && (
           <>
-            <EmptyState scanCount={scanCount} />
+            <EmptyState scanCount={scanCount} narrative={narrative} />
             {nonPassers.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", padding: "0 16px 10px" }}>
                 {nonPassers.map((bp) => (
@@ -372,6 +424,10 @@ export default function ScanPage() {
               </div>
               <div style={{ font: `400 12.5px 'Space Grotesk', system-ui, sans-serif`, color: C.muted, lineHeight: 1.6, maxWidth: 320 }}>
                 Your plan includes {dailyLimit} scan{dailyLimit === 1 ? "" : "s"} per day. Discipline is one clear read a day, not many. Your journal resets tomorrow. Paid plans scan without a daily limit.
+              </div>
+              {/* F16 S6: the daily_limit_reached narrative renders INSIDE this quota screen (B2). */}
+              <div style={{ width: "100%", maxWidth: 360, textAlign: "left" }}>
+                <MarketNarrative result={resolveDailyLimit(dailyLimit, narrativesData as NarrativesFile)} />
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button

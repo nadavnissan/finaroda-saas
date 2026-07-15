@@ -717,11 +717,40 @@
 - **TC-FX2-02 — always a route back to /scan:** the FINARODA wordmark routes to `/scan`; the hamburger drawer includes an explicit "Scan" entry. ✅ auto (frontend `viewport.regression` — nav check).
 - **TC-FX3-01 — scan detail forbidden-term absence:** SL / TP / ENTRY appear in NO user-facing frontend copy (comment-stripped grep over `frontend/src`). ✅ auto (`test_content_copy.py::test_no_forbidden_trade_terms_in_ui`).
 - **TC-FX3-02 — scan detail presentation parity:** the past-scan detail renders the Trading Blueprint (BlueprintChart + 4 canonical calculated levels + Risk:Reward + TIMING VERIFIED/WATCH header), matching the live scan card; setup-time levels only (reveal/outcome stays gated). ✅ auto (frontend `viewport.regression` — canonical-terms + chart check) + ⬜ manual (visual parity).
-- **TC-FX4-01 — coin-identity gating (INVESTIGATION):** per-plan coin-IDENTITY gating (which specific coins) is **NOT specified** in PRD/SPEC/UX — only coin COUNT (Free 2 / Basic 5 / Pro 10). Per FX4 rule: not invented; reported to founder. No code. ⬜ founder-definition-needed.
+- **TC-FX4-01 — coin-identity gating (INVESTIGATION → RESOLVED v0.18.0):** was not in spec at v0.17.2; escalated to founder, **approved**, implemented in v0.18.0 (see the UPGRADE block below). ✅ resolved.
 - **TC-FX5-01 — Settings has Plan & Billing:** Settings shows CURRENT PLAN, TRIAL state, a `/subscribe` link, and the existing cancel action (data from `/api/profile`). ✅ manual (render).
 - **TC-FX5-02 — Settings load not serialized:** profile + prefs fetch fires in parallel with `/me` (no waterfall); profile/prefs endpoints are single indexed queries (no N+1/missing index). ✅ auto (tsc/lint) + ⬜ manual (perceived load).
 - **TC-FX6-01 — app-shell anchor:** scan/dashboard/settings/profile/academy/history columns set `minHeight:100vh` so short screens do not collapse; Academy filter row wraps (never cut off). ✅ auto (frontend `viewport.regression` — shell check).
 - **TC-FX7-01 — hamburger unread hint:** a green dot shows on the ≡ icon when unread notifications exist and clears when the bell panel opens. ✅ auto (frontend `viewport.regression` — header/bell event) + ⬜ manual (visual).
+
+---
+
+## UPGRADE v0.18.0 — FX4 Coin Gating + F16 Market Narrative
+
+**FX4 — coin-identity gating** (auto: `backend/tests/test_fx4_coin_gating.py`, 12 cases):
+- **TC-FX4-02 — free blocks a premium universe coin:** free user scans BTCUSDT → 403 `COIN_GATED`, `blocked=["BTC"]`, `plan="free"`. ✅ auto.
+- **TC-FX4-03 — free allows an allowlisted coin:** free scans LINKUSDT → 200. ✅ auto.
+- **TC-FX4-04 — universe-only:** a synthetic/non-universe symbol (`C0USDT`) is NOT identity-gated (count/daily still apply) → 200. Keeps the count-gate red-line law orthogonal. ✅ auto.
+- **TC-FX4-05 — basic matrix:** basic scans SOL → 200, BTC → 403 `COIN_GATED`. ✅ auto.
+- **TC-FX4-06 — pro wildcard:** pro scans BTC → 200 (auto-includes any universe coin). ✅ auto.
+- **TC-FX4-07 — trial = Pro access:** free-tier trial user scans BTC → 200. ✅ auto.
+- **TC-FX4-08 — coin-access endpoint (free):** `GET /api/scan/coin-access` → coins {LINK,AVAX}, wildcard false, universe=10, locked[BTC]="Pro", locked[SOL]="Basic". ✅ auto.
+- **TC-FX4-09 — coin-access endpoint (pro):** wildcard true, locked={}. ✅ auto.
+- **TC-FX4-10 — history unaffected:** a stored BTC scan still renders in history for a free user (gating = new scans only, A5). ✅ auto.
+- **TC-FX4-11 — admin endpoints admin-gated:** non-admin GET/PUT `/api/admin/coin-access` → 403. ✅ auto.
+- **TC-FX4-12 — admin edit is live + audited:** admin adds SOL to free; the same free user's SOL scan then succeeds in-process (no restart); change audited to `admin_events`. ✅ auto.
+- **TC-FX4-13 — admin rejects non-universe coin:** PUT with a symbol outside the universe → 400. ✅ auto.
+- **TC-FX4-14 — locked-coin UI (show-the-door):** locked coins visible with 🔒 + "Available on <plan>"; tap routes to `/subscribe`, never a silent error; default selection skips locked coins. ⬜ manual (visual) + ✅ auto (tsc/lint).
+
+**F16 — Market Narrative** (auto: `frontend/tests/narrative.unit.test.ts` 11 cases; governance: `backend/tests/test_content_copy.py`):
+- **TC-F16-01 — S4 pass_with_context:** ≥1 PASS → names coin + score + Risk:Reward; wins over 0-PASS states. ✅ auto.
+- **TC-F16-02 — S1 regime_blocked_spike:** 0 PASS, all regime-failed, a coin > +3%/24h → spike narrative names the coin + %. ✅ auto.
+- **TC-F16-03 — S3 transition_flicker (DEGRADED):** 0 PASS, ≥3 coins with ema7 slope > 0 while regime fails, no spike. Documented degrade (no reversal flag in payload). ✅ auto.
+- **TC-F16-04 — S5 watch_only:** 0 PASS, a coin in the 82–84 band. ✅ auto.
+- **TC-F16-05 — S2 no_setups_quiet (fallback):** blank/quiet scan; optional `{unrevealed}` fills only when provided, never left unfilled. ✅ auto.
+- **TC-F16-06 — S6 daily_limit_reached:** `resolveDailyLimit` narrative renders INSIDE the 429/limit screen (B2). ✅ auto (resolver) + ⬜ manual (screen).
+- **TC-F16-07 — determinism + rotation + no unfilled placeholder:** identical payload+date → identical result; variants rotate by UTC dayOfYear; a 40-day × 5-scenario sweep never leaves an unfilled placeholder and always carries the disclaimer. ✅ auto.
+- **TC-F16-08 — copy governance:** `market_narratives.json` root+frontend byte-identical; 6 states with 2-3 DRAFT variants + `_source_ref`; no em dash; no imperative-opening sentence; no SL/TP/ENTRY. ✅ auto (`test_content_copy.py`).
 
 ---
 

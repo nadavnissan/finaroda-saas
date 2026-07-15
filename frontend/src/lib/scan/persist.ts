@@ -60,6 +60,9 @@ export interface RecordScanResult {
 export interface RecordScanOutcome {
   result: RecordScanResult | null;
   dailyLimit: { scans_per_day: number } | null;
+  // FX4: a coin outside the plan's allowlist was submitted (server-authoritative). The UI
+  // normally prevents this (locked coins route to /subscribe); this covers the edge case.
+  coinGated: { blocked: string[]; plan: string } | null;
 }
 
 export async function recordScan(
@@ -77,12 +80,21 @@ export async function recordScan(
       coins,
     }),
   });
-  if (res.ok) return { result: res.data, dailyLimit: null };
-  const err = res.error as { code?: string; scans_per_day?: number } | null;
+  if (res.ok) return { result: res.data, dailyLimit: null, coinGated: null };
+  const err = res.error as
+    | { code?: string; scans_per_day?: number; blocked?: string[]; plan?: string }
+    | null;
   if (res.status === 429 && err?.code === "DAILY_SCAN_LIMIT") {
-    return { result: null, dailyLimit: { scans_per_day: err.scans_per_day ?? 1 } };
+    return { result: null, dailyLimit: { scans_per_day: err.scans_per_day ?? 1 }, coinGated: null };
   }
-  return { result: null, dailyLimit: null };
+  if (res.status === 403 && err?.code === "COIN_GATED") {
+    return {
+      result: null,
+      dailyLimit: null,
+      coinGated: { blocked: err.blocked ?? [], plan: err.plan ?? "" },
+    };
+  }
+  return { result: null, dailyLimit: null, coinGated: null };
 }
 
 export async function recordSnapshot(scoreLogId: number, cardJson: string): Promise<void> {

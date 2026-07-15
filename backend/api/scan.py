@@ -12,9 +12,19 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.core.auth import get_current_user
 from backend.core.database import get_db_connection
 from backend.core.entitlements import resolve_entitlements
+from backend.core.coin_access import (
+    SCAN_UNIVERSE_BASE,
+    effective_plan,
+    gated_coins,
+    plan_name,
+    resolve_all_access,
+    resolve_coin_access,
+    unlock_plan,
+)
 from backend.core import journal
 from backend.models.auth import CurrentUser
 from backend.models.scan import (
+    CoinAccessResponse,
     EntitlementsResponse,
     ScanEventCreate,
     ScanEventResponse,
@@ -45,6 +55,31 @@ async def get_entitlements(
     return EntitlementsResponse(**ent)
 
 
+@router.get("/coin-access", response_model=CoinAccessResponse)
+async def get_coin_access(
+    user: CurrentUser = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db_connection),
+) -> CoinAccessResponse:
+    """Per-plan coin allowlist for this user (FX4). The UI shows locked coins with the
+    plan that unlocks them; gating is enforced server-side in /events. Trial = Pro."""
+    plan = effective_plan(user)
+    all_access = await resolve_all_access(db)
+    mine = all_access[plan]
+    locked: dict[str, str] = {}
+    if not mine["wildcard"]:
+        allowed = set(mine["coins"])
+        for base in SCAN_UNIVERSE_BASE:
+            if base not in allowed:
+                locked[base] = plan_name(unlock_plan(base, all_access))
+    return CoinAccessResponse(
+        plan=plan,
+        coins=mine["coins"],
+        wildcard=mine["wildcard"],
+        universe=list(SCAN_UNIVERSE_BASE),
+        locked=locked,
+    )
+
+
 @router.post("/events", response_model=ScanEventResponse)
 async def record_scan(
     body: ScanEventCreate,
@@ -70,6 +105,29 @@ async def record_scan(
                 "message": f"Your plan scans up to {limit} coins; received {over}.",
                 "coins_per_scan": limit,
                 "tier": ent["tier"],
+            },
+        )
+
+    # Coin-identity gate (FX4): a scan of a MANAGED-universe coin outside the plan's
+    # allowlist is rejected server-side, like the count gate above. Symbols outside the
+    # universe are out of scope (never offered in the UI); the count/daily gates still
+    # apply to them. Trial = Pro access is resolved in effective_plan(). Admin-editable
+    # (coin_access, mig 037), read per-request so changes take effect without a deploy.
+    access = await resolve_coin_access(db, effective_plan(user))
+    blocked = gated_coins(
+        (c.coin for c in body.coins if c.profile == "momentum"), access
+    )
+    if blocked:
+        raise HTTPException(
+            403,
+            {
+                "code": "COIN_GATED",
+                "message": (
+                    f"Your plan does not include {', '.join(blocked)}. "
+                    "These coins are available on a higher plan."
+                ),
+                "blocked": blocked,
+                "plan": access["plan"],
             },
         )
 

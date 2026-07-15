@@ -314,7 +314,9 @@ CREATE TABLE academy_lessons (
 | endpoint | תיאור |
 |---|---|
 | `GET /api/scan/entitlements` | binding gating config לפי tier → `{tier, coins_per_scan, chart_layers, scans_per_day}` (‏`core/entitlements.py`). |
-| `POST /api/scan/events` | דוחה סריקה מעל מכסת המטבעות (403 `PLAN_COIN_LIMIT`); **אוכף מגבלת סריקות/יום (BUG 3, v0.10.0): 429 `DAILY_SCAN_LIMIT`** (Free=1/יום, בתשלום=unlimited, admin-editable דרך `scans_per_day_*`); מזכה first-scan-of-day XP (+50, idempotent per day, `daily_first_scan`). |
+| `POST /api/scan/events` | דוחה סריקה מעל מכסת המטבעות (403 `PLAN_COIN_LIMIT`); **FX4 (v0.18.0): דוחה מטבע-יקום מחוץ ל-allowlist של הפלאן (403 `COIN_GATED`)** אחרי מגבלת ה-COUNT, לפני מכסת היום; **אוכף מגבלת סריקות/יום (BUG 3, v0.10.0): 429 `DAILY_SCAN_LIMIT`** (Free=1/יום, בתשלום=unlimited, admin-editable דרך `scans_per_day_*`); מזכה first-scan-of-day XP (+50, idempotent per day, `daily_first_scan`). |
+| `GET /api/scan/coin-access` | **FX4 (v0.18.0):** allowlist המטבעות של המשתמש → `{plan, coins, wildcard, universe, locked}` (‏`locked` = base→שם-הפלאן שפותח). מוגש **בנפרד** מ-`/entitlements` כדי לא לשנות את ה-4-key shape (RED LINE). Trial=Pro. |
+| `GET /api/admin/coin-access` · `PUT /api/admin/coin-access/{plan}` | **FX4 (v0.18.0):** קריאה/עריכה של allowlist לכל פלאן (checklist + Pro wildcard), require_admin (403), audited ל-`admin_events` (`coin_access_update`), תקף בלי deploy (read per-request). |
 | `GET /api/scan/history` · `GET /api/scan/history/{id}` | **read-only (Decision B, v0.10.0):** רשימת סריקות אחרונות (זמן/מטבעות/passes) + תצוגת תוצאה שמורה, נגזר מ-`score_log`/`scan_events`. **אין** דאטת reveal/outcome. **v0.17.2 (FX3):** תצוגת הפירוט מרנדרת את ה-Trading Blueprint המלא (BlueprintChart + 4 רמות מחושבות במינוח קנוני Mathematical Trigger Point/Calculated Risk Level/Dynamic Risk Level/Calculated Target Level + Risk:Reward), ערכי setup-time בלבד (כבר-הוצגו, לא outcome). המילים SL/TP/ENTRY אסורות מול-משתמש (guard `test_content_copy.py::test_no_forbidden_trade_terms_in_ui`). |
 | `GET /api/plans` | public: שלושת המסלולים (Free/Basic/Pro, אחרי Decision A) עם price/coins/scans/chart_layers מ-`system_settings`. |
 | `GET /api/journal/badge` | ספירת תוצאות לא-חשופות בלבד (reveal badge). |
@@ -333,6 +335,25 @@ CREATE TABLE academy_lessons (
 > **tier enum (Decision A, mig 029, v0.10.0):** הקטלוג הוא `free`/`basic`/`pro`. `'advanced'` הוא **ערך legacy retired-but-tolerated**: ה-CHECK constraint לא נבנה מחדש, ומשתמשי `advanced` קיימים מוגרו ל-`basic` ע"י mig 029. אין להנפיק `advanced` חדש.
 
 > **RED LINE נשמר:** ה-entitlements קונים **רוחב** (מטבעות) ו-**עומק** (שכבות גרף) — לעולם לא verdict שונה. הציון והסף זהים בכל פלאן.
+
+### 5.10 `coin_access` — FX4 per-plan coin allowlist (mig 037)
+טבלה: `plan` PK (‏`free`/`basic`/`pro`), `coins` TEXT (JSON array of **base symbols**, למשל `["LINK","AVAX"]`), `wildcard` INTEGER (‏1 = כל היקום, Pro), `updated_at`. Seed: free=[LINK,AVAX], basic=[LINK,AVAX,SOL,ADA,DOGE], pro=wildcard.
+- **`core/coin_access.py`:** `resolve_coin_access(db, plan)` (DB-first, per-request, no cache) → `{plan, coins, wildcard}`; `effective_plan(user)` (trial→pro, legacy advanced→basic); `coin_allowed`/`gated_coins` (**universe-only:** רק `SCAN_UNIVERSE_BASE`={BTC,ETH,SOL,BNB,XRP,ADA,AVAX,LINK,DOGE,DOT} מגודרים-זהות; סמל מחוץ ליקום עובר — מגבלות COUNT/יום עדיין חלות); `unlock_plan(base, all_access)`.
+- **`SCAN_UNIVERSE_BASE`** הוא mirror של `frontend/src/lib/scan/bybit.ts SCAN_UNIVERSE`. הוספת מטבע דורשת עדכון בשני המקומות; Pro מקבל אותו אוטומטית דרך ה-wildcard.
+- **RED LINE:** coin access = breadth בלבד; ה-payload של `/entitlements` נשאר `{tier, coins_per_scan, chart_layers, scans_per_day}` (‏coin-access בנקודת-קצה נפרדת) כדי לא לשבור את חוק ה-red-line entitlements.
+
+### 5.11 F16 Market Narrative — resolver + locked content (v0.18.0)
+- **`frontend/src/lib/scan/narrative.ts`** — `resolveNarrative(input, data)` **טהור** (dependency-injected data, unit-testable ללא JSON import). ממפה תוצאת-סריקה ל**מצב אחד** (first match wins; סדר: S4 pass → S1 spike → S3 flicker → S5 watch → **S2 fallback**) + `resolveDailyLimit` ל-S6. Variants מסובבים לפי `dayOfYear(UTC) % eligible`; variant עם placeholder חסר מדולג.
+- **מיפוי מצב→שדה payload (B3 — קורא רק שדות קיימים, אפס חישוב חדש):**
+  - S1 `regime_blocked_spike`: `passLabel`≠PASS + `whyNotCheckId==="regime"` בכל המטבעות + `change24h > +3%`.
+  - S2 `no_setups_quiet` (fallback): `passLabel` (0 PASS, לא S1/S3/S5). placeholder `{unrevealed}` אופציונלי (מ-`/api/journal/badge`).
+  - S3 `transition_flicker` **(DEGRADED)**: 0 PASS + `≥3` מטבעות `ema7SlopePct>0` בזמן שה-regime נכשל. **אין flag של reversal/short-EMA-reclaim ב-payload → שיפוע ema7 חיובי הוא ה-proxy** (per B3).
+  - S4 `pass_with_context`: `passLabel==="PASS"` + `score` + `riskReward`.
+  - S5 `watch_only`: `passLabel==="WATCH"` (score 82-84).
+  - S6 `daily_limit_reached`: מצב המכסה, מרונדר בתוך מסך ה-429 (B2).
+  - placeholders: `{scanned}`, `{spike_coin}`/`{spike_pct}` (‏change24h), `{pass_coin(s)}`/`{score}`/`{rr}`, `{watch_coin}`/`{watch_score}`, `{flicker_count}`, `{daily_limit}`, `{unrevealed}`.
+- **תחזוקה (B1):** ה-resolver **צמוד לסמנטיקת הסריקה**; שינוי scoring/threshold עתידי מחייב re-validation של המצבים.
+- **`market_narratives.json`** (root + `frontend/src/lib/scan/` byte-identical) — locked-file flow כמו `concept_tooltips_content.json`. drift-guard + no-em-dash + no-imperative + DRAFT + `_source_ref` ב-`backend/tests/test_content_copy.py`. רכיב: `components/scan/MarketNarrative.tsx` (מפרסר `[[id|display]]` ל-ConceptTooltip). מיקום: אחרי ring/list לפני Blueprint (Results + EmptyState), ו-S6 בתוך מסך ה-limit.
 
 ---
 

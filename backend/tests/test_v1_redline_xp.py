@@ -129,7 +129,7 @@ async def test_closed_source_list_and_exact_amounts():
         # daily_first_scan +50 (first scan of day)
         scan = client.post("/api/scan/events", json={
             "coins_scanned": 1, "coins_passed": 0, "threshold": 85,
-            "coins": [{"coin": "BTCUSDT", "direction": "long", "score": None,
+            "coins": [{"coin": "LINKUSDT", "direction": "long", "score": None,
                        "passed_threshold": 0}]}).json()
         assert scan["xp_awarded"] == 50
         # academy_lesson +100 (a real basic lesson)

@@ -26,11 +26,11 @@ def test_three_profiles_logged_momentum_only_returned():
         payload = {
             "coins_scanned": 1, "coins_passed": 1, "threshold": 85,
             "coins": [
-                {"coin": "BTCUSDT", "direction": "short", "profile": "momentum",
+                {"coin": "LINKUSDT", "direction": "short", "profile": "momentum",
                  "score": 88.0, "passed_threshold": 1, "price": 60000, "sl": 61200, "tp": 58200},
-                {"coin": "BTCUSDT", "direction": "short", "profile": "pullback",
+                {"coin": "LINKUSDT", "direction": "short", "profile": "pullback",
                  "score": 74.0, "passed_threshold": 0, "price": 60000},
-                {"coin": "BTCUSDT", "direction": "short", "profile": "continuation",
+                {"coin": "LINKUSDT", "direction": "short", "profile": "continuation",
                  "score": 81.0, "passed_threshold": 0, "price": 60000},
             ],
         }
@@ -39,7 +39,7 @@ def test_three_profiles_logged_momentum_only_returned():
     body = r.json()
     # only the momentum row is returned (the displayed one, for snapshot linking)
     assert len(body["score_logs"]) == 1
-    assert body["score_logs"][0]["coin"] == "BTCUSDT"
+    assert body["score_logs"][0]["coin"] == "LINKUSDT"
 
 
 @pytest.mark.asyncio
@@ -48,7 +48,7 @@ async def test_profiles_and_real_score_persisted():
     async with aiosqlite.connect(cfg.DATABASE_URL) as db:
         db.row_factory = aiosqlite.Row
         rows = await db.execute_fetchall(
-            "SELECT profile, score FROM score_log WHERE coin='BTCUSDT' AND profile IN ('momentum','pullback','continuation')"
+            "SELECT profile, score FROM score_log WHERE coin='LINKUSDT' AND profile IN ('momentum','pullback','continuation')"
         )
     profiles = {r["profile"] for r in rows}
     assert {"momentum", "pullback", "continuation"} <= profiles
