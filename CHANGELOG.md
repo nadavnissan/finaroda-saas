@@ -20,7 +20,7 @@
 - ATP: TC-FX4-01..12 (coin gating matrix + admin), TC-F16-01..07 (narrative states + governance) — see ATP.md.
 - VERSION: v0.18.0 (MINOR, backward-compatible feature).
 - BRANCH: dev
-- COMMIT: _pending_
+- COMMIT: c908eae
 - IMPACT: Free/Basic users see premium coins locked with a clear upgrade path; Pro/trial scan all coins. Every scan (and the daily-limit screen) now carries a plain-language, descriptive market narrative. No verdict/score/threshold changed on any plan.
 - DECISIONS: (1) Coin access served by a SEPARATE endpoint, not folded into /entitlements, to keep the red-line entitlements 4-key shape. (2) Universe-only identity gating keeps the count-gate law orthogonal. (3) Founder ruling: swap incidental coin in the 2 red-line suites (BTC→LINK) rather than weaken the seed. (4) S3 degraded to ema7-slope proxy (no reversal flag in payload, per B3). (5) FX4 storage = dedicated `coin_access` table (founder-selected) over system_settings JSON keys.
 
