@@ -20,7 +20,7 @@
 - ATP: TC-F16b-01..09 (R1-R5 states + gating + foreseeability + governance + zero-XP) — see ATP.md.
 - VERSION: v0.18.1 (MINOR, backward-compatible feature).
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: ad87f76
 - IMPACT: Opening a revealed journal outcome now shows a plain-language descriptive note (win/loss/expiry live; save/missed gated for F17). No verdict/score/threshold changed; no new XP; loss framed as variance, never regret.
 - DECISIONS: (1) `resolved_states` kept SEPARATE from the 6 live-scan `states` (preserves the 6-state governance test). (2) R4/R5 gated behind FEATURE_ARENA per mentor amendment; R5 has no live data source and is F17-only. (3) Foreseeability affirmative line requires a `{foresee_flag}` placeholder so it structurally cannot render without a logged flag (none today). (4) `_meta` holds the doc notes so the typed record stays clean (tsc).
 
