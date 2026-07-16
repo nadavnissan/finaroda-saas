@@ -7,11 +7,18 @@ import { AppHeader, Disclaimer } from "@/components/scan/AppHeader";
 import { NavDrawer } from "@/components/scan/NavDrawer";
 import { BroadcastBanner } from "@/components/app/BroadcastBanner";
 import { ConceptTooltip } from "@/components/onboarding/ConceptTooltip";
+import { MarketNarrative } from "@/components/scan/MarketNarrative";
 import { apiFetch } from "@/lib/api";
 import { C } from "@/lib/onboarding/types";
 import { useMe } from "@/lib/app/session";
 import { scenarioOutcome } from "@/lib/app/scenario";
+import narrativesData from "@/lib/scan/market_narratives.json";
+import { resolveOutcomeNarrative, type NarrativesFile } from "@/lib/scan/narrative";
 import type { JournalResponse, ScenarioView } from "@/lib/app/types";
+
+// F16b: R4/R5 (save/skip) outcome narratives are gated behind FEATURE_ARENA until F17
+// clears them. Default OFF; the build env flips it. R1/R2/R3 (win/loss/expired) are LIVE.
+const FEATURE_ARENA = process.env.NEXT_PUBLIC_FEATURE_ARENA === "true";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
@@ -37,6 +44,7 @@ function StatCard({ value, label, color, border }: { value: string; label: strin
 // it draws a blurred placeholder + "scan to reveal". Symmetric framing: a capital SAVE
 // row is visually peer to a WIN. R only, never money.
 function ScenarioRow({ s }: { s: ScenarioView }) {
+  const [open, setOpen] = useState(false);
   const dirLabel = s.direction === "short" ? "↓ SHORT" : s.direction === "long" ? "↑ LONG" : "";
   const dirColor = s.direction === "short" ? C.red : C.green;
 
@@ -63,16 +71,44 @@ function ScenarioRow({ s }: { s: ScenarioView }) {
   const rightColor: string = outcome.tone === "red" ? C.red : outcome.tone === "muted" ? C.muted : C.green;
   const borderCol = s.status === "save" ? "rgba(31,178,134,.35)" : "rgba(233,238,243,.08)";
 
+  // F16b: opening a revealed row renders its outcome narrative (R1/R2/R3 live; R4/R5 gated).
+  // Reads only the reveal-gated fields already on the payload; null -> nothing to expand.
+  const outcomeNarrative = resolveOutcomeNarrative(
+    {
+      status: s.status ?? "open",
+      coin: s.coin,
+      direction: s.direction,
+      score: s.score,
+      rMultiple: s.r_result,
+    },
+    narrativesData as NarrativesFile,
+    { featureArena: FEATURE_ARENA },
+  );
+  const canOpen = outcomeNarrative != null;
+
   return (
-    <div data-testid="scenario-row" data-revealed="true" style={{ background: C.panel, border: `1px solid ${borderCol}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ font: `600 12px ${MONO}`, color: C.fg }}>{s.coin} <span style={{ color: dirColor }}>{dirLabel}</span></span>
-        <span style={{ font: `400 9px ${MONO}`, color: C.muted }}>{prettyDate(s.scan_date)} · PASS {s.score}</span>
+    <div data-testid="scenario-row" data-revealed="true" style={{ background: C.panel, border: `1px solid ${borderCol}`, borderRadius: 10, display: "flex", flexDirection: "column" }}>
+      <div
+        onClick={canOpen ? () => setOpen((o) => !o) : undefined}
+        role={canOpen ? "button" : undefined}
+        aria-expanded={canOpen ? open : undefined}
+        style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: canOpen ? "pointer" : "default" }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ font: `600 12px ${MONO}`, color: C.fg }}>{s.coin} <span style={{ color: dirColor }}>{dirLabel}</span>{canOpen && <span style={{ color: C.muted, font: `400 9px ${MONO}` }}>  {open ? "▾" : "▸"}</span>}</span>
+          <span style={{ font: `400 9px ${MONO}`, color: C.muted }}>{prettyDate(s.scan_date)} · PASS {s.score}</span>
+        </div>
+        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ font: `600 13px ${MONO}`, color: rightColor }}>{rightTop}</span>
+          <span style={{ font: `600 8px ${MONO}`, color: C.muted }}>{rightBottom}</span>
+        </div>
       </div>
-      <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ font: `600 13px ${MONO}`, color: rightColor }}>{rightTop}</span>
-        <span style={{ font: `600 8px ${MONO}`, color: C.muted }}>{rightBottom}</span>
-      </div>
+      {/* F16b outcome narrative, shown when the revealed row is opened. Concept terms wired. */}
+      {open && canOpen && (
+        <div style={{ margin: "0 2px 2px", marginTop: -4 }}>
+          <MarketNarrative result={outcomeNarrative} label="OUTCOME NOTE" />
+        </div>
+      )}
     </div>
   );
 }

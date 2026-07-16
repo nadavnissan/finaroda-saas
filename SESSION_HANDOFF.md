@@ -8,8 +8,21 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** UPGRADE-FX4-F16 (v0.18.0) — coin-identity gating + Market Narrative. Built on FIX-ROUND-FOUNDER (v0.17.2). See the UPGRADE section directly below.
-- **Validation:** ✅ **pytest 203/203** (+18: 12 FX4 gating/admin + 6 narrative-governance), tsc clean, eslint clean, frontend unit **73/73** (+11 F16 resolver), shared **14/14**, red-line suites GREEN. All Stripe/email mocked, zero network. (`next build` not re-run — recommend a clean `pnpm build` before the founder click-through since new routes/components were added.)
+- **Last commit (dev):** UPGRADE-F16b (v0.18.1) — Outcome Narratives (F16 engine extension). Built on UPGRADE-FX4-F16 (v0.18.0). See the F16b section directly below.
+- **Validation:** ✅ **pytest 208/208** (+5 resolved-state governance), tsc clean, eslint clean, frontend unit **87/87** (+14 outcome resolver), shared **14/14**, red-line suites GREEN. All Stripe/email mocked, zero network. (`next build` not re-run — recommend a clean `pnpm build` before the founder click-through.)
+
+## UPGRADE — F16b Outcome Narratives (v0.18.1, 2026-07-16) — SHIPPED (dev)
+Extends the F16 engine with RESOLVED-SCENARIO states, rendered on the dashboard when a **revealed** journal scenario is **opened**. New pure `resolveOutcomeNarrative(input, data, opts)` in `lib/scan/narrative.ts`.
+- **Mentor HARD RULE honored:** the resolver reads **ONLY** fields already present in the resolution record (`journal_scenarios`) — `status`, `r_result`, `coin`, `direction`, `score`. **NO new financial computation, NO new flag logging.**
+- **status → R-state map:** win→**R1** target_hit · loss→**R2** stop_hit · expired→**R3** expired_flat · save→**R4** save_confirmed · skip→**R5** save_missed · open/unknown→**null** (no card = fallback).
+- **LIVE now: R1, R2, R3.** R2 frames the loss as variance-not-error ("a valid process can produce a losing outcome"); R3 tells the 7-day-expiry / time-stop story.
+- **GATED: R4, R5 behind `FEATURE_ARENA` (default OFF) → activate with F17 after lawyer clearance.** When OFF, save/skip rows return null and simply do not expand (fallback). R5 is never framed as regret / "you should have".
+- **★ FEATURE_ARENA FLAG MAP:** backend `config.py` `FEATURE_ARENA` (env `FEATURE_ARENA`, default `false`) + frontend mirror `NEXT_PUBLIC_FEATURE_ARENA` (default `false`). Gates **R4 + R5 only**; R1/R2/R3 are ungated. To turn Arena on for F17: set BOTH env vars `true` (backend for future server gating, frontend for the dashboard render).
+- **★ EXISTING-FLAGS REPORT (mentor-requested):** the resolution record `journal_scenarios` has these fields — decision/creation-time: `coin, direction, score, entry, sl, tp, trailing_pct`; resolution: `status(open|win|loss|save|expired|skip), r_result, resolved_at, revealed_at, viewed_at`. **There is NO foreseeability flag of any kind.** Therefore the "could it have been foreseen?" line **never** renders affirmative today; R2/R3 always append the honest **"Nothing in the data marked this in advance."** The affirmative template carries a `{foresee_flag}` placeholder so it *structurally cannot* render without a logged flag → no manufactured hindsight.
+- **★ STATE-EXPRESSIBILITY REPORT:** R1/R2/R3 fully expressible from existing fields (LIVE). R4 (save): core capital-save story expressible from `status=save`+coin+direction; the **`{avoided_pct}` is NOT in the record** → that variant self-skips until F17 supplies it. **R5 (a set-aside read that later completed) has NO live data source at all** — no existing status represents it; built gated, fed only by F17. Not a STOP condition (mentor amendment pre-authorized building R4/R5 gated).
+- **Copy (locked file):** `market_narratives.json` (root + frontend byte-identical) extended with `resolved_states` (R1-R5, 2-3 DRAFT variants each) + a top-level `foreseeability` block; doc notes live in `_meta` (keeps the typed record clean for tsc). Same governance suite as F16 (drift / no-em-dash / no-imperative / no-SL·TP·ENTRY / DRAFT / `_source_ref`) plus new resolved-state + zero-XP tests.
+- **Zero new XP sources** (F16b is pure display; asserted by the XP red-line static guard + a dedicated unit assert). No verdict/score/threshold changed.
+- **Untouched:** the 6 live-scan F16 states, scoring engine/scorer, 85/82 threshold, XP economy, reveal-gating, RED LINE, main branch.
 
 ## UPGRADE — FX4 Coin Gating + F16 Market Narrative (v0.18.0, 2026-07-15) — SHIPPED (dev)
 - **FX4 (founder-approved; was the v0.17.2 escalation).** Per-plan coin **identity** allowlist on top of the existing COUNT limits.

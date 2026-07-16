@@ -61,6 +61,12 @@ ADMIN_BOOTSTRAP_EMAILS: list[str] = [
 # Beta gate (closed beta until public launch).
 FEATURE_PUBLIC_SIGNUPS_OPEN: bool = os.getenv("FEATURE_PUBLIC_SIGNUPS_OPEN", "false").lower() == "true"
 
+# F16b/F17 Arena gate. Default OFF. Gates the R4 (save_confirmed) and R5 (save_missed)
+# Outcome Narratives, which need F17's counterfactual data and final lawyer clearance.
+# R1/R2/R3 (win/loss/expired) ship LIVE and are NOT gated. The frontend mirrors this via
+# NEXT_PUBLIC_FEATURE_ARENA (also default OFF).
+FEATURE_ARENA: bool = os.getenv("FEATURE_ARENA", "false").lower() == "true"
+
 # ── Storage Backend ───────────────────────────────────────────────────────────
 # "local" (default): saves files to disk — no external deps.
 # "r2": uploads to Cloudflare R2 via aioboto3 — set in production .env.

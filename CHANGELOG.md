@@ -4,6 +4,26 @@
 
 ---
 
+## [UPGRADE-F16b / Outcome Narratives] — 2026-07-16
+- GOAL: Extend the F16 narrative engine with RESOLVED-SCENARIO states, rendered on the dashboard when a revealed scenario is opened. R1 target_hit / R2 stop_hit / R3 expired_flat ship LIVE; R4 save_confirmed / R5 save_missed are BUILT but gated behind FEATURE_ARENA (default OFF) for F17. Mentor HARD RULE: the resolver reads ONLY fields already present in the resolution record — no new financial computation, no new flag logging.
+- SOLUTION:
+  - **Engine (frontend).** `lib/scan/narrative.ts` — new pure `resolveOutcomeNarrative(input, data, opts)` returning `NarrativeResult | null`. Maps `journal_scenarios.status` → state: win→R1, loss→R2, expired→R3, save→R4, skip→R5; open/unknown→null. Reads ONLY existing resolution-record fields (status, r_result→r_mult, coin, direction, score). R1 shows positive R, R3 signed R, R2 fixed -1.0. Gated states return null unless `opts.featureArena`. Date-rotated variants (UTC dayOfYear), missing-placeholder variants self-skip (so R4's {avoided_pct} drops out until F17 supplies it).
+  - **Foreseeability.** The "could it have been foreseen?" line renders affirmative ONLY from a logged decision-time flag. NO such flag exists in `journal_scenarios` today, so the resolver always appends the honest "Nothing in the data marked this in advance." to R2/R3. The affirmative template carries a `{foresee_flag}` placeholder and cannot render without a logged value → no manufactured hindsight.
+  - **Copy (locked file).** `market_narratives.json` (root + frontend byte-identical) extended with `resolved_states` (R1-R5, 2-3 DRAFT variants each, `_source_ref`, `live` flag, `flag` for gated) + a top-level `foreseeability` block (not_marked/marked). Doc notes moved into `_meta` (keeps the typed `Record<string, ResolvedNarrativeState>` clean). Same governance: no em dashes, descriptive only, no SL/TP/ENTRY, DRAFT-marked, disclaimer appended, `[[id|display]]` concept markers wired to real tooltips.
+  - **Wiring.** `components/scan/MarketNarrative.tsx` gained an optional `label` prop (reused as "OUTCOME NOTE"). Dashboard `ScenarioRow` (revealed rows) is now expandable: opening a row renders its outcome narrative; gated save/skip rows with FEATURE_ARENA off simply do not expand (fallback). `FEATURE_ARENA` added to backend `config.py` (default OFF) + frontend mirror `NEXT_PUBLIC_FEATURE_ARENA`.
+  - **Existing-flags report (mentor).** Resolution record = `journal_scenarios`: decision-time fields are coin/direction/score/entry/sl/tp/trailing_pct; resolution fields status/r_result/resolved_at/revealed_at/viewed_at. There is NO foreseeability flag of any kind. R5 (a set-aside read that later completed) has NO live data source at all — built gated, fed only by F17.
+- FILES CREATED: frontend/tests/outcome_narrative.unit.test.ts.
+- FILES MODIFIED: market_narratives.json, frontend/src/lib/scan/market_narratives.json (resolved_states + foreseeability + _meta notes), frontend/src/lib/scan/narrative.ts (resolver + types), frontend/src/components/scan/MarketNarrative.tsx (label prop), frontend/src/app/(dashboard)/dashboard/page.tsx (expandable outcome note + FEATURE_ARENA), backend/config.py (FEATURE_ARENA), backend/tests/test_content_copy.py (resolved-state governance), FINARODA_SAAS_PRD.md (F16b), ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md.
+- DB CHANGES: אין (F16b is pure display over existing journal_scenarios fields).
+- CONFIG ADDED: FEATURE_ARENA (backend, default false), NEXT_PUBLIC_FEATURE_ARENA (frontend, default false).
+- VALIDATION: pytest 208/208 (+5), tsc clean, eslint clean, frontend unit 87/87 (+14), shared 14/14. Red-line suites green.
+- ATP: TC-F16b-01..09 (R1-R5 states + gating + foreseeability + governance + zero-XP) — see ATP.md.
+- VERSION: v0.18.1 (MINOR, backward-compatible feature).
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Opening a revealed journal outcome now shows a plain-language descriptive note (win/loss/expiry live; save/missed gated for F17). No verdict/score/threshold changed; no new XP; loss framed as variance, never regret.
+- DECISIONS: (1) `resolved_states` kept SEPARATE from the 6 live-scan `states` (preserves the 6-state governance test). (2) R4/R5 gated behind FEATURE_ARENA per mentor amendment; R5 has no live data source and is F17-only. (3) Foreseeability affirmative line requires a `{foresee_flag}` placeholder so it structurally cannot render without a logged flag (none today). (4) `_meta` holds the doc notes so the typed record stays clean (tsc).
+
 ## [UPGRADE-FX4-F16 / Coin-Identity Gating + Market Narrative] — 2026-07-15
 - GOAL: (FX4) Add founder-approved per-plan coin-IDENTITY gating (admin-managed, DB-backed) on top of the existing COUNT limits, with show-the-door locked-coin UI. (F16) Add a deterministic Market Narrative card that maps each scan result to one of 6 states and describes it in plain language, reading ONLY existing scan-payload fields.
 - SOLUTION:

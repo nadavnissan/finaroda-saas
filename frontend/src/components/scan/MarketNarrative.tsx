@@ -33,7 +33,7 @@ function renderCopy(text: string): ReactNode[] {
   return nodes;
 }
 
-export function MarketNarrative({ result }: { result: NarrativeResult | null }) {
+export function MarketNarrative({ result, label = "MARKET NARRATIVE" }: { result: NarrativeResult | null; label?: string }) {
   if (!result) return null;
   // The "DRAFT." governance marker lives in the locked file; the card shows a DRAFT chip
   // instead of the literal prefix so the copy reads cleanly.
@@ -41,7 +41,7 @@ export function MarketNarrative({ result }: { result: NarrativeResult | null }) 
   return (
     <div style={{ margin: "12px 16px 0", background: C.panel, border: `1px solid rgba(233,238,243,.1)`, borderRadius: 14, padding: "13px 15px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 2, color: C.muted }}>MARKET NARRATIVE</span>
+        <span style={{ font: `600 8.5px ${MONO}`, letterSpacing: 2, color: C.muted }}>{label}</span>
         <span style={{ font: `600 7.5px ${MONO}`, letterSpacing: 1, color: C.amber, border: `1px solid rgba(224,145,63,.4)`, borderRadius: 3, padding: "1px 5px" }}>DRAFT</span>
       </div>
       <div style={{ font: `400 13px ${SANS}`, color: C.fg, lineHeight: 1.6 }}>{renderCopy(body)}</div>

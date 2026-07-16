@@ -371,6 +371,28 @@ same verified threshold, so the base-rate stays clean and comparable.
 - **הערת תחזוקה (B1):** ה-state-resolver **צמוד לסמנטיקת הסריקה**. כל שינוי scoring/threshold עתידי מחייב **re-validation של מצבי ה-resolver** (הטריגרים נגזרים מ-passLabel/score/whyNot/change24h/ema7SlopePct הקיימים).
 **UX:** ראו UX §3 (מיקום הכרטיס, S6 בתוך מסך המכסה). **Design:** DRAFT, סבב מנטור עתידי.
 
+## F16b — Outcome Narratives — ✅ SHIPPED v0.18.1 (DRAFT copy, R1-R3 live · R4-R5 gated)
+> **סטטוס:** mentor-amended 16/07. הרחבה של מנוע F16 ל**מצבי תוצאה שהתגלו** (resolved scenarios). מומש עם **placeholder copy מסומן DRAFT** (אותו locked-file flow כמו F16). החלפת ה-copy הסופי היא שינוי תוכן-בלבד עתידי.
+
+**תיאור.** כשמשתמש **פותח** תרחיש שהתגלה (revealed) ב-Dashboard, נפתח כרטיס **Outcome Note** דטרמיניסטי שמתאר את התוצאה בשפה תיאורית. ה-resolver ממפה `journal_scenarios.status` ל**מצב תוצאה אחד** (R1-R5), ממלא variant מסובב-תאריך, ומצרף את ה-disclaimer.
+
+**5 מצבי התוצאה:**
+- **R1 `target_hit`** (status=win) — מה התיישר, אילו בדיקות נשאו את הסטאפ, ומתמטיקת ה-R מוצגת מחדש (מ-`r_result`). **LIVE.**
+- **R2 `stop_hit`** (status=loss) — סיפור ההפסד הכן, ממוסגר כ**שונות ולא טעות** ("תהליך תקין יכול להפיק תוצאה מפסידה"), ההפסד תחום ליחידת סיכון אחת. **LIVE.**
+- **R3 `expired_flat`** (status=expired) — סיפור פקיעת חלון 7 הימים; מומנטום לא הגיע; time-stop מגן על ההון. **LIVE.**
+- **R4 `save_confirmed`** (status=save) — סיפור שמירת ההון עם ה-% שנמנע. **BUILT אך gated מאחורי `FEATURE_ARENA` (default OFF); נפתח עם F17** אחרי אישור משפטי סופי.
+- **R5 `save_missed`** — "החמצת מנצח היא שכר-הלימוד של המשמעת; היתרון של המתודולוגיה הוא הממוצע, לא המקרה הבודד." לעולם לא כחרטה, לעולם לא "היית צריך". **BUILT אך gated מאחורי `FEATURE_ARENA`; נפתח עם F17.**
+
+**AC:**
+- AC1: **B3 HARD RULE (מנטור)** — ה-resolver קורא **רק** שדות שכבר קיימים ב-resolution record (`status, r_result, coin, direction, score`). **אפס חישוב פיננסי חדש, אפס רישום flag חדש.** אם מצב לא ניתן לביטוי מהשדות הקיימים — עוצרים ומדווחים.
+- AC2: כל 5 המצבים מכוסים עם **fallback** (open/לא-מוכר → null, אין כרטיס). דטרמיניסטי per payload+date (unit test לכל מצב).
+- AC3: **foreseeability** — השורה "האם ניתן היה לצפות זאת?" מותרת **רק** כשקיים flag שנרשם בזמן ההחלטה/היצירה. **אין flag כזה ב-`journal_scenarios` היום**, לכן תמיד מרונדרת השורה הכנה "Nothing in the data marked this in advance" (מצורפת ל-R2/R3). השורה החיובית נושאת placeholder `{foresee_flag}` ולכן **לא יכולה** להתרנדר בלי flag רשום — אין המצאת hindsight.
+- AC4: **copy governance** — `market_narratives.json` מורחב (`resolved_states` + `foreseeability`), root+frontend byte-identical, drift-guard, DRAFT markers, disclaimer, ללא em dashes, ללא פעלים בציווי, ללא SL/TP/ENTRY (בדיקות pytest). ערכים מספריים מגיעים ישירות מה-resolution record (לא טענה היסטורית).
+- AC5: מונחי-מפתח מרונדרים עם ה-Concept Tooltip (target_level/risk_level/trigger_point/regime/score/risk_reward/r_multiple/capital_save/smart_skip). **אפס מקורות XP חדשים** (assert — F16b הוא תצוגה בלבד).
+- **הערת תחזוקה (B1):** מיפוי status→state צמוד לסמנטיקת ה-resolution. שינוי עתידי ב-`evaluate_outcome`/סטטוסים מחייב re-validation של המיפוי.
+
+**מפת flag (F17):** `FEATURE_ARENA` (backend `config.py` + frontend `NEXT_PUBLIC_FEATURE_ARENA`, שניהם default OFF) שולט על R4/R5 בלבד. R1/R2/R3 אינם מגודרים. **דיווח existing-flags:** ל-`journal_scenarios` אין כיום שום foreseeability flag; R5 (סטאפ שנזנח וניצח) אין לו מקור-נתונים חי כלל — הוא נבנה מגודר ומוזן רק ע"י F17.
+
 ## V2 (מתועד, לא MVP)
 "Copy to LLM" · PWA push · daylight light-mode · סבב Design למסכים שלא עוצבו · **ניתוח מטבע חופשי מעבר ליקום 10 המטבעות המאומת (E2, נדב 2026-07-11):** בפלאנים בתשלום בלבד, **אחרי** ולידציה ואישור נדב, עם **תווית חובה "Learning mode — outside the validated universe"** על כל תוצאה מחוץ ליקום. **לא v1** — היקום המאומת (10 מטבעות) נשאר הבסיס לסף ול-base-rate · **POSITION horizon (weeks+) — מימוש מודל ה-position (E9, F1c):** מנוע position-trading נפרד + סף/base-rate משלו, נפתח רק אחרי 30+ תוצאות/2+ משטרים; מועמד לפיצ'ר Pro. **בלוק v1** מציג את הבקר נעול בלבד (ראו F1c) — המנוע עצמו הוא V2+ ועשוי לעולם לא להיפתח.
 

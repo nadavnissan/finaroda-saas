@@ -752,6 +752,19 @@
 - **TC-F16-07 — determinism + rotation + no unfilled placeholder:** identical payload+date → identical result; variants rotate by UTC dayOfYear; a 40-day × 5-scenario sweep never leaves an unfilled placeholder and always carries the disclaimer. ✅ auto.
 - **TC-F16-08 — copy governance:** `market_narratives.json` root+frontend byte-identical; 6 states with 2-3 DRAFT variants + `_source_ref`; no em dash; no imperative-opening sentence; no SL/TP/ENTRY. ✅ auto (`test_content_copy.py`).
 
+## UPGRADE v0.18.1 — F16b Outcome Narratives
+> `resolveOutcomeNarrative` maps a REVEALED scenario's `journal_scenarios.status` to an R-state, reading ONLY existing resolution-record fields. R1-R3 LIVE; R4-R5 gated behind FEATURE_ARENA (default OFF). Tests: `frontend/tests/outcome_narrative.unit.test.ts` + `backend/tests/test_content_copy.py`.
+- **TC-F16b-01 — R1 target_hit (win, LIVE):** status=win → names coin, restates the R math (`{r_mult}R` from r_result). ✅ auto.
+- **TC-F16b-02 — R2 stop_hit (loss, LIVE):** status=loss → -1.0R, variance-not-error framing, honest foreseeability line appended. ✅ auto.
+- **TC-F16b-03 — R3 expired_flat (expired, LIVE):** status=expired → signed R (+/-), 7-day window story, foreseeability appended. ✅ auto.
+- **TC-F16b-04 — R4 save_confirmed gating:** status=save → null when FEATURE_ARENA off (fallback); renders capital-save story when on, `{avoided_pct}` variant self-skips (not in record today). ✅ auto.
+- **TC-F16b-05 — R5 save_missed gating:** status=skip → null when off; discipline framing when on, never regret/"should have". ✅ auto.
+- **TC-F16b-06 — fallback:** open/unknown status → null (no card). ✅ auto.
+- **TC-F16b-07 — foreseeability from logged flag only:** no flag → "nothing in the data marked this in advance"; affirmative line renders only when a `{foresee_flag}` is supplied (none exists in `journal_scenarios` today). ✅ auto.
+- **TC-F16b-08 — determinism + rotation + no unfilled placeholder:** identical payload+date → identical result; R1 rotates across 3 variants; 40-day sweep of live states never leaves an unfilled placeholder, always carries the disclaimer. ✅ auto.
+- **TC-F16b-09 — governance + zero XP:** `resolved_states` (R1-R5) + `foreseeability` byte-identical root/frontend; 2-3 DRAFT variants + `_source_ref` + correct live/gated flag; no em dash / imperative / SL·TP·ENTRY; no XP reference in F16b copy or result shape. ✅ auto (`test_content_copy.py` + unit).
+- **TC-F16b-10 — dashboard wiring (manual):** opening a revealed win/loss/expiry row expands an OUTCOME NOTE card with concept tooltips; save/skip rows do not expand while FEATURE_ARENA off. ⬜ manual.
+
 ---
 
 ## ATR (Acceptance Test Reports)

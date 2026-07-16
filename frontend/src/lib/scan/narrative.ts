@@ -41,9 +41,25 @@ export interface NarrativeVariantState {
   variants: string[];
 }
 
+export interface ResolvedNarrativeState {
+  id: string; // R1..R5
+  live: boolean; // true = ships now; false = gated behind FEATURE_ARENA (F17)
+  foreseeability?: boolean; // append the foreseeability sentence (R2/R3)
+  variants: string[];
+}
+
+export interface ForeseeabilityCopy {
+  not_marked: string; // honest default: no flag was logged in advance
+  marked: string; // affirmative; carries {foresee_flag}, cannot render without a logged flag
+}
+
 export interface NarrativesFile {
   disclaimer: string;
   states: Record<string, NarrativeVariantState>;
+  // F16b: resolved-scenario states + the foreseeability block (optional so older
+  // callers / fixtures without them still type-check).
+  resolved_states?: Record<string, ResolvedNarrativeState>;
+  foreseeability?: ForeseeabilityCopy;
 }
 
 export interface NarrativeResult {
@@ -187,3 +203,103 @@ export function resolveDailyLimit(
   const day = dayOfYear(date ?? new Date());
   return result(data, "daily_limit_reached", { daily_limit: String(dailyLimit) }, day);
 }
+
+// ── F16b Outcome Narratives (mentor-amended 16/07) ──────────────────────────────
+//
+// Rendered on the dashboard when a REVEALED journal scenario is opened. HARD RULE
+// (mentor): the resolver reads ONLY fields already present in the resolution record
+// (journal_scenarios) and performs NO new financial computation and NO new flag logging.
+//
+// status -> state map:
+//   win     -> R1 target_hit    (LIVE)
+//   loss    -> R2 stop_hit      (LIVE)  + foreseeability sentence
+//   expired -> R3 expired_flat  (LIVE)  + foreseeability sentence
+//   save    -> R4 save_confirmed (GATED behind FEATURE_ARENA; activates with F17)
+//   skip    -> R5 save_missed    (GATED behind FEATURE_ARENA; activates with F17)
+//   open / anything else -> null (no F16b card; the existing outcome badge stands)
+//
+// FORESEEABILITY: the affirmative "could it have been foreseen" line renders ONLY when a
+// flag logged at decision/creation time points to it. NO such flag exists in
+// journal_scenarios today, so foreseeFlag is always null and the honest "nothing in the
+// data marked this in advance" line is what renders. Never manufacture hindsight.
+
+export type OutcomeStatus = "win" | "loss" | "save" | "expired" | "skip" | "open" | string;
+
+export interface OutcomeInput {
+  status: OutcomeStatus; // journal_scenarios.status (existing field)
+  coin?: string | null; // existing field
+  direction?: "long" | "short" | string | null; // existing field
+  score?: number | null; // existing field
+  rMultiple?: number | null; // journal_scenarios.r_result (existing field)
+  // NOT present in the resolution record today; always null. Reserved for a future
+  // decision-time flag that F17 may log. When null, the honest "not marked" line renders.
+  foreseeFlag?: string | null;
+  date?: Date; // deterministic variant rotation (defaults to now)
+}
+
+export interface OutcomeOptions {
+  featureArena?: boolean; // gates R4/R5; default OFF (F17 flips it after lawyer clearance)
+}
+
+const RESOLUTION_WINDOW_DAYS = 7; // fixed window, mirrors backend core/journal.py (not a computation)
+
+const _STATUS_TO_STATE: Record<string, string> = {
+  win: "target_hit",
+  loss: "stop_hit",
+  expired: "expired_flat",
+  save: "save_confirmed",
+  skip: "save_missed",
+};
+
+/**
+ * Resolve one REVEALED scenario to its outcome narrative (R1..R5), or null when there is
+ * nothing to render (open/unknown status, or a gated R4/R5 with FEATURE_ARENA off). Pure;
+ * takes the locked narratives data so it is unit-testable without a JSON import.
+ */
+export function resolveOutcomeNarrative(
+  input: OutcomeInput,
+  data: NarrativesFile,
+  opts: OutcomeOptions = {},
+): NarrativeResult | null {
+  const resolved = data.resolved_states;
+  if (!resolved) return null;
+  const stateId = _STATUS_TO_STATE[input.status];
+  if (!stateId) return null;
+  const state = resolved[stateId];
+  if (!state) return null;
+  // Gated states (R4/R5) render only when FEATURE_ARENA is on (F17). Off today -> null.
+  if (!state.live && !opts.featureArena) return null;
+
+  const day = dayOfYear(input.date ?? new Date());
+  const ctx: Record<string, string> = {};
+  if (input.coin) ctx.coin = base(input.coin);
+  if (input.direction) ctx.direction = String(input.direction);
+  if (input.score != null) ctx.score = String(Math.round(input.score));
+  if (input.rMultiple != null) {
+    // R1 wins are positive; R2/R3 carry their own sign. Show an explicit sign for the
+    // signed states so a flat/negative expiry reads honestly.
+    const r = input.rMultiple;
+    const signed = stateId === "expired_flat";
+    ctx.r_mult = signed && r >= 0 ? `+${r.toFixed(1)}` : r.toFixed(1);
+  }
+  // {avoided_pct} (R4) is intentionally NOT provided: it is not in the resolution record
+  // today, so any variant using it self-skips (F17 will supply it).
+
+  const { text, index } = chooseVariant(state.variants, ctx, day);
+
+  // Foreseeability sentence (R2/R3 only). No flag exists today -> "not_marked".
+  let full = text;
+  if (state.foreseeability && data.foreseeability) {
+    const f = data.foreseeability;
+    if (input.foreseeFlag) {
+      full = `${text} ${fill(f.marked, { foresee_flag: input.foreseeFlag })}`;
+    } else {
+      full = `${text} ${f.not_marked}`;
+    }
+  }
+
+  return { stateId, code: state.id, variantIndex: index, text: full, disclaimer: data.disclaimer };
+}
+
+// Exported so a caller can reference the fixed window without re-deriving it.
+export { RESOLUTION_WINDOW_DAYS };

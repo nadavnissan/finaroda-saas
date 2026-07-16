@@ -199,3 +199,82 @@ def test_narratives_imperative_guard_meta():
         re.sub(r"^[^A-Za-z']+", "", s).split(" ")[0].lower().strip(".,") in _IMPERATIVE_VERBS
         for _, v in _narr_variants(good) for s in _narr_sentences(v)
     )
+
+
+# ── F16b Outcome Narratives: resolved-scenario states (same governance) ─────────
+# R1/R2/R3 ship LIVE; R4/R5 are BUILT but gated behind FEATURE_ARENA (default OFF) for
+# F17. All five share the F16 locked-file governance. The whole-blob em-dash and
+# forbidden-trade-term guards above already cover resolved_states (they read the file
+# text); these add the structural + imperative + foreseeability + no-XP guards.
+_RESOLVED_STATE_IDS = {"R1", "R2", "R3", "R4", "R5"}
+_GATED_STATE_IDS = {"R4", "R5"}
+
+
+def _narr_resolved_variants(data: dict) -> list:
+    """All (state_id, variant_text) pairs across resolved_states (skips the _note key)."""
+    out = []
+    for sid, state in data["resolved_states"].items():
+        if sid.startswith("_"):
+            continue
+        for v in state["variants"]:
+            out.append((sid, v))
+    return out
+
+
+def test_resolved_states_load_five_states():
+    """R1..R5 load with 2-3 DRAFT variants, a source ref, and the correct live/gated flag."""
+    data = json.loads(NARR_ROOT_JSON.read_text(encoding="utf-8"))
+    resolved = {k: v for k, v in data["resolved_states"].items() if not k.startswith("_")}
+    assert len(resolved) == 5, f"expected 5 resolved states, got {len(resolved)}"
+    assert {s["id"] for s in resolved.values()} == _RESOLVED_STATE_IDS
+    for sid, state in resolved.items():
+        assert state.get("_source_ref"), f"{sid} missing _source_ref (verified-numbers rule)"
+        assert isinstance(state.get("live"), bool), f"{sid} missing live flag"
+        # R4/R5 must be gated behind FEATURE_ARENA; R1/R2/R3 must be live.
+        gated = state["id"] in _GATED_STATE_IDS
+        assert state["live"] is (not gated), f"{state['id']} live flag wrong (gated={gated})"
+        if gated:
+            assert state.get("flag") == "FEATURE_ARENA", f"{state['id']} must name FEATURE_ARENA"
+        variants = state["variants"]
+        assert 2 <= len(variants) <= 3, f"{sid} must have 2-3 variants, got {len(variants)}"
+        for v in variants:
+            assert v.startswith("DRAFT"), f"{sid} variant missing DRAFT marker"
+
+
+def test_resolved_narratives_no_imperative_verbs():
+    """No resolved-narrative sentence opens with an imperative verb (descriptive only)."""
+    data = json.loads(NARR_ROOT_JSON.read_text(encoding="utf-8"))
+    offenders = []
+    for sid, variant in _narr_resolved_variants(data):
+        for sent in _narr_sentences(variant):
+            first = re.sub(r"^[^A-Za-z']+", "", sent).split(" ")[0].lower().strip(".,")
+            if first in _IMPERATIVE_VERBS:
+                offenders.append(f"{sid}: '{sent[:40]}'")
+    assert not offenders, "imperative-opening resolved sentences: " + "; ".join(offenders)
+
+
+def test_resolved_narratives_no_regret_framing():
+    """R5 (and all resolved copy) must never frame a missed winner as regret / 'you should'."""
+    data = json.loads(NARR_ROOT_JSON.read_text(encoding="utf-8"))
+    banned = re.compile(r"should have|you should|regret|missed out|if only", re.IGNORECASE)
+    offenders = [f"{sid}: '{v[:40]}'" for sid, v in _narr_resolved_variants(data) if banned.search(v)]
+    assert not offenders, "regret framing in resolved narratives: " + "; ".join(offenders)
+
+
+def test_foreseeability_affirmative_needs_a_flag():
+    """The affirmative foreseeability line must carry a {placeholder} so it cannot render
+    without a logged flag; the honest 'not_marked' line is a plain sentence. No such flag
+    exists in journal_scenarios today, so only 'not_marked' ever renders (no manufactured
+    hindsight)."""
+    data = json.loads(NARR_ROOT_JSON.read_text(encoding="utf-8"))
+    f = data["foreseeability"]
+    assert f.get("not_marked") and f.get("marked")
+    assert re.search(r"\{[a-z0-9_]+\}", f["marked"]), "affirmative line must require a flag placeholder"
+    assert not re.search(r"\{[a-z0-9_]+\}", f["not_marked"]), "the honest default must be flag-free"
+
+
+def test_resolved_narratives_no_new_xp_source():
+    """F16b is pure display: its copy must not reference XP (zero new XP sources)."""
+    data = json.loads(NARR_ROOT_JSON.read_text(encoding="utf-8"))
+    blob = json.dumps(data["resolved_states"]) + json.dumps(data["foreseeability"])
+    assert not re.search(r"\bxp\b", blob, re.IGNORECASE), "F16b copy must not reference XP"

@@ -12,7 +12,9 @@
       "Placeholders in {braces} are filled from the current scan payload only. A variant with a placeholder the payload cannot fill is skipped.",
       "Concept terms are wrapped as [[tooltip_id|display text]] and render with their Concept Tooltip.",
       "Any historical or numeric claim must be verified against EPISODES_AND_VERIFIED_NUMBERS.md and carry a _source_ref. Dynamic values filled from the live scan are not historical claims."
-    ]
+    ],
+    "resolved_states_note": "F16b Outcome Narratives (mentor-amended 16/07). Rendered on the dashboard when a REVEALED scenario is opened. The resolver reads ONLY fields already present in the resolution record (journal_scenarios): status, r_result, coin, direction, score. NO new financial computation, NO new flag logging. R1/R2/R3 are LIVE. R4/R5 are BUILT but gated behind FEATURE_ARENA (default OFF); they activate with F17 after lawyer clearance. Same governance as the F16 states: no em dashes, descriptive only, DRAFT-marked, verified numbers only (values come straight from the resolution record), disclaimer appended, concept markers wired.",
+    "foreseeability_note": "The foreseeability block is appended to R2/R3 outcomes only. The affirmative 'marked' line is allowed ONLY when a foreseeability flag was logged at decision/creation time in the resolution record. NO such flag exists in journal_scenarios today, so the resolver always renders 'not_marked'. The 'marked' template carries a {foresee_flag} placeholder and cannot render without a logged flag value, which guarantees no manufactured hindsight."
   },
   "disclaimer": "Descriptive analysis of the current scan, not financial advice.",
   "states": {
@@ -66,5 +68,64 @@
         "DRAFT. Your plan includes {daily_limit} per day, and today's is done. One clear read a day is the discipline the journal rewards."
       ]
     }
+  },
+  "resolved_states": {
+    "target_hit": {
+      "id": "R1",
+      "live": true,
+      "_source_ref": "All values are live resolution data (coin, direction, score, R multiple from r_result), not historical claims.",
+      "variants": [
+        "DRAFT. The {direction} read on {coin} reached its [[target_level|target level]] inside the window. A [[score|score]] of {score} and the [[regime|regime]] check pointed the same way, and the setup held from [[trigger_point|trigger]] through to target. Measured on its [[risk_reward|risk to reward]], the result reads {r_mult}R for one unit of risk.",
+        "DRAFT. {coin} carried its {direction} read to the [[target_level|target level]] this cycle. The checks that framed it, a [[score|score]] of {score} and a passing [[regime|regime]], stayed aligned the whole way. That path prints {r_mult}R on the [[r_multiple|R multiple]], one unit risked to reach it.",
+        "DRAFT. The {direction} setup on {coin} completed at its [[target_level|target level]]. A [[score|score]] of {score} and the [[regime|regime]] read agreed at the [[trigger_point|trigger]], and nothing broke the sequence before target. On the methodology's [[risk_reward|risk to reward]], the outcome is {r_mult}R."
+      ]
+    },
+    "stop_hit": {
+      "id": "R2",
+      "live": true,
+      "foreseeability": true,
+      "_source_ref": "All values are live resolution data (coin, direction, score, R multiple from r_result). The loss is capped at one unit of risk by the risk level; framed as variance, not a broken method.",
+      "variants": [
+        "DRAFT. The {direction} read on {coin} met its [[risk_level|risk level]] before the [[target_level|target level]]. The [[risk_level|risk level]] did the one job it exists for and capped the outcome at {r_mult}R, a single unit of risk. A valid process can still produce a losing outcome, and one result is variance, not a broken method.",
+        "DRAFT. {coin} turned against the {direction} read and reached its [[risk_level|risk level]] first. That is the outcome the [[risk_level|risk level]] is placed for, holding the result to {r_mult}R. The [[score|score]] of {score} described the setup honestly at the [[trigger_point|trigger]], and a sound entry and a losing result can share the same day.",
+        "DRAFT. The {direction} setup on {coin} closed at its [[risk_level|risk level]] for {r_mult}R. No single trade proves or breaks the method, and the [[risk_reward|risk to reward]] is measured across many reads, not one. The assumption that momentum would follow did not hold this time."
+      ]
+    },
+    "expired_flat": {
+      "id": "R3",
+      "live": true,
+      "foreseeability": true,
+      "_source_ref": "All values are live resolution data (coin, direction, R multiple from r_result). The 7 day window is the fixed resolution window (RESOLUTION_WINDOW_DAYS), not a new computation.",
+      "variants": [
+        "DRAFT. The {direction} read on {coin} triggered but never reached its [[target_level|target level]] inside the 7 day window. Momentum did not arrive, and the time limit closed the book near flat at {r_mult}R. A [[smart_skip|time stop]] protects capital when a setup stops developing.",
+        "DRAFT. {coin} filled its {direction} [[trigger_point|trigger]] and then went quiet for the rest of the 7 day window. With neither [[target_level|target level]] nor [[risk_level|risk level]] met, the window closed the read at {r_mult}R. Time inside a stalled position is its own cost, and the limit caps it."
+      ]
+    },
+    "save_confirmed": {
+      "id": "R4",
+      "live": false,
+      "flag": "FEATURE_ARENA",
+      "_source_ref": "GATED (F17). Core capital-save story uses only existing fields (status=save, coin, direction; r_result is 0). The {avoided_pct} placeholder is NOT in the resolution record today, so any variant using it self-skips until F17 supplies it.",
+      "variants": [
+        "DRAFT. The {direction} [[trigger_point|trigger]] on {coin} never filled, so no position ever opened. Capital stayed intact through the window, a [[capital_save|capital save]] rather than an entry. Standing aside is a result the record counts on its own terms.",
+        "DRAFT. No entry formed on the {direction} read for {coin}; the [[trigger_point|trigger]] stayed untouched. A [[capital_save|capital save]] is a quiet outcome, capital preserved with nothing put at risk.",
+        "DRAFT. The {direction} read on {coin} expired without an entry, and the [[capital_save|capital save]] here is a loss that was never taken, {avoided_pct} of downside left for the market and not the account."
+      ]
+    },
+    "save_missed": {
+      "id": "R5",
+      "live": false,
+      "flag": "FEATURE_ARENA",
+      "_source_ref": "GATED (F17). No existing status represents a set-aside read that later completed; this state has NO live data source today and is fed only by F17. Copy is discipline framing, never regret, never 'you should have'. {coin} is optional and self-skips if absent.",
+      "variants": [
+        "DRAFT. A read on {coin} that was set aside went on to complete this window. Missing a single winner is the tuition of discipline, and the method's edge lives in the average across many reads, not in any one of them. The rule that skipped it is the same rule that steps around the losing days.",
+        "DRAFT. This {coin} setup was passed over and later reached its [[target_level|target level]]. The [[r_multiple|R multiple]] of the method is measured over the full set of reads, where consistency matters more than any single case. One missed winner is the cost of a rule that stays consistent.",
+        "DRAFT. A read that discipline set aside went on to complete. The edge is the average outcome across every read the rules allow, not the best single case seen after the fact. A method that lets some winners pass is what keeps it clear of the worse days."
+      ]
+    }
+  },
+  "foreseeability": {
+    "not_marked": "Nothing in the data marked this in advance.",
+    "marked": "The {foresee_flag} reading was already on the record at the time."
   }
 }
