@@ -18,7 +18,7 @@
 - ATP: TC-HF182-01..07 (logo/hamburger/post-checkout → INPUT, result reachable via /history, Free quota unchanged, landing-phase invariant + no-restore-API regression) — see ATP.md.
 - VERSION: v0.18.2 (PATCH, bug fix).
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: aac6691
 - IMPACT: Navigating to the scan route via any entry point (logo, hamburger "Scan", post-checkout redirect) now always shows the scan INPUT screen, ready for a new scan. Users are no longer trapped in the last-result view; the last result stays reachable via Recent scans.
 - DECISIONS: (1) Rather than clearing the session at each of the (many, fragile) entry points, removed the completed-result restore entirely — results are reachable via /history, so the sessionStorage restore is no longer needed and its removal eliminates the trap at the source. This deliberately supersedes the v0.10.0 "Bug 5" restore-on-return behaviour. (2) Kept the change to a navigation/state reset only (no scan-screen redesign). (3) Since the test harness is pure-logic `node --test` (no jsdom/RTL), the automated guard asserts the landing-phase invariant + the absence of the restore API; the per-entry-point "navigate back → INPUT" checks are recorded as manual/E2E ATP cases.
 
