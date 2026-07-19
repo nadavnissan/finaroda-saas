@@ -1,5 +1,5 @@
 // Remembered client choices — Analysis Lens + Risk Style (localStorage, SSR-safe).
-import type { Blueprint, Lens, MarketData, RiskStyle } from "./types";
+import type { Lens, RiskStyle } from "./types";
 
 const LENS_KEY = "finaroda_lens";
 const RISK_KEY = "finaroda_risk_style";
@@ -51,45 +51,17 @@ export function incScanCount(): number {
   return n;
 }
 
-// ── Scan session (Bug 5) ─────────────────────────────────────────────────────
-// The scan results live in local component state, so leaving /scan for /subscribe
-// (SEE PLANS) and coming back reset the page to the controls. We persist the last
-// scan to sessionStorage so returning restores the RESULTS state (coins still
-// tappable — the market data is restored too). sessionStorage = tab-scoped, so it
-// clears when the tab closes; a fresh scan overwrites it.
-const SESSION_KEY = "finaroda_scan_session";
-
-export interface ScanSession {
-  phase: "results" | "empty";
-  passers: Blueprint[];
-  nonPassers: Blueprint[];
-  scanned: number;
-  timestamp: string;
-  xpAwarded: boolean;
-  scanCount: number;
-  md: [string, MarketData][]; // rebuilds the mdRef map (coin → market data)
-  ids: [string, number][];    // rebuilds the score_log id map (coin → id)
-}
-
-export function saveScanSession(session: ScanSession): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } catch {
-    // Quota or serialization failure is non-fatal; the live scan still works.
-  }
-}
-
-export function loadScanSession(): ScanSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as ScanSession) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearScanSession(): void {
-  if (typeof window !== "undefined") window.sessionStorage.removeItem(SESSION_KEY);
-}
+// ── Scan landing phase (HOTFIX v0.18.2) ──────────────────────────────────────
+// The scan route ALWAYS opens on the INPUT screen. A completed scan result is
+// reachable via /history (Recent scans) and must never be the forced landing state:
+// the FINARODA logo, the hamburger "Scan" entry, and post-checkout redirects all
+// re-enter /scan and must show a fresh input, ready for a new scan.
+//
+// This supersedes the earlier "Bug 5" behaviour, which persisted the last scan to
+// sessionStorage and restored the RESULTS state on every mount — that restore
+// hijacked navigation and trapped users in the last-result view (founder-reported).
+// There is intentionally no completed-result restore API: re-introducing one would
+// bring the trap back. In-flight scans are not resumed either (the request is gone
+// on remount); the result is re-derived by running a new scan.
+export type ScanPhase = "idle" | "scanning" | "results" | "empty" | "limit";
+export const INITIAL_SCAN_PHASE: ScanPhase = "idle";

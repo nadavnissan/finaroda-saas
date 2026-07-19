@@ -8,6 +8,8 @@ import { deriveWhyNot } from "../src/lib/scan/engine.ts";
 import { SCAN_UNIVERSE } from "../src/lib/scan/bybit.ts";
 import { swingLevels } from "../src/lib/chart/swings.ts";
 import { toChartCandles } from "../src/lib/scan/chart.ts";
+import * as store from "../src/lib/scan/store.ts";
+import { INITIAL_SCAN_PHASE } from "../src/lib/scan/store.ts";
 import type { MarketData } from "../src/lib/scan/types.ts";
 
 // ── gating: the plan's coin count slices the scanned universe ──────────────────
@@ -49,6 +51,24 @@ test("E7b: not blocked (below threshold) → threshold check, exposes no score",
   assert.equal(w.checkId, "score");
   assert.equal(w.tooltipId, "pass_watch");
   assert.doesNotMatch(w.text, /\d/); // no numeric score/weight leaked
+});
+
+// ── HOTFIX v0.18.2: scan route lands on INPUT, never a restored result ──────────
+// The founder-reported trap: after a scan, the logo / hamburger "Scan" / post-checkout
+// redirect landed back on the LAST RESULT instead of a fresh input screen, because the
+// mount effect restored a persisted completed result. The scan route must always open
+// on the INPUT (idle) phase; results stay reachable via /history, never the landing.
+test("HOTFIX v0.18.2: scan route landing phase is INPUT (idle)", () => {
+  assert.equal(INITIAL_SCAN_PHASE, "idle");
+});
+
+// Regression guard: the completed-result restore API that caused the trap must not come
+// back. If someone re-adds a sessionStorage save/load/clear of scan results, the scan
+// route can hijack navigation again — this test fails first.
+test("HOTFIX v0.18.2: no completed-result restore API on the scan store", () => {
+  assert.equal("saveScanSession" in store, false);
+  assert.equal("loadScanSession" in store, false);
+  assert.equal("clearScanSession" in store, false);
 });
 
 // ── swing adapter: maps the shared engine's pivots to chart S/R ────────────────

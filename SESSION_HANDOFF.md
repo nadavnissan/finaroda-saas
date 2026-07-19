@@ -8,8 +8,17 @@
 
 ## Where we are now
 - **Active branch:** dev
-- **Last commit (dev):** UPGRADE-F16b (v0.18.1) — Outcome Narratives (F16 engine extension). Built on UPGRADE-FX4-F16 (v0.18.0). See the F16b section directly below.
-- **Validation:** ✅ **pytest 208/208** (+5 resolved-state governance), tsc clean, eslint clean, frontend unit **87/87** (+14 outcome resolver), shared **14/14**, red-line suites GREEN. All Stripe/email mocked, zero network. (`next build` not re-run — recommend a clean `pnpm build` before the founder click-through.)
+- **Last commit (dev):** HOTFIX-SCAN-NAV (v0.18.2) — scan route always lands on INPUT (fixes the founder-reported "trapped on last result" bug). Built on UPGRADE-F16b (v0.18.1). See the HOTFIX section directly below.
+- **Validation:** ✅ **pytest 208/208**, tsc clean, eslint clean, frontend unit **89/89** (+2 landing-phase invariant + no-restore-API regression), shared **14/14**, red-line suites GREEN. All Stripe/email mocked, zero network. (`next build` not re-run — recommend a clean `pnpm build` before the founder click-through.)
+
+## HOTFIX — Scan navigation stuck on last result (v0.18.2, 2026-07-19) — SHIPPED (dev)
+Single acute bug fixed before Stage 8. **Founder-reported, reproduced twice:** after a completed scan, the FINARODA logo, the hamburger "Scan" entry, and the post-checkout "return to scan" all landed back on the **LAST RESULT** view instead of a fresh scan **INPUT** screen — a paid user (5+/day) could not start their second scan of the day.
+- **Root cause:** the `/scan` mount effect unconditionally restored a persisted completed result via `loadScanSession()` and set the landing `phase` to `results`/`empty`. This was the old **"Bug 5"** behaviour (v0.10.0: "SEE PLANS → return restores RESULTS via sessionStorage"). Running on EVERY mount, it hijacked all re-entry to `/scan`.
+- **Fix (navigation/state-reset only, minimal diff):** removed the completed-result restore. The scan route now always opens on INPUT — `store.ts` exposes `INITIAL_SCAN_PHASE = "idle"` (documented invariant) and the page initializes `phase` from it. Deleted the `ScanSession` save/load/clear API and its call sites (mount restore, post-scan save, `onNewScan` clear). Files: `frontend/src/lib/scan/store.ts`, `frontend/src/app/(scan)/scan/page.tsx`, `frontend/tests/scan.unit.test.ts`, `frontend/src/lib/version.ts` (APP_VERSION 0.18.2).
+- **Result reachability preserved:** the last result stays reachable via **`/history`** (hamburger → "Recent scans"), which is server-backed and independent of the removed sessionStorage — it is never the forced landing state of the scan route.
+- **Behaviours preserved:** in-progress ("scanning") state was never persisted and is not resumed on remount (a mid-flight request is gone after navigation → a new scan re-derives the result). Free daily-quota behaviour is unchanged: navigation always shows INPUT; the 429/quota S6 screen still appears only on scan ATTEMPT (`outcome.dailyLimit` → `phase="limit"`), never preempted on navigation.
+- **Deliberate supersession:** this replaces the v0.10.0 "Bug 5" restore-on-return. The old manual-check "SEE PLANS→back restores results" no longer holds — the expected behaviour is now "SEE PLANS→back shows the INPUT screen" (result reachable via Recent scans).
+- **DB:** none. **Config:** none. **ATP:** TC-HF182-01..07. **Untouched:** scoring engine/scorer, 85/82 threshold, XP economy, reveal-gating, RED LINE, main branch.
 
 ## UPGRADE — F16b Outcome Narratives (v0.18.1, 2026-07-16) — SHIPPED (dev)
 Extends the F16 engine with RESOLVED-SCENARIO states, rendered on the dashboard when a **revealed** journal scenario is **opened**. New pure `resolveOutcomeNarrative(input, data, opts)` in `lib/scan/narrative.ts`.
@@ -72,7 +81,7 @@ Extends the F16 engine with RESOLVED-SCENARIO states, rendered on the dashboard 
   - [ ] Academy card grid / search / lazy video / locked-card reason.
   - [ ] Admin filters / CSV / ticket breadcrumbs / responsive master-detail.
   - [ ] Bell open/mark-read, 5 Settings toggles, broadcast preview.
-  - [ ] TRIAL chip on /scan; SEE PLANS→back restores results; Free currency selector.
+  - [ ] TRIAL chip on /scan; SEE PLANS→back shows the scan INPUT screen (v0.18.2; result reachable via Recent scans); Free currency selector.
   - [ ] (live-gated) Real Stripe test account: /subscribe → hosted checkout → webhook → BillingBanner; coupon create/deactivate + referral void; hosted promotion-code field.
   - [ ] (live-gated) Live Resend send (needs finaroda.com verified); Sentry activation on built frontend; arrival sound/vibration on a real device.
 - **Untouched (as required):** RED LINE §3.5.5, 85/82 threshold, scoring engine/scorer, XP_ECONOMY, reveal-gating semantics, main branch.

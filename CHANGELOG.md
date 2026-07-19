@@ -4,6 +4,24 @@
 
 ---
 
+## [HOTFIX-SCAN-NAV / Scan navigation stuck on last result] — 2026-07-19
+- GOAL: Fix the founder-reported trap (reproduced twice): after a completed scan, the FINARODA logo, the hamburger "Scan" entry, and the post-checkout "return to scan" all landed back on the LAST RESULT view instead of a fresh scan INPUT screen. A paid user (5+/day) literally could not start their second scan of the day.
+- SOLUTION:
+  - **Root cause.** The `/scan` mount effect unconditionally restored a persisted completed result via `loadScanSession()` and set the landing `phase` to `results`/`empty`. This was the old "Bug 5" behaviour (v0.10.0: "SEE PLANS → return restores RESULTS via sessionStorage"). Because the restore ran on EVERY mount, any re-entry to `/scan` (logo, hamburger, post-checkout redirect) rendered the stored result instead of the input state, trapping the user.
+  - **Fix (navigation/state reset only, minimal diff).** Removed the completed-result restore. The scan route now always opens on INPUT: `store.ts` exposes `INITIAL_SCAN_PHASE = "idle"` (documented invariant) and the page initializes `phase` from it. Deleted the `ScanSession` persistence API (`saveScanSession`/`loadScanSession`/`clearScanSession`) and its call sites (mount restore, post-scan save, `onNewScan` clear). The last result remains fully reachable via `/history` (Recent scans), which is server-backed and independent of the removed sessionStorage — it is never the forced landing state of the scan route.
+  - **Behaviours preserved.** In-progress ("scanning") state is not persisted (was never saved) and is not resumed on remount — a mid-flight request is gone after navigation, so a new scan re-derives the result. Free daily-quota behaviour is unchanged: navigation always shows INPUT; the 429/quota S6 screen still appears only on scan ATTEMPT (via `outcome.dailyLimit` → `phase="limit"`), never preempted on navigation.
+- FILES MODIFIED: frontend/src/lib/scan/store.ts (remove ScanSession save/load/clear + trim type imports, add INITIAL_SCAN_PHASE/ScanPhase), frontend/src/app/(scan)/scan/page.tsx (remove mount restore, post-scan save, session clear; init phase from INITIAL_SCAN_PHASE), frontend/tests/scan.unit.test.ts (regression tests), ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md, frontend/src/lib/version.ts (APP_VERSION 0.18.2).
+- FILES CREATED: אין.
+- DB CHANGES: אין.
+- CONFIG ADDED: אין.
+- VALIDATION: pytest 208/208, tsc clean, eslint clean, frontend unit 89/89 (+2), shared 14/14. Red-line suites untouched/green.
+- ATP: TC-HF182-01..07 (logo/hamburger/post-checkout → INPUT, result reachable via /history, Free quota unchanged, landing-phase invariant + no-restore-API regression) — see ATP.md.
+- VERSION: v0.18.2 (PATCH, bug fix).
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: Navigating to the scan route via any entry point (logo, hamburger "Scan", post-checkout redirect) now always shows the scan INPUT screen, ready for a new scan. Users are no longer trapped in the last-result view; the last result stays reachable via Recent scans.
+- DECISIONS: (1) Rather than clearing the session at each of the (many, fragile) entry points, removed the completed-result restore entirely — results are reachable via /history, so the sessionStorage restore is no longer needed and its removal eliminates the trap at the source. This deliberately supersedes the v0.10.0 "Bug 5" restore-on-return behaviour. (2) Kept the change to a navigation/state reset only (no scan-screen redesign). (3) Since the test harness is pure-logic `node --test` (no jsdom/RTL), the automated guard asserts the landing-phase invariant + the absence of the restore API; the per-entry-point "navigate back → INPUT" checks are recorded as manual/E2E ATP cases.
+
 ## [UPGRADE-F16b / Outcome Narratives] — 2026-07-16
 - GOAL: Extend the F16 narrative engine with RESOLVED-SCENARIO states, rendered on the dashboard when a revealed scenario is opened. R1 target_hit / R2 stop_hit / R3 expired_flat ship LIVE; R4 save_confirmed / R5 save_missed are BUILT but gated behind FEATURE_ARENA (default OFF) for F17. Mentor HARD RULE: the resolver reads ONLY fields already present in the resolution record — no new financial computation, no new flag logging.
 - SOLUTION:

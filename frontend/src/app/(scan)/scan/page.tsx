@@ -25,13 +25,11 @@ import narrativesData from "@/lib/scan/market_narratives.json";
 import { resolveDailyLimit, resolveNarrative, type NarrativeCoin, type NarrativesFile } from "@/lib/scan/narrative";
 import { recordScan, recordSnapshot, toScoreLogItems } from "@/lib/scan/persist";
 import {
-  clearScanSession,
   getCoinPrefs,
   getLens,
   getRiskStyle,
   incScanCount,
-  loadScanSession,
-  saveScanSession,
+  INITIAL_SCAN_PHASE,
   setCoinPrefs,
   setLens,
   setRiskStyle,
@@ -53,7 +51,7 @@ function fmtTimestamp(d: Date): string {
 
 export default function ScanPage() {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>("idle");
+  const [phase, setPhase] = useState<Phase>(INITIAL_SCAN_PHASE);
   const [step, setStep] = useState(0);
   const [lens, setLensState] = useState<Lens>("Full");
   const [riskStyle, setRiskStyleState] = useState<RiskStyle>("Balanced");
@@ -104,22 +102,10 @@ export default function ScanPage() {
     void apiFetch<{ subscription_status: string }>("/api/billing/status").then((r) => {
       if (r.ok && r.data) setOnTrial(r.data.subscription_status === "trial");
     });
-    // Bug 5: restore the last scan so returning from /subscribe (SEE PLANS) lands back
-    // on the RESULTS state, not the controls. Rebuild the market-data + id maps so the
-    // restored coins stay tappable.
-    const s = loadScanSession();
-    if (s) {
-      mdRef.current = new Map(s.md);
-      idRef.current = new Map(s.ids);
-      ctxRef.current = buildMarketContext(mdRef.current);
-      setPassers(s.passers);
-      setNonPassers(s.nonPassers);
-      setScanned(s.scanned);
-      setTimestamp(s.timestamp);
-      setXpAwarded(s.xpAwarded);
-      setScanCount(s.scanCount);
-      setPhase(s.phase);
-    }
+    // HOTFIX v0.18.2: the scan route always lands on the INPUT screen. A completed
+    // result is never restored on mount — it is reachable via /history (Recent scans),
+    // never the forced landing state (see store.ts INITIAL_SCAN_PHASE). This replaces
+    // the old "Bug 5" sessionStorage restore that trapped users in the last result.
   }, []);
 
   // Decision C: reconcile the coin selection with the plan's coin count once the
@@ -241,18 +227,6 @@ export default function ScanPage() {
     setScanCount(sc);
     const nextPhase: Phase = pass.length > 0 ? "results" : "empty";
     setPhase(nextPhase);
-    // Bug 5: persist so a SEE PLANS round-trip restores the results (coins tappable).
-    saveScanSession({
-      phase: nextPhase === "results" ? "results" : "empty",
-      passers: pass,
-      nonPassers: fail,
-      scanned: universe.length,
-      timestamp: ts,
-      xpAwarded: rec?.first_scan_of_day ?? false,
-      scanCount: sc,
-      md: Array.from(mdRef.current.entries()),
-      ids: Array.from(idRef.current.entries()),
-    });
   }
 
   function openBlueprint(bp: Blueprint) {
@@ -387,7 +361,7 @@ export default function ScanPage() {
               xpAwarded={xpAwarded}
               onOpen={openBlueprint}
               onOpenWhyNot={openWhyNot}
-              onNewScan={() => { clearScanSession(); setPhase("idle"); }}
+              onNewScan={() => setPhase("idle")}
               narrative={narrative}
             />
             <Disclaimer />

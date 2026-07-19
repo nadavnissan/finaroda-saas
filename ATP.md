@@ -767,6 +767,18 @@
 
 ---
 
+## HOTFIX v0.18.2 — Scan navigation lands on INPUT (2026-07-19)
+> Founder-reported trap (reproduced twice): after a completed scan, the FINARODA logo, the hamburger "Scan" entry, and the post-checkout "return to scan" all landed back on the LAST RESULT view instead of a fresh scan input screen — a paid user could not start their second scan of the day. Root cause: the `/scan` mount effect restored a persisted completed result (old "Bug 5" sessionStorage restore) as the landing phase. Fix: the completed-result restore is removed; the scan route always opens on INPUT (`INITIAL_SCAN_PHASE = "idle"`), and the last result stays reachable via `/history` (Recent scans). Tests: `frontend/tests/scan.unit.test.ts`.
+- **TC-HF182-01 — logo → INPUT:** complete a scan (RESULTS/empty) → tap the FINARODA wordmark → the scan INPUT screen renders (SCAN ring + coin selector), NOT the previous result. ⬜ manual/E2E.
+- **TC-HF182-02 — hamburger "Scan" → INPUT:** complete a scan → open the drawer → tap "Scan" → INPUT screen renders, not the result. ⬜ manual/E2E.
+- **TC-HF182-03 — post-checkout redirect → INPUT:** from the upgrade-success flow, "return to scan" lands on the INPUT screen, not the last result. ⬜ manual/E2E.
+- **TC-HF182-04 — result still reachable:** the last result is reachable via hamburger → "Recent scans" (`/history`), which re-renders the stored Trading Blueprint. Navigation to `/scan` is never forced onto it. ⬜ manual.
+- **TC-HF182-05 — Free quota unchanged:** a Free user who exhausted the daily quota still lands on INPUT on navigation; the 429/quota S6 screen appears only on scan ATTEMPT, not preempted on navigation. ⬜ manual.
+- **TC-HF182-06 — landing phase invariant (auto):** `INITIAL_SCAN_PHASE === "idle"` — the scan route's landing phase is INPUT. ✅ auto.
+- **TC-HF182-07 — no restore-API regression (auto):** the scan store exposes no `saveScanSession`/`loadScanSession`/`clearScanSession` — the completed-result restore that caused the trap cannot be re-introduced without failing this test. ✅ auto.
+
+---
+
 ## ATR (Acceptance Test Reports)
 מיוצרים בהרצה, נשמרים כ-ATR-{date}.md. לא בקובץ זה.
 
