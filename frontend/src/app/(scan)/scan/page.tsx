@@ -30,6 +30,7 @@ import {
   getRiskStyle,
   incScanCount,
   INITIAL_SCAN_PHASE,
+  NEW_SCAN_PHASE,
   setCoinPrefs,
   setLens,
   setRiskStyle,
@@ -229,6 +230,13 @@ export default function ScanPage() {
     setPhase(nextPhase);
   }
 
+  // HOTFIX v0.18.3: the always-visible new-scan action shared by every result view
+  // (passing "results" ring and the empty "no setups pass" state). Returns to the INPUT
+  // screen without a reload; the next SCAN attempt is still server-gated by the quota.
+  function startNewScan() {
+    setPhase(NEW_SCAN_PHASE);
+  }
+
   function openBlueprint(bp: Blueprint) {
     setModal({ kind: "blueprint", bp });
     const id = idRef.current.get(bp.coin);
@@ -361,7 +369,7 @@ export default function ScanPage() {
               xpAwarded={xpAwarded}
               onOpen={openBlueprint}
               onOpenWhyNot={openWhyNot}
-              onNewScan={() => setPhase("idle")}
+              onNewScan={startNewScan}
               narrative={narrative}
             />
             <Disclaimer />
@@ -385,6 +393,18 @@ export default function ScanPage() {
                 ))}
               </div>
             )}
+            {/* HOTFIX v0.18.3: the empty state is still a result view — expose the same
+                always-visible new-scan action the passing "results" view carries, so the
+                user is never trapped here. Returns to INPUT; next SCAN is quota-gated. */}
+            <div style={{ padding: "4px 20px 6px", textAlign: "center" }}>
+              <button
+                type="button"
+                onClick={startNewScan}
+                style={{ font: `500 12px ${MONO}`, color: C.muted, background: "none", border: "none", borderBottom: `1px solid rgba(133,147,162,.5)`, paddingBottom: 2, cursor: "pointer" }}
+              >
+                ↻ new scan
+              </button>
+            </div>
             <Disclaimer />
           </>
         )}

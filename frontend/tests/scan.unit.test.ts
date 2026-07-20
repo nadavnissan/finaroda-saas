@@ -71,6 +71,31 @@ test("HOTFIX v0.18.2: no completed-result restore API on the scan store", () => 
   assert.equal("clearScanSession" in store, false);
 });
 
+// ── HOTFIX v0.18.3: every result view exposes an always-visible new-scan action ─
+// The founder-reported trap: a scan that yields no passers lands on the "empty" phase,
+// which had no scan CTA. The logo / hamburger re-enter /scan but do not remount the
+// page, so the empty phase persisted with no way back to the coin selector. Both
+// completed-scan result views ("results" and "empty") must carry the new-scan action.
+test("HOTFIX v0.18.3: results AND empty are result views that carry a new-scan action", () => {
+  assert.equal(store.isResultPhase("results"), true);
+  assert.equal(store.isResultPhase("empty"), true);
+});
+
+// The input, scanning, and quota screens are not "result views": idle IS the input,
+// scanning is transient, and the limit screen is the server's "no" (its own CTAs).
+test("HOTFIX v0.18.3: idle / scanning / limit are not new-scan result views", () => {
+  assert.equal(store.isResultPhase("idle"), false);
+  assert.equal(store.isResultPhase("scanning"), false);
+  assert.equal(store.isResultPhase("limit"), false);
+});
+
+// The new-scan action returns to the INPUT (idle) screen — never an auto re-scan, so
+// the next SCAN attempt is a fresh, server-quota-gated request.
+test("HOTFIX v0.18.3: new-scan action returns to the INPUT (idle) phase", () => {
+  assert.equal(store.NEW_SCAN_PHASE, "idle");
+  assert.equal(store.NEW_SCAN_PHASE, INITIAL_SCAN_PHASE);
+});
+
 // ── swing adapter: maps the shared engine's pivots to chart S/R ────────────────
 test("swingLevels: maps swingHigh/swingLow → resistance/support", () => {
   // Pivot high at idx 4 (30), pivot low at idx 5 (5) — inside the scan window.

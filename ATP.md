@@ -777,6 +777,13 @@
 - **TC-HF182-06 — landing phase invariant (auto):** `INITIAL_SCAN_PHASE === "idle"` — the scan route's landing phase is INPUT. ✅ auto.
 - **TC-HF182-07 — no restore-API regression (auto):** the scan store exposes no `saveScanSession`/`loadScanSession`/`clearScanSession` — the completed-result restore that caused the trap cannot be re-introduced without failing this test. ✅ auto.
 
+### HOTFIX-SCAN-NEWSCAN (v0.18.3) — every result view exposes a new-scan action
+- **TC-HF183-01 — empty result → new scan → INPUT:** run a scan that yields no passers → the "No setups pass right now" state renders with an always-visible "↻ new scan" action → tapping it returns to the INPUT screen (SCAN ring + coin selector), no page reload. ⬜ manual/E2E.
+- **TC-HF183-02 — passing result → new scan → INPUT:** run a scan that yields ≥1 passer → tap "↻ new scan" → INPUT screen renders (unchanged from prior behaviour, now shares the same handler). ⬜ manual/E2E.
+- **TC-HF183-03 — quota still server-authoritative:** a Free user (1/day) who already scanned taps SCAN from the re-entered INPUT → the ATTEMPT hits the server cap → the 429/S6 limit screen renders (the button is shown; the server, not the UI, says no). Existing quota tests stay green. ⬜ manual + covered by backend quota suite.
+- **TC-HF183-04 — result-view set invariant (auto):** `isResultPhase("results") === true`, `isResultPhase("empty") === true`, and `isResultPhase` is false for `idle`/`scanning`/`limit`. ✅ auto.
+- **TC-HF183-05 — new-scan returns to INPUT (auto):** `NEW_SCAN_PHASE === "idle" === INITIAL_SCAN_PHASE` — the new-scan action never auto re-scans; it returns to the input so the next SCAN is a fresh, quota-gated request. ✅ auto.
+
 ---
 
 ## ATR (Acceptance Test Reports)

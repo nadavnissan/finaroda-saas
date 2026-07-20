@@ -4,6 +4,26 @@
 
 ---
 
+## [HOTFIX-SCAN-NEWSCAN / Empty result trapped the user — no way to start a new scan] — 2026-07-20
+- GOAL: Fix the founder-reported trap (after v0.18.2 + cleared site data): navigating to `/scan` showed a RESULT view — "No setups pass right now" + narrative + why-not chips — with NO visible way to change coin or run another scan. The founder could not reach the coin selector / a new-scan action from that state.
+- SOLUTION:
+  - **Investigation.** `/scan` does NOT auto-scan on load: `phase` initializes from `INITIAL_SCAN_PHASE = "idle"`, which renders the INPUT screen (SCAN ring + coin selector). The founder was NOT on a fresh mount — they were on the `empty` phase from a completed scan that yielded no passers (`runScan` → `pass.length === 0` → `phase="empty"`, page.tsx:228). The `empty` branch rendered `EmptyState` + why-not chips but **no new-scan CTA** (by original F1b intent, "the empty state has no scan CTA"). The passing `results` view already had a "↻ new scan" action; the `empty` view did not. Re-entering `/scan` via the logo/hamburger both `router.push("/scan")`, which does NOT remount the already-mounted page — so the `empty` phase persisted with no exit. (The counter incrementing 9→13 confirmed scans were running: the founder reached INPUT, scanned, landed on `empty`, got stuck, repeated.)
+  - **Fix (minimal diff, no redesign).** The `empty` phase now renders the SAME always-visible "↻ new scan" action the `results` view carries (identical muted text-button style — low-key, consistent with trust-not-engagement §8.3, not a loud CTA). Both result views call one shared `startNewScan()` handler → `setPhase(NEW_SCAN_PHASE)` → returns to INPUT with the coin selector active (plan-gated coins locked per FX4), no page reload. `store.ts` now exposes `isResultPhase(phase)` (documents that `results` + `empty` are the result views that must carry the affordance) and `NEW_SCAN_PHASE = INITIAL_SCAN_PHASE = "idle"`.
+  - **Quota unchanged / server-authoritative.** The new-scan action does NOT re-scan and does NOT bypass the cap — it returns to INPUT; the next SCAN ATTEMPT still hits the existing server limits (Free 1/day → 429 → `phase="limit"`/S6; basic 5/day; pro unlimited). The door is shown; the server, not a hidden button, says no. The `limit` screen keeps its own SEE PLANS / VIEW JOURNAL CTAs (unchanged — a new-scan button there would just loop back to the cap).
+- FILES MODIFIED: frontend/src/lib/scan/store.ts (add `isResultPhase` + `NEW_SCAN_PHASE`), frontend/src/app/(scan)/scan/page.tsx (shared `startNewScan` handler; add "↻ new scan" to the `empty` branch; `results` onNewScan now uses the shared handler), frontend/tests/scan.unit.test.ts (+3 regression tests), frontend/src/lib/version.ts (APP_VERSION 0.18.3), ATP.md, CHANGELOG.md, VERSIONS.md, SESSION_HANDOFF.md.
+- FILES CREATED: אין.
+- DB CHANGES: אין.
+- CONFIG ADDED: אין.
+- VALIDATION: pytest 208/208, tsc clean, eslint clean, frontend unit 92/92 (+3), shared 14/14. Red-line suites untouched/green.
+- ATP: TC-HF183-01..05 (empty/passing result → new scan → INPUT, quota still server-gated, result-view-set + new-scan-phase invariants) — see ATP.md.
+- VERSION: v0.18.3 (PATCH, bug fix).
+- BRANCH: dev
+- COMMIT: <hash>
+- IMPACT: A completed scan that yields no passers is no longer a dead end. From the empty result view the user has an obvious, always-visible action back to the coin selector to run another scan — without a page reload, and with the daily quota still enforced on the attempt.
+- DECISIONS: Mirrored the existing "↻ new scan" affordance rather than introducing a new pattern (minimal, UX-consistent). Left the `limit` (quota) screen unchanged — it is the server's "no" and already offers plans/journal.
+
+---
+
 ## [HOTFIX-SCAN-NAV / Scan navigation stuck on last result] — 2026-07-19
 - GOAL: Fix the founder-reported trap (reproduced twice): after a completed scan, the FINARODA logo, the hamburger "Scan" entry, and the post-checkout "return to scan" all landed back on the LAST RESULT view instead of a fresh scan INPUT screen. A paid user (5+/day) literally could not start their second scan of the day.
 - SOLUTION:

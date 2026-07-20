@@ -65,3 +65,20 @@ export function incScanCount(): number {
 // on remount); the result is re-derived by running a new scan.
 export type ScanPhase = "idle" | "scanning" | "results" | "empty" | "limit";
 export const INITIAL_SCAN_PHASE: ScanPhase = "idle";
+
+// ── New-scan affordance from a result view (HOTFIX v0.18.3) ───────────────────
+// Every completed-scan RESULT view must expose an always-visible action back to the
+// INPUT (idle) screen, so the user can pick a coin and scan again without a page
+// reload. Both a passing "results" ring AND the empty "no setups pass" state are
+// result views. The "empty" phase previously rendered no scan CTA, which trapped the
+// founder: the logo / hamburger "Scan" both router.push("/scan"), but that does NOT
+// remount the already-mounted page, so the "empty" phase persisted with no way out.
+//
+// The new-scan action always returns to the INPUT phase. It does NOT re-scan and does
+// NOT bypass quota: the new-scan ATTEMPT (tapping SCAN on the input screen) still hits
+// the server-authoritative daily limit (Free 1/day → the "limit" screen). The UI shows
+// the door; the server — not a hidden button — says no.
+export function isResultPhase(phase: ScanPhase): boolean {
+  return phase === "results" || phase === "empty";
+}
+export const NEW_SCAN_PHASE: ScanPhase = INITIAL_SCAN_PHASE;
