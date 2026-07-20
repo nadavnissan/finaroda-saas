@@ -28,7 +28,7 @@
 - ATP: TC-S8-01..12 (production guard branches, mig-038 drop, require_active_trial removal, PWA manifest/installability/offline, build + post-merge suite).
 - VERSION: **v1.0.0** (MAJOR — first production release / dev→main milestone).
 - BRANCH: dev → merged to main (founder-authorized in the Stage-8 prompt), tag v1.0.0.
-- COMMIT: <hash>
+- COMMIT: f63e8c3 (+ this docs-hash commit)
 - IMPACT: The product is hardened for production and shipped to `main` as v1.0.0. A production process physically cannot boot with the magic-link-leaking dev flag or a dev JWT secret. The app is installable (manifest + icons) with a graceful offline page. A fresh clone has an exact local-run guide, and the founder has an ordered deploy runbook (Railway env → Vercel env → cron → Resend verify → smoke test). Dead code + a dead table are gone. No product logic, scoring, XP, reveal-gating, or money path changed.
 - DECISIONS: (1) Consolidated the two dangerous-flag guards into one tested function rather than a second inline check. (2) SW deliberately never caches app assets (network-first) to avoid the stale-version class of bug the founder is sensitive to. (3) Reconciled railway.toml to the HTTP-cron model + removed the broken renewal cron rather than leave a crash-looping reference. (4) Bumped the frontend APP_VERSION to 1.0.0; left the backend FastAPI/health scaffold version at "0.2.0" (a distinct internal marker pinned by test_smoke — the product release version lives in VERSIONS.md + the git tag). (5) Left the founder's untracked working files (design/, validation docs) in place — untracked, never shipped, not mine to delete.
 
