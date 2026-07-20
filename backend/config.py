@@ -25,6 +25,10 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", BASE_URL)
 DATABASE_URL = os.getenv("DATABASE_URL", "data/finaroda.db")
 
 # ── JWT / Auth ────────────────────────────────────────────────────────────────
+# The insecure default used only in dev when JWT_SECRET is unset. Named so the
+# production safety guard (assert_production_safety) can refuse to boot if it ever
+# leaks into a production process (e.g. someone copies it into a real .env).
+DEV_JWT_SENTINEL = "dev-only-jwt-secret-do-not-use-in-production"
 _raw_jwt_secret = os.getenv("JWT_SECRET", "")
 if not _raw_jwt_secret:
     if ENVIRONMENT in ("production", "staging"):
@@ -32,7 +36,7 @@ if not _raw_jwt_secret:
             "JWT_SECRET env var is required in production/staging. "
             "Generate with: openssl rand -hex 32"
         )
-    JWT_SECRET = "dev-only-jwt-secret-do-not-use-in-production"
+    JWT_SECRET = DEV_JWT_SENTINEL
     logging.warning(
         "⚠️  Using development JWT_SECRET. "
         "Set JWT_SECRET env var before deploying to production."
@@ -158,3 +162,50 @@ SENTRY_RELEASE: str = os.getenv("SENTRY_RELEASE", "")
 def get_frontend_url() -> str:
     """Lazy lookup so .env.local can be loaded after config import."""
     return os.getenv("FRONTEND_URL") or BASE_URL
+
+
+# ── Production safety guard (Stage 8 hardening) ──────────────────────────────
+# One place that refuses to boot a PRODUCTION process configured with a dangerous
+# dev-only flag. Called from main.py at import time (before the app is created), so a
+# misconfigured deploy crash-loops loudly instead of silently exposing a hole. Pure and
+# argument-injectable so the guard itself is unit-tested (test_production_guard.py).
+#
+# What is guarded (and why each is genuinely dev-only, not a normal production choice):
+#   - DEV_RETURN_MAGIC_LINK=true → returns the sign-in link in the API response, bypassing
+#     email possession → anyone could sign in as any address. Never valid in production.
+#   - JWT_SECRET == DEV_JWT_SENTINEL → tokens are forgeable by anyone who can read the
+#     source. The empty-secret case already hard-fails at import; this also catches the
+#     sentinel being pasted into a real .env.
+#
+# Deliberately NOT guarded (these ARE legitimate production states, so guarding them would
+# block valid launches): FEATURE_STRIPE_LIVE=false (soft-launch with billing off),
+# FEATURE_PUBLIC_SIGNUPS_OPEN=true (public launch past closed beta), FEATURE_ARENA
+# (lawyer-gated feature toggle), an empty ENCRYPTION_KEY (currently unused by any code path).
+def assert_production_safety(
+    environment: str = ENVIRONMENT,
+    *,
+    dev_return_magic_link: bool = DEV_RETURN_MAGIC_LINK,
+    jwt_secret: str = JWT_SECRET,
+) -> None:
+    """Raise RuntimeError if a production process carries a dangerous dev-only flag.
+
+    No-op outside production (dev/staging/test may set these freely). Values default to
+    the live config but are injectable so the guard can be exercised in isolation.
+    """
+    if environment != "production":
+        return
+    problems: list[str] = []
+    if dev_return_magic_link:
+        problems.append(
+            "DEV_RETURN_MAGIC_LINK=true exposes magic links in API responses "
+            "(anyone could sign in as any address)"
+        )
+    if jwt_secret == DEV_JWT_SENTINEL:
+        problems.append(
+            "JWT_SECRET is the insecure dev default (set a real secret: openssl rand -hex 32)"
+        )
+    if problems:
+        raise RuntimeError(
+            "Refusing to start in production — dangerous dev-only configuration:\n  - "
+            + "\n  - ".join(problems)
+        )

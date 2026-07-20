@@ -28,9 +28,9 @@ from fastapi.responses import JSONResponse
 from backend.config import (
     ADMIN_URL,
     BASE_URL,
-    DEV_RETURN_MAGIC_LINK,
     ENVIRONMENT,
     FRONTEND_URL,
+    assert_production_safety,
 )
 from backend.core.logging_config import configure_logging
 
@@ -40,11 +40,10 @@ import structlog
 
 log = structlog.get_logger(__name__)
 
-if ENVIRONMENT == "production" and DEV_RETURN_MAGIC_LINK:
-    raise RuntimeError(
-        "DEV_RETURN_MAGIC_LINK must be False in production — "
-        "it exposes magic links in API responses."
-    )
+# Refuse to boot a production process configured with a dangerous dev-only flag
+# (DEV_RETURN_MAGIC_LINK, dev JWT secret). No-op in dev/staging/test. See
+# config.assert_production_safety for the full list + rationale.
+assert_production_safety()
 
 
 def _init_sentry() -> None:

@@ -13,23 +13,26 @@ healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
-# Cron: expire trials — daily 01:00 UTC (~03:00 IST).
-[[crons]]
-name = "expire-trials"
-schedule = "0 1 * * *"
-command = "python -m backend.scripts.run_expire_trials"
+# ── Cron wiring (Stage 8) ────────────────────────────────────────────────────
+# TWO mechanisms, by design:
+#   1. resolve-scenarios — a native in-container batch job (below). It has NO HTTP
+#      endpoint (it reads Bybit klines and resolves journal outcomes). It must run
+#      BEFORE the notifications sweep so the reveal-teaser sees freshly resolved rows.
+#   2. notifications + billing sweeps — the HTTP cron endpoints
+#      POST /api/cron/notifications and POST /api/cron/billing, protected by the
+#      X-Cron-Secret header. Wire these with an external scheduler (Railway scheduled
+#      job / cron-job.org / GitHub Actions). Exact commands + recommended frequencies
+#      are in the "CRON WIRING (Railway, manual)" section of SESSION_HANDOFF. Both are
+#      idempotent (a second run in-window is a no-op).
+#
+# NOTE: the old native `expire-trials` / `trial-ending-soon` crons were folded into the
+# billing + notifications HTTP endpoints; the `subscription-renewal` cron was removed
+# entirely — Stripe Billing + Smart Retries own recurring charges + dunning since
+# Stage 3R (its script no longer exists).
 
-# Cron: day-11 trial reminder (no-card trial, D1) — daily 07:00 UTC (~09:00 IST).
-# Fires ~TRIAL_REMINDER_LEAD_DAYS (default 3) before trial end. No charge — prompts
-# an active choice (paid plan or Free) before expiry.
+# Cron: resolve journal scenarios against real market data. Daily 04:00 UTC (~06:00 IST),
+# ahead of the notifications sweep.
 [[crons]]
-name = "trial-ending-soon"
-schedule = "0 7 * * *"
-command = "python -m backend.scripts.run_trial_ending_soon"
-
-# Cron: subscription renewal — daily 05:00 UTC. Charges cards due for billing.
-# Dry-run until FEATURE_CARDCOM_LIVE=true (set manually by Nadav).
-[[crons]]
-name = "subscription-renewal"
-schedule = "0 5 * * *"
-command = "python -m backend.scripts.run_subscription_renewal"
+name = "resolve-scenarios"
+schedule = "0 4 * * *"
+command = "python -m backend.scripts.run_resolve_scenarios"

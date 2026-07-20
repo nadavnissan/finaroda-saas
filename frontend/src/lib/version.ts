@@ -1,3 +1,3 @@
 // Client app version — attached to support tickets so admin can debug blind.
 // Bump in lockstep with VERSIONS.md.
-export const APP_VERSION = "0.18.3";
+export const APP_VERSION = "1.0.0";

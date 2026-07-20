@@ -784,6 +784,20 @@
 - **TC-HF183-04 — result-view set invariant (auto):** `isResultPhase("results") === true`, `isResultPhase("empty") === true`, and `isResultPhase` is false for `idle`/`scanning`/`limit`. ✅ auto.
 - **TC-HF183-05 — new-scan returns to INPUT (auto):** `NEW_SCAN_PHASE === "idle" === INITIAL_SCAN_PHASE` — the new-scan action never auto re-scans; it returns to the input so the next SCAN is a fresh, quota-gated request. ✅ auto.
 
+### STAGE 8 — Hardening + PWA + dev→main release (v1.0.0)
+- **TC-S8-01 — production guard: DEV_RETURN_MAGIC_LINK (auto):** `assert_production_safety("production", dev_return_magic_link=True, jwt_secret=<real>)` raises RuntimeError naming DEV_RETURN_MAGIC_LINK. The app refuses to boot. ✅ auto (test_production_guard.py).
+- **TC-S8-02 — production guard: dev JWT sentinel (auto):** `assert_production_safety("production", …, jwt_secret=DEV_JWT_SENTINEL)` raises RuntimeError naming JWT_SECRET. ✅ auto.
+- **TC-S8-03 — production guard: both problems reported (auto):** with both dangerous flags set, the raised message names BOTH DEV_RETURN_MAGIC_LINK and JWT_SECRET. ✅ auto.
+- **TC-S8-04 — production guard: safe config boots (auto):** production + safe secret + magic-link off → returns None (no raise). ✅ auto.
+- **TC-S8-05 — guard is a no-op outside production (auto):** development / staging / test may set both dangerous flags without a raise (parametrized). ✅ auto.
+- **TC-S8-06 — mig 038 drops the legacy outbox (auto):** the clean migration set applies and `notifications_legacy_outbox` is absent from the final schema; `notifications` (the live bell feed) is present. ✅ auto (test_smoke clean-schema + drop migration).
+- **TC-S8-07 — require_active_trial removed (auto):** no import of `require_active_trial` exists anywhere; deleting it did not break any suite (full pytest green). ✅ auto (absence + green suite).
+- **TC-S8-08 — PWA manifest served (auto/manual):** `pnpm build` emits `/manifest.webmanifest` as a static route; it declares name, short_name, start_url=/scan, display=standalone, theme/background #0b0d12, and 192/512 + maskable PNG icons. ✅ auto (build) · ⬜ manual (install prompt on Android Chrome / desktop).
+- **TC-S8-09 — installability + icons (manual):** on a built deploy, Chrome shows an install affordance; the installed app opens standalone with the FINARODA icon; iOS "Add to Home Screen" uses the apple-touch-icon. ⬜ manual (real devices).
+- **TC-S8-10 — graceful offline page (manual):** with the SW registered (production), going offline and navigating shows /offline.html ("YOU ARE OFFLINE" + RETRY); the SW never serves stale app content (network-first for all navigations). ⬜ manual.
+- **TC-S8-11 — production build green (auto/manual):** `pnpm build` completes, 22 routes, static generation 22/22, tsc + eslint clean. ✅ this run.
+- **TC-S8-12 — full suite green post-merge (auto):** backend 215 · frontend unit 92 · shared 14, on dev AND on main after the merge. ✅ this run.
+
 ---
 
 ## ATR (Acceptance Test Reports)

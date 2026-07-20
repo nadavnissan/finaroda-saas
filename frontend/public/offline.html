@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0d12" />
+    <title>FINARODA — offline</title>
+    <link rel="icon" href="/icons/icon-32.png" type="image/png" />
+    <style>
+      :root { color-scheme: dark; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: #0b0d12;
+        color: #e6e8ec;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
+      .card { max-width: 420px; text-align: center; }
+      .badge {
+        width: 64px; height: 64px; margin: 0 auto 1.25rem;
+        display: block;
+      }
+      h1 { font-size: 1.1rem; letter-spacing: 0.12em; margin: 0 0 0.6rem; color: #1fb286; }
+      p { font-size: 0.9rem; line-height: 1.55; color: #8593a2; margin: 0 0 1.4rem; }
+      button {
+        font: inherit; color: #e6e8ec; background: transparent;
+        border: 1px solid #2a2f37; border-radius: 8px;
+        padding: 0.65rem 1.3rem; cursor: pointer; letter-spacing: 0.08em;
+      }
+      button:hover { border-color: #1fb286; color: #1fb286; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img class="badge" src="/icons/icon-192.png" alt="FINARODA" width="64" height="64" />
+      <h1>YOU ARE OFFLINE</h1>
+      <p>
+        FINARODA needs a live connection to fetch market data and run a scan. Reconnect and
+        try again. Nothing was lost.
+      </p>
+      <button onclick="location.reload()">RETRY</button>
+    </div>
+  </body>
+</html>

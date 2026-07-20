@@ -116,25 +116,3 @@ async def require_admin(user: CurrentUser = Depends(get_current_user)) -> Curren
             detail={"code": "FORBIDDEN", "message": "Admin only"},
         )
     return user
-
-
-async def require_active_trial(
-    user: CurrentUser = Depends(get_current_user),
-    db: aiosqlite.Connection = Depends(get_db_connection),
-) -> CurrentUser:
-    """Dependency: 402 if the user's trial has expired and no active sub. Admins bypass."""
-    if user.is_admin or user.subscription_status == "active":
-        return user
-    rows = await db.execute_fetchall(
-        "SELECT trial_ends_at FROM users WHERE internal_id = ?", (user.internal_id,)
-    )
-    if rows and rows[0][0]:
-        trial_end = datetime.fromisoformat(str(rows[0][0]).replace("Z", "+00:00"))
-        if trial_end.tzinfo is None:
-            trial_end = trial_end.replace(tzinfo=timezone.utc)
-        if trial_end < datetime.now(timezone.utc):
-            raise HTTPException(
-                status_code=402,
-                detail={"code": "TRIAL_EXPIRED", "message": "Trial period has ended"},
-            )
-    return user
