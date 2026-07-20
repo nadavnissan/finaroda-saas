@@ -18,7 +18,7 @@
 - ATP: TC-HF183-01..05 (empty/passing result → new scan → INPUT, quota still server-gated, result-view-set + new-scan-phase invariants) — see ATP.md.
 - VERSION: v0.18.3 (PATCH, bug fix).
 - BRANCH: dev
-- COMMIT: <hash>
+- COMMIT: 27015b8
 - IMPACT: A completed scan that yields no passers is no longer a dead end. From the empty result view the user has an obvious, always-visible action back to the coin selector to run another scan — without a page reload, and with the daily quota still enforced on the attempt.
 - DECISIONS: Mirrored the existing "↻ new scan" affordance rather than introducing a new pattern (minimal, UX-consistent). Left the `limit` (quota) screen unchanged — it is the server's "no" and already offers plans/journal.
 
